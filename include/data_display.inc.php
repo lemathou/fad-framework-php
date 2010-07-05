@@ -59,12 +59,12 @@ foreach ($this->datamodel->fields() as $name=>$field)
 				$return_obj = array();
 				foreach($this->fields[$name]->value as $obj)
 					$return_obj[] = $obj->{$disp_field}->disp_url();
-				echo "<p>".$field->disp_opt("label")." : ".implode(",",$return_obj)."</p>\n";
+				echo "<p>".$field->label." : ".implode(",",$return_obj)."</p>\n";
 			}
 			else
-				echo "<p>".$field->disp_opt("label")." : ".$this->fields[$name]->disp_url()."</p>\n";
+				echo "<p>".$field->label." : ".$this->fields[$name]->disp_url()."</p>\n";
 		else
-			echo "<p>".$field->disp_opt("label")." : ".$this->fields[$name]."</p>\n";
+			echo "<p>".$field->label." : ".$this->fields[$name]."</p>\n";
 	}
 echo "</div>\n";
 

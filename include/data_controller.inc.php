@@ -22,6 +22,7 @@ function data_update($data)
 {
 
 $update = $data["_update"];
+unset($data["_update"]);
 
 if (!is_array($update))
 {
@@ -42,14 +43,16 @@ elseif (!is_array($data))
 else
 {
 	$object->update_from_form($data);
-	if (isset($update["save"]))
+	if (isset($update["save"]) && $update["save"] == true)
 		$object->db_update();
 }
 
 }
 
 if (isset($_POST["_update"]))
+{
 	data_update($_POST);
+}
 
 if (DEBUG_GENTIME ==  true)
         gentime(__FILE__." [end]");

@@ -41,7 +41,7 @@ $query = db()->query("SELECT * FROM `_account` WHERE `id` = '".db()->string_esca
 if ($query->num_rows())
 {
 	$account = $query->fetch_assoc($query);
-	foreach($account as $i=>$j)
+	foreach ($account as $i=>$j)
 		$this->{$i} = $j;
 }
 
@@ -53,7 +53,10 @@ function __get($name)
 if (isset($this->{$name}))
 	return $this->{$name};
 else
+{
+	trigger_error("ACCOUNT(ID#$this->id)->__get('$name') : does not exists  ");
 	return null;
+}
 
 }
 
@@ -148,36 +151,40 @@ public function __construct()
 
 $this->sid = session_id();
 $this->client_info_query();
-$this->perm_query();
+
+//$this->perm_query();
+$this->perm_list = array( 1, 3 );
 
 }
 
 public function refresh()
 {
 
+$this->disconnect_reason = 0;
+
 if (isset($_GET["_session_restart"]))
 {
-	session_destroy();
 	$_SESSION = array();
 	session_regenerate_id();
-	header("Location: http://".SITE_DOMAIN.SITE_BASEPATH.SITE_LANG_DEFAULT."/");
+	session_destroy();
+	header("Location: ".$_SERVER["REDIRECT_URL"]);
 }
 elseif (isset($_GET["_session_kill"]))
 {
-	session_destroy();
 	$_SESSION = array();
 	session_regenerate_id();
-	die("Session successfully Killed. <a href=\"http://".SITE_DOMAIN.SITE_BASEPATH.SITE_LANG_DEFAULT."/\">Back to home page</a>");
+	session_destroy();
+	die("Session successfully Killed. <a href=\"/".SITE_BASEPATH.SITE_LANG_DEFAULT."/\">Back to Home page</a>");
 }
 elseif (isset($_POST["_login"]["username"]) && isset($_POST["_login"]["password_crypt"])) // Login par formulaire
 {
-	$this->connect($_POST["_login"]["username"], $_POST["_login"]["password_crypt"]);
+	$this->connect($_POST["_login"]["username"], $_POST["_login"]["password_crypt"], (isset($_POST["_login"]["permanent"]))?array("permanent"):array());
 }
 elseif (isset($_POST["_login"]["disconnect"])) // déconnexion
 {
 	$this->disconnect();
 }
-elseif (!$this->id && isset($_COOKIE["sid"]))
+elseif (!$this->id && isset($_COOKIE["sid"]) && is_string($_COOKIE["sid"]) && strlen($_COOKIE["sid"]) == "64")
 {
 	$this->connect_sid($_COOKIE["sid"]);
 }
@@ -189,32 +196,41 @@ protected function connect($email, $password_crypt, $options=array())
 
 $query = db()->query("SELECT id , actif , password , lang_id , email FROM _account WHERE email LIKE '".db()->string_escape($email)."' ");
 
-if (!$query->num_rows())
+if (!$query->num_rows() || !($account = $query->fetch_assoc()))
 {
+	if (DEBUG_LOGIN)
+		echo "<p>EMAIL NOT FOUND</p>\n";
 	$this->disconnect(1);
 	return false;
 }
-elseif (!($account = $query->fetch_assoc()))
+elseif (!$account["actif"])
 {
-	$this->disconnect(3);
+	if (DEBUG_LOGIN)
+		echo "<p>INACTIVE ACCOUNT</p>\n";
+	$this->disconnect(5);
 	return false;
 }
 elseif (md5($this->sid."".$account["password"]) != $password_crypt)
 {
+	if (DEBUG_LOGIN)
+		echo "<p>PASSWORD ERROR</p>\n";
 	$this->disconnect(4);
-	return false;
-}
-elseif (!$account["actif"] && false)
-{
-	$this->disconnect(5);
 	return false;
 }
 else
 {
+	if (DEBUG_LOGIN)
+		echo "<p>LOGIN OK</p>\n";
 	$this->id = $account["id"];
 	$this->lang_id = $account["lang_id"];
 	$this->email = $account["email"];
 	$this->perm_query();
+	// Memorize
+	if (in_array("permanent", $options))
+	{
+		db()->query("UPDATE _account SET `sid`='".($sid=md5(rand()))."' WHERE id='$this->id' ");
+		setcookie("sid", $sid, time()+60*60*24*30); // Durée 30 jours
+	}
 	return true;
 }
 
@@ -266,6 +282,12 @@ protected function reconnect()
 protected function disconnect($disconnect_reason=0)
 {
 
+// Destroy cookie references
+if ($this->id)
+	db()->query("UPDATE _account SET `sid`='' WHERE id='$this->id' ");
+if (isset($_COOKIE["sid"]))
+	setcookie ("sid", "", time()-3600);
+
 $this->id = 0;
 
 $this->type = "";
@@ -282,6 +304,8 @@ $this->disconnect_reason = $disconnect_reason;
 
 private function client_info_query()
 {
+
+// Liste mobiles : (iPhone|BlackBerry|Android|HTC|LG|MOT|Nokia|Palm|SAMSUNG|SonyEricsson)
 
 if (strstr($_SERVER["HTTP_USER_AGENT"],"Windows") !== FALSE)
 	$this->os = "WIN";
@@ -345,20 +369,23 @@ private function perm_query()
 
 // All users
 $this->perm_list = array( 3 );
-
 // Registered users
 if ($this->id)
 	$this->perm_list[] = 4;
+// Anonymous users
+else
+	$this->perm_list[] = 1;
 
+// Special perms
 $query = db()->query("SELECT `perm_id` FROM `_account_perm_ref` WHERE `account_id` = '".$this->id."'");
 while (list($perm_id) = $query->fetch_row())
 	$this->perm_list[] = $perm_id;
 
 // Régénération du menu puisque nouvelles permissions
-//page()->query();
+page()->query();
 
 // Régénération databank
-//databank()->query();
+//	databank()->query();
 
 }
 

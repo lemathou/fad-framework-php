@@ -117,6 +117,9 @@ else
 	return $GLOBALS["gentime"];
 }
 
+// Instancié de suite pour être le plus précis possible !
+$gentime = new gentime();
+	
 gentime("BEGIN");
 
 ?>

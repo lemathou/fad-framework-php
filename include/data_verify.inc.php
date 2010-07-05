@@ -1,15 +1,15 @@
 <?
 
 /**
- * V�rification de donn�e
+ * Data verification classes
  *
  */
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__);
 
 /**
- * Interface de v�rification
+ * Verification interface
  *
  */
 interface data_verify_i
@@ -135,16 +135,18 @@ if (!is_numeric($value))
 {
 	return false;
 }
-elseif ($params["signed"] && !ereg($value, "[-]+[1-9]{0,1}[0-9]*(\.[0-9]{0,".($params["precision"]-1)."}[1-9]){0,1}"))
+elseif ($params["signed"] && !preg_match('/^?[-]?([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($params["precision"]-1).'}[1-9]){0,1}$/', $value))
 {
 	return false;
 }
-elseif (!$params["signed"] && !ereg($value, "[1-9]{0,1}[0-9]*(\.[0-9]{0,".($params["precision"]-1)."}[1-9]){0,1}"))
+elseif (!$params["signed"] && !preg_match('/^([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($params["precision"]-1).'}[1-9]){0,1}$/', $value))
 {
+	//echo "<p>$value PAS OK</p>";
 	return false;
 }
 else
 {
+	//echo "<p>$value OK</p>";
 	return true;
 }
 
@@ -165,9 +167,36 @@ else
 }
 
 /**
+ * Boolean
+ */
+class data_verify_boolean implements data_verify_i
+{
+
+public function verify($value,$params=array())
+{
+
+if ($value === true || $value === false)
+	return true;
+else
+	return false;
+
+}
+
+public function convert($value,$params=array())
+{
+
+if ($value)
+	return true;
+else
+	return false;
+
+}
+
+}
+
+/**
  * Array verify
  */
-
 class data_verify_array implements data_verify_i
 {
 
@@ -193,7 +222,6 @@ return array($value);
 /**
  * Array verify
  */
-
 class data_verify_list implements data_verify_i
 {
 
@@ -222,7 +250,6 @@ else
 /**
  * Number compare verify
  */
-
 class data_verify_compare implements data_verify_i
 {
 
@@ -262,7 +289,6 @@ return $value;
 /**
  * Array count verify
  */
-
 class data_verify_count implements data_verify_i
 {
 
@@ -316,6 +342,65 @@ else
 
 }
 
+/**
+ * An email address
+ *
+ */
+class data_verify_email implements data_verify_i
+{
+
+public function verify($value,$params=array())
+{
+
+$regex = ($params["strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+
+if (is_string($value) && preg_match($regex, $value, $match))
+{
+	if (checkdnsrr($match[2], "MX"))
+		return true;
+	else
+		return false;
+}
+else
+	return false;
+
+}
+
+public function convert($value,$params=array())
+{
+
+return "";
+
+}
+
+}
+
+/**
+ * En URL
+ */
+class data_verify_url implements data_verify_i
+{
+
+public function verify($value,$params=array())
+{
+
+$regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
+
+if (!is_string($value) || preg_match($regex, $value))
+	return true;
+else
+	return false;
+
+}
+
+public function convert($value,$params=array())
+{
+
+return "";
+
+}
+
+}
 
 /**
  * A set of values in a list
@@ -367,24 +452,23 @@ else
 /**
  * Date verify
  */
-
 class data_verify_date implements data_verify_i
 {
 
 public function verify($value,$params=array())
 {
 
-if (!is_string($value) || !ereg("([0-9]{4})-((0[0-9])|(1[0-2]))-(([0-2][0-9])|(3[0-1]))",$value))
-	return false;
-else
+if (is_string($value) && preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
 	return true;
+else
+	return false;
 
 }
 
 public function convert($value,$params=array())
 {
 
-return "0000-00-00";
+return "00/00/0000";
 
 }
 
@@ -393,14 +477,13 @@ return "0000-00-00";
 /**
  * Date verify
  */
-
 class data_verify_year implements data_verify_i
 {
 
 public function verify($value,$params=array())
 {
 
-if (!is_string($value) || !ereg("([0-9]{4})",$value))
+if (!is_string($value) || !preg_match("([0-9]{4})",$value))
 	return false;
 else
 	return true;
@@ -419,14 +502,13 @@ return "0000";
 /**
  * Time verify
  */
-
 class data_verify_time implements data_verify_i
 {
 
 public function verify($value,$params=array())
 {
 
-if (!is_string($value) || !ereg("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
 	return false;
 else
 	return true;
@@ -445,14 +527,13 @@ return "00:00:00";
 /**
  * Datetime verify
  */
-
 class data_verify_datetime implements data_verify_i
 {
 
 public function verify($value,$params=array())
 {
 
-if (!is_string($value) || !ereg("([0-9]{4})-((0[0-9])|(1[0-2]))-(([0-2][0-9])|(3[0-1])) (([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+if (!is_string($value) || !preg_match("([0-9]{4})-((0[0-9])|(1[0-2]))-(([0-2][0-9])|(3[0-1])) (([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
 	return false;
 else
 	return true;
@@ -467,24 +548,22 @@ return "0000-00-00 00:00:00";
 }
 
 }
+
 /**
  * POSIX ereg verification
  */
-
 class data_verify_ereg implements data_verify_i
 {
-
 
 public function verify($value,$params=array())
 {
 
-if (is_array($params) && isset($params["ereg"]) && $params["ereg"] && !ereg($params["ereg"],$value))
+if (is_array($params) && isset($params["ereg"]) && $params["ereg"] && !preg_match($params["ereg"],$value))
 	return false;
 else
 	return true;
 
 }
-
 
 public function convert($value, $params=array())
 {
@@ -501,7 +580,6 @@ else
 /**
  * Object verification
  */
-
 class data_verify_object implements data_verify_i
 {
 
@@ -531,10 +609,8 @@ return new $objecttype();
 /**
  * Object verification
  */
-
 class data_verify_datamodel implements data_verify_i
 {
-
 
 public function verify($value, $params=array())
 {
@@ -545,7 +621,6 @@ else
 	return true;
 
 }
-
 
 public function convert($value, $params=array())
 {
@@ -574,51 +649,41 @@ else
 /**
  * Databank verification
  */
-
 class data_verify_databank implements data_verify_i
 {
-
 
 public function verify($value, $params=array())
 {
 
-/*
-/if (!databank($params))
-	return false;
-*/
 if (is_array($value))
 {
 	$return = true;
 	foreach($value as $i)
-		if (!$params($i))
+		if (!$databank($i))
 			$return = false;
 	return $return;
 }
-elseif (!is_numeric($value) || !$params($value))
+elseif (!is_numeric($value) || !is_a(databank($params)->get($value),"data_bank_agregat"))
 	return false;
 else
 	return true;
 
 }
 
-
-public function convert($value,$params=array())
+public function convert($value, $params=array())
 {
 
-// A COMPLETER
-if (!is_numeric($value) || !$params($value))
-	return 0;
-else
-	return $value;
+return 0;
 
 }
 
 }
 
-
+/**
+ * Databank select verification
+ */
 class data_verify_databank_select implements data_verify_i
 {
-
 
 public function verify($value, $params=array())
 {
@@ -631,7 +696,6 @@ else
 	return true;
 
 }
-
 
 public function convert($value,$params=array())
 {

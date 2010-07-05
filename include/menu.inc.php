@@ -44,16 +44,30 @@ else
 class menu
 {
 
+protected $id="0";
+
 protected $list = array();
 
 public function __construct($id)
 {
 
-$query = db()->query("SELECT `_menu_page_ref`.`page_id` FROM `_menu_page_ref` WHERE `_menu_page_ref`.`menu_id` = '$id'");
+$this->id = $id;
+
+return $this->query();
+
+}
+
+protected function query()
+{
+
+$this->list = array();
+$query = db()->query("SELECT `_menu_page_ref`.`page_id` FROM `_menu_page_ref` WHERE `_menu_page_ref`.`menu_id` = '$this->id' ORDER BY _menu_page_ref.pos");
 if ($query->num_rows())
 {
 	while (list($page_id)=$query->fetch_row())
+	{
 		$this->list[$page_id] = page($page_id);
+	}
 	return true;
 }
 else
@@ -63,13 +77,40 @@ else
 
 }
 
-public function disp()
+public function disp($method="")
 {
 
-foreach($this->list as $page)
-	$return[] = $page->link();
- 
-echo implode(" , ",$return);
+if ($method == "table")
+{
+	$return = "<table class=\"menu_$this->id\"><tr>";
+	foreach ($this->list as $page)
+		$return .= "<td>".$page->link()."</td>";
+	$return .= "</tr></table>";
+	return $return;
+}
+elseif ($method == "ul")
+{
+	$return = "<ul class=\"menu_$this->id\">";
+	foreach ($this->list as $page)
+		$return .= "<li>".$page->link()."</li>";
+	$return .= "</ul>";
+	return $return;
+}
+elseif ($method == "div")
+{
+	$return = "<div class=\"menu_$this->id\">";
+	foreach ($this->list as $page)
+		$return .= "<span>".$page->link()."</span>";
+	$return .= "</div>";
+	return $return;
+}
+else // $method == "span"
+{
+	$return=array();
+	foreach ($this->list as $page)
+		$return[] = $page->link();
+	return "<span class=\"menu_$this->id\">".implode(" , ",$return)."</span>";
+}
 
 }
 
@@ -98,10 +139,16 @@ public function query()
 {
 
 $this->list = array();
-$query_string = " SELECT _page.id as id , _page.name as name , _page.template_id as template_id , _page_lang.titre as titre , _page_lang.titre_court as titre_court , _page_lang.url as url FROM _page , _page_lang , _page_perm_ref WHERE _page.id = _page_lang.id AND _page_lang.lang_id = '".SITE_LANG_ID."' AND _page_perm_ref.page_id = _page.id AND _page_perm_ref.perm_id IN ( ".implode(" , ",login()->perm_list())." ) ";
+$query_string = " SELECT _page.id as id , _page.name as name , _page.template_id as template_id, _page.redirect_url as redirect_url, _page.alias_page_id as alias_page_id , _page_lang.titre as titre , _page_lang.titre_court as titre_court , _page_lang.url as url FROM _page , _page_lang , _page_perm_ref WHERE _page.id=_page_lang.id AND _page_lang.lang_id = '".SITE_LANG_ID."' AND _page_perm_ref.page_id = _page.id AND _page_perm_ref.perm_id IN ( ".implode(" , ",login()->perm_list())." )";
+if (DEBUG_MENU)
+	echo "<br />PAGE_GESTION : ".$query_string;
 $query = db()->query($query_string);
 while ($page = $query->fetch_assoc())
+{
+	if (DEBUG_MENU)
+		echo "<br />$page[id] : $page[name]\n";
 	$this->list[$page["id"]] = new page($page["id"], false , $page);
+}
 
 }
 
@@ -215,8 +262,6 @@ else
 class page
 {
 
-protected static $info_list = array ( "name" , "url" , "template_id" , "titre" , "titre_court" );
-
 protected $id = 0;
 protected $name = "";
 protected $titre = "";
@@ -224,14 +269,22 @@ protected $titre_court = "";
 protected $description = "";
 protected $keywords = "";
 
-protected $template_id = 0;
+// Gestion template
+protected $template_id = null;
 protected $template = null;
-
-protected $url = "";
-
 protected $params_url = array();
 protected $params_get = array();
 protected $params = array();
+protected $params_default = array();
+
+// Gestion redirection
+protected $url = ""; // Ca sert à quoi cette variable ?
+protected $redirect_url = null;
+
+// Gestion alias
+protected $alias_page_id = null;
+
+protected static $info_list = array ("name", "url", "template_id", "titre", "titre_court", "redirect_url", "alias_page_id");
 
 function __construct($id, $query=true, $infos=array())
 {
@@ -242,9 +295,15 @@ if ($query) // on récupère les données avec les params $infos
 	$this->query($infos);
 elseif (count($infos) > 0) // on intègre les données passées par infos
 	while (list($i,$j)=each($infos))
-		if (isset($this->{$i}))
+	{
+		if (in_array($i, self::$info_list))
+		{
+			if (DEBUG_MENU)
+				echo "<br />Page $id __construct : $i = $j\n";
 			$this->{$i} = $j;
-
+		}
+	}
+			
 }
 
 /**
@@ -257,6 +316,7 @@ public function set($params)
 $this->params_load();
 $this->params_update_url($params);
 $this->params_update_get();
+$this->params_update_post();
 
 }
 
@@ -283,8 +343,12 @@ public function params_update_url($params)
 
 foreach($params as $i=>$value)
 {
+	if (DEBUG_TEMPLATE)
+		echo "<p>PAGE->params_update_url : $i : $value</p>";
 	if (isset($this->params_url[$i]) && ($name=$this->params_url[$i]))
 	{
+		if (DEBUG_TEMPLATE)
+			echo "<p>PAGE->params_update_url : $name : $value</p>";
 		$this->params[$name] = $value;
 	}
 }
@@ -335,7 +399,8 @@ $this->template->titre = $this->titre;
 // Paramètres liés au rewriting
 foreach ($this->params as $name=>$value)
 {
-	//echo "<p>$name : $value</p>\n";
+	if (DEBUG_TEMPLATE)
+		echo "<p>PAGE->params_apply : $name : $value</p>\n";
 	$this->template->{$name} = $value;
 }
 
@@ -387,6 +452,12 @@ public function id()
 return $this->id;
 
 }
+public function name()
+{
+
+return $this->name;
+
+}
 
 /**
  * Retourne le template associé
@@ -404,12 +475,42 @@ return $this->template;
  *
  * @return string
  */
-public function url($text="")
+public function url($params=array(), $text="")
 {
 
-return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id.html";
+if ($this->alias_page_id)
+{
+	if (count($params))
+		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->alias_page_id,".implode(",",$params).".html";
+	else
+		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->alias_page_id.html";
+}
+elseif ($this->redirect_url)
+{
+	return $this->redirect_url;
+}
+else // template
+{
+	if (count($params))
+		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id,".implode(",",$params).".html";
+	else
+		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id.html";
+}
 
 }
+public function url_rewrite($ref, $params=array(), $concat=false)
+{
+
+if ($concat)
+	$ref = "$this->url-$ref";
+
+if (count($params))
+	return SITE_BASEPATH.SITE_LANG."/$ref,$this->id,".implode(",",$params).".html";
+else
+	return SITE_BASEPATH.SITE_LANG."/$ref,$this->id.html";
+
+}
+
 public function url_html($text="")
 {
 
@@ -417,13 +518,13 @@ return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id.html";
 
 }
 
-public function link($text1="", $text2="")
+public function link($params=array(), $text="", $text2="")
 {
 
-if ($text1)
-	return "<a href=\"".$this->url()."\">$text1</a>";
+if ($text2)
+	return "<a href=\"".$this->url($params, $text)."\">$text2</a>";
 else
-	return "<a href=\"".$this->url()."\">$this->titre_court</a>";
+	return "<a href=\"".$this->url($params, $text)."\">$this->titre_court</a>";
 
 }
 
@@ -487,7 +588,7 @@ else
 function page_current()
 {
 
-return $GLOBALS["page_gestion"]->get(PAGE_ID);
+return page(PAGE_ID);
 
 }
 

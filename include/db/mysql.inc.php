@@ -10,24 +10,8 @@
   */
 
 /**
-  * Couche d'abstraction MySQL
-  *
-  * Classe abstraite qui gère la connexion et le choix de la db
-  * Elle est reliée à la classe db_query qui gère les requêtes
-  * 
-  * Une fois db::connect() effectué avec succès, db::query() renvoie l'id
-  * de connexion à l'instance de db_query générée.
-  * 
-  * L'initialisation est définitive une fois effectué avec succès,
-  * sauf en accédant à l'objet en GLOBAL.
-  * 
-  * De cette façon les requêtes sont des instances de db_query,
-  * faisant toutes référence à db.
-  * 
+  * MySQL abstraction layer
   */
-
-// Connexion au serveur & choix de la base de donn�es
-
 class db extends session_select implements db_i
 {
 
@@ -178,27 +162,29 @@ if ($this->id)
 public function __sleep()
 {
 
-mysql_close($this->id);
 $this->queries_total += $this->queries;
 $this->fetch_results_total += $this->fetch_results;
 $this->time_total += $this->time;
 
-session_select::__sleep($this->serialize_list);
+if ($this->id)
+{
+	mysql_close($this->id);
+	$this->id = NULL;
+}
+
+return session_select::__sleep($this->serialize_list);
 
 }
 
 public function __wakeup()
 {
 
-session_select::__sleep($this->serialize_list);
+session_select::__wakeup();
 
 $this->connect();
 
 }
 
-/*
- * Create a database table
- */
 public function table_create($tablename, $fields, $options=array())
 {
 
@@ -208,6 +194,7 @@ $key_list = array();
 
 foreach($fields as $fieldname=>$field)
 {
+	//echo "<p>$fieldname : $field[type]</p>\n";
 	if (!empty($field["key"]))
 		$key_list[] = "`$fieldname`";
 	$fieldstruct[] = $this->field_struct($fieldname, $field);
@@ -225,19 +212,12 @@ if (isset($options["charset"]))
 else
 	$tableoption[] = "DEFAULT CHARSET = ".DB_CHARSET;
 
-//$this->query("CREATE TABLE IF NOT EXISTS `$tablename` ( ".implode(" , ",$fieldstruct)." ) ".implode(" ",$tableoption));
-$this->query("CREATE TABLE `$tablename` ( ".implode(" , ",$fieldstruct)." ) ".implode(" ",$tableoption));
-//$this->query("ALTER TABLE `$tablename` DEFAULT CHARACTER SET utf8 COLLATE utf8_bin");
+//echo "CREATE TABLE IF NOT EXISTS `$tablename` ( ".implode(" , ",$fieldstruct)." ) ".implode(" ",$tableoption);
+$this->query("CREATE TABLE IF NOT EXISTS `$tablename` ( ".implode(" , ",$fieldstruct)." ) ".implode(" ",$tableoption));
+//$this->query("ALTER TABLE `$tablename` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci");
 
 }
 
-/**
- * Génère un champ pour insertion / mise à jour
- * 
- * @param string $fieldname
- * @param array $field
- * @return string
- */
 public function field_struct($fieldname, $field)
 {
 
@@ -246,10 +226,10 @@ $field["default"] = isset($field["default"]) ? " default '".addslashes($field["d
 
 switch ($field["type"])
 {
-	case "string" && !empty($field["size"]) && isset($field["autocomplete"]) :
+	case ($field["type"]=="string" && !empty($field["size"]) && isset($field["autocomplete"])) :
 		return "`$fieldname` char($field[size])$field[null]$field[default]";
 		break;
-	case "string" && !empty($field["size"]) :
+	case ($field["type"]=="string" && !empty($field["size"])) :
 		return "`$fieldname` varchar($field[size])$field[null]$field[default]";
 		break;
 	case "string" :
@@ -277,26 +257,31 @@ switch ($field["type"])
 		return "`$fieldname` datetime$field[null]$field[default]";
 		break;
 	case "select" :
-		return "`$fieldname` enum (".implode(" , ",$field["value_list"]).")$field[null]$field[default]";
+		return "`$fieldname` enum ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
 		break;
 	case "fromlist" :
-		return "`$fieldname` set (".implode(" , ",$field["value_list"]).")$field[null]$field[default]";
+		return "`$fieldname` set ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
+		break;
+	case "boolean" :
+		return "`$fieldname` BOOLEAN$field[null]$field[default]";
 		break;
 }
 
 }
 
-public function field_update($tablename, $fieldname_from, $fieldname_to, $field)
+public function field_update($tablename, $fieldname_from, $fieldname_to, $field, $position="")
 {
 
-$this->query("ALTER TABLE `$tablename` CHANGE `$fieldname_from` ".$this->field_struct($fieldname_to, $field)); 
+//echo "ALTER TABLE `$tablename` CHANGE `$fieldname_from` ".$this->field_struct($fieldname_to, $field)." $position";
+
+$this->query("ALTER TABLE `$tablename` CHANGE `$fieldname_from` ".$this->field_struct($fieldname_to, $field)." $position"); 
 
 }
 
-public function field_create($tablename, $fieldname, $field)
+public function field_create($tablename, $fieldname, $field, $position="")
 {
-	
-$this->query("ALTER TABLE `$tablename` ADD ".$this->field_struct($fieldname, $field)); 
+
+$this->query("ALTER TABLE `$tablename` ADD ".$this->field_struct($fieldname, $field)." $position"); 
 
 }
 
@@ -541,7 +526,7 @@ function db()
 {
 
 if (!isset($GLOBALS["db"]))
-	return $GLOBALS["db"] = new db(array("hostname"=>DB_HOST, "username"=>DB_USERNAME, "password"=>DB_PASSWORD, "database"=>DB_BASE, "charset"=>DB_CHARSET));
+	return $GLOBALS["db"] = $_SESSION["db"] = new db(array("hostname"=>DB_HOST, "username"=>DB_USERNAME, "password"=>DB_PASSWORD, "database"=>DB_BASE, "charset"=>DB_CHARSET));
 else
 	return $GLOBALS["db"];
 

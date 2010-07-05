@@ -22,7 +22,6 @@ class library_gestion
 protected $list = array();
 
 protected static $info_list = array ( "name" , "description" );
-protected static $info_query_list = array ( "name" , "description" );
 
 public function __construct()
 {
@@ -31,7 +30,7 @@ $this->query();
 
 }
 
-public function query()
+protected function query()
 {
 
 $this->list = array();
@@ -78,6 +77,13 @@ while (list(,$library)=each($this->list))
 		$return[] = "<li>".$library->get("name")." : NOT LOADED</li>";
 }
 return "<ul>".implode("\n",$return)."</ul>";
+
+}
+
+public function list_get()
+{
+
+return $this->list;
 
 }
 
@@ -158,7 +164,7 @@ if (!$this->loaded)
 
 }
 
-public function get($name)
+public function __get($name)
 {
 
 return $this->{$name};

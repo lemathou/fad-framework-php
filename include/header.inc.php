@@ -11,11 +11,6 @@
 
 // Performance & Optimisation
 include "include/gentime.inc.php";
-// Instancié de suite pour être le plus précis possible !
-$gentime = new gentime();
-	
-if (DEBUG_GENTIME ==  true)
-	gentime(__FILE__." [begin]");
 
 // Classes de base
 include "include/classes.inc.php";
@@ -37,7 +32,7 @@ include "include/data_bank.inc.php";
 //require_once "include/container.inc.php";
 
 // Formulaires
-include "include/forms.inc.php";
+//include "include/forms.inc.php";
 
 // Variables globales
 include "include/globals.inc.php";

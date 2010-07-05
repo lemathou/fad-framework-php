@@ -15,7 +15,7 @@ if (DEBUG_GENTIME ==  true)
 session_start();
 
 // Récupération des variables de session
-$session_vars = array("db", "lang", "globals", "library_gestion", "datamodel_gestion", "databank_gestion", "page_gestion", "menu_gestion", "login");
+$session_vars = array("db", "lang", "globals", "library_gestion", "datamodel_gestion", "databank_gestion", "template_gestion", "page_gestion", "menu_gestion", "login");
 foreach ($session_vars as $name)
 {
 	if (isset($_SESSION[$name]))
@@ -28,6 +28,11 @@ foreach ($session_vars as $name)
 unset($session_vars);
 
 login()->refresh();
+
+/*
+if (!isset($_SESSION["site_lang"]))
+	$_SESSION["site_lang"] = SITE_LANG;
+*/
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

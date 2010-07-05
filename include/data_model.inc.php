@@ -55,7 +55,7 @@ elseif (in_array($id, $this->list_id))
 	$this->list[$id] = new datamodel($id);
 	return $this->list[$id]; 
 }
-else
+elseif (DEBUG_DATAMODEL)
 {
 	trigger_error("Cannot create datamodel ID#$id");
 }
@@ -73,7 +73,7 @@ elseif (isset($id))
 {
 	return $this->get($id);
 }
-else
+elseif (DEBUG_DATAMODEL)
 {
 	trigger_error("Cannot create datamodel ID#$id");
 }
@@ -114,7 +114,7 @@ return $this->list_id;
  * Modèle de données pour remplir une maquette
  *
  */
-class datamodel extends session_select
+class datamodel
 {
 
 protected $id = 0;
@@ -123,7 +123,7 @@ protected $name = "";
 protected $label = "";
 
 /**
- * Library containing other infos
+ * Library containing required objects infos
  *
  * @var integer
  */
@@ -151,7 +151,7 @@ protected $db_opt = array
 protected $disp_opt = array();
 
 /*
- * Public actions
+ * Public actions / Kind of controller part of the MVC design
  */
 protected $action_list = array
 (
@@ -176,7 +176,7 @@ protected $action_list = array
 );
 
 // Données à sauver en session
-private $serialize_list = array( "id" , "name" , "label", "library_id", "fields", "fields_key", "fields_required", "fields_calculated", "db_opt", "disp_opt", "action_list" );
+private $serialize_list = array("id", "name", "label", "library_id", "fields", "fields_key", "fields_required", "fields_calculated", "db_opt", "disp_opt", "action_list");
 public $serialize_save_list = array();
 
 public function __construct($id, $fields=array())
@@ -196,6 +196,7 @@ if (is_array($fields))
 /*
  * Sauvegarde/Restauration de la session
  */
+/*
 function __sleep()
 {
 
@@ -212,20 +213,16 @@ if (DEBUG_SESSION == true)
 	echo "<p>WAKEUP : datamodel id#$this->id</p>\n";
 
 }
+*/
 
-public function library_load()
+public function library()
 {
 
-if ($this->library_id)
-{
-	if (DEBUG_LIBRARY == true)
-		echo "<p>Loading library id#$this->library_id from datamodel id#$this->id $this->name</p>\n";
-	library($this->library_id)->load();
-}
+return library($this->library_id);
 
 }
 
-protected function query_info()
+public function query_info()
 {
 
 // Infos de base sur le datamodel
@@ -236,8 +233,12 @@ if ($query->num_rows())
 	//echo "<p>Datamodel $name : id $this->id</p>";
 }
 
+$this->fields = array();
+$this->fields_key = array();
+$this->fields_required = array();
+$this->fields_calculated = array();
 // Création des champs du datamodel
-$query = db()->query("SELECT t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t2.`label` FROM _datamodel_fields as t1 LEFT JOIN _datamodel_fields_lang as t2 ON t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname WHERE t1.datamodel_id='$this->id'");
+$query = db()->query("SELECT t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t2.`label` FROM _datamodel_fields as t1 LEFT JOIN _datamodel_fields_lang as t2 ON t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname WHERE t1.datamodel_id='$this->id' ORDER BY t1.pos");
 while ($field=$query->fetch_assoc())
 {
 	if ($field["defaultvalue"] === null)
@@ -254,13 +255,14 @@ while ($field=$query->fetch_assoc())
 $query = db()->query("SELECT fieldname, opt_type, opt_name, opt_value FROM _datamodel_fields_opt WHERE datamodel_id='$this->id'");
 while ($opt=$query->fetch_assoc())
 {
+	//echo "<p>$this->id : $opt[fieldname] : $opt[opt_type] : $opt[opt_name]</p>\n";
 	$method="$opt[opt_type]_opt_set";
-	$this->fields[$opt["fieldname"]]->$method($opt["opt_name"], json_decode($opt["opt_value"]));
+	$this->fields[$opt["fieldname"]]->$method($opt["opt_name"], json_decode($opt["opt_value"], true));
 }
 
 if (DEBUG_LIBRARY == true)
 	echo "<p>Loading library ID#$this->library_id from datamodel id#$this->id query_info</p>\n";
-$this->library_load();
+$this->library()->load();
 
 }
 
@@ -299,7 +301,7 @@ public function db_opt($name)
 
 if (isset($this->db_opt[$name]))
 	return $this->db_opt[$name];
-else
+elseif (DEBUG_DATAMODEL)
 	trigger_error("Property db_opt[$name] doesn't exist");
 
 }
@@ -309,7 +311,7 @@ public function __get($name)
 
 if (isset($this->fields[$name]))
 	return $this->fields[$name];
-else
+elseif (DEBUG_DATAMODEL)
 	trigger_error("Property $name doesn't exist");
 
 }
@@ -326,7 +328,7 @@ public function __unset($name)
 
 if (isset($this->fields[$name]))
 	unset($this->fields[$name]);
-else
+elseif (DEBUG_DATAMODEL)
 	trigger_error("Field $name doesn't exist");
 
 }
@@ -342,22 +344,28 @@ if (is_a($field, "data"))
 	$field->datamodel_set($this);
 	return $this->fields[$name] = $field;
 }
-else
+elseif (DEBUG_DATAMODEL)
 	trigger_error("Field $name is not a data field object");
 
 }
-public function add(data $field, $options="")
+public function add(data &$field, $options="")
 {
 
 if (!is_a($field, "data"))
-	trigger_error("Field $field->name is not a data field object");
+{
+	if (DEBUG_DATAMODEL)
+		trigger_error("Field $field->name is not a data field object");
+}
 elseif (isset($this->fields[$field->name]))
-	trigger_error("Field $field->name already exists");
+{
+	if (DEBUG_DATAMODEL)
+		trigger_error("Field $field->name already exists");
+}
 else
 {
 	//echo "<p>$this->name : $field->name</p>\n";
 	$this->fields[$field->name] = $field;
-	$field->datamodel_set($this);
+	$field->datamodel_set($this->id);
 	if ($options == "key")
 		$this->fields_key[] = $field->name;
 	elseif ($options == "required")
@@ -456,21 +464,29 @@ public function db_create()
 {
 
 $fields = array();
+$options = array();
 $fields_lang = array();
 foreach ($this->fields as $name=>$field)
 {
 	$f = $field->db_field_create();
-	if (in_array($name, $this->fields_required))
-		$f["null"] = false;
 	if (in_array($name, $this->fields_key))
+	{
+		$f["null"] = false;
 		$f["key"] = true;
+	}
+	elseif (in_array($name, $this->fields_required))
+	{
+		$f["null"] = false;
+	}
+	elseif (!isset($f["null"]))
+	{
+		$f["null"] = true;
+	}
 	if ($field->db_opt("lang"))
 		$fields_lang[$name] = $f;
 	else
 		$fields[$name] = $f;
 }
-
-$options = array();
 
 db()->table_create($this->db_opt["table"], $fields, $options);
 
@@ -527,7 +543,6 @@ public function db_drop()
 
 }
 
-
 /**
  * Empty the associated database
  *
@@ -556,7 +571,8 @@ foreach ($this->fields_required as $name)
 	if (!isset($fields[$name]))
 	{
 		$query_ok = false;
-		trigger_error("Dadamodel '$this->name' db_insert() : Missing required field '$name'");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Dadamodel '$this->name' db_insert() : Missing required field '$name'");
 	}
 }
 // On v�rifie les champs et on vire les clefs
@@ -569,14 +585,16 @@ foreach ($fields as $name=>$field)
 	if (!isset($this->fields[$name]))
 	{
 		$query_ok = false;
-		trigger_error("Dadamodel '$this->name' db_insert() : Undefined field '$name'");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Dadamodel '$this->name' db_insert() : Undefined field '$name'");
 	}
 	// Clef : a modifier car un index n'est pas forc�ment auto_increment et il peut y en avoir +ieurs...
 	// disons que ce sera ainsi pour une classe h�rit�e qui g�gera les dataobjects
 	elseif (in_array($name, $this->fields_key))
 	{
 		unset($fields[$name]);
-		//trigger_error("Dadamodel '$this->name' db_insert() : Cannot insert key field '$name'");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Dadamodel '$this->name' db_insert() : Cannot insert key field '$name'");
 	}
 	// Champ complexe
 	elseif ($this->fields[$name]->type == "dataobject_list")
@@ -671,12 +689,14 @@ foreach ($this->fields_key as $name)
 	if (!isset($fields[$name]))
 	{
 		$query_ok = false;
-		trigger_error("Dadamodel db_update() : Missing key '$name'");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Dadamodel db_update() : Missing key '$name'");
 	}
 	// Bad key type
 	elseif (!is_a($fields[$name], "data") || ($class=get_class($this->fields[$name])) != get_class($fields[$name]))
 	{
-		trigger_error("Datamodel '$this->name' : Update error : key '$name' not an instance of '$class'");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Datamodel '$this->name' : Update error : key '$name' not an instance of '$class'");
 	}
 	// Key passed in param OK
 	elseif (($value = $fields[$name]->value_to_db()) !== null)
@@ -699,13 +719,15 @@ if ($query_ok)
 		// Field not defined
 		if (!isset($this->fields[$name]))
 		{
-			trigger_error("Datamodel '$this->name' : Update error : Field '$name' not defined");
+			if (DEBUG_DATAMODEL)
+				trigger_error("Datamodel '$this->name' : Update error : Field '$name' not defined");
 			unset($field[$name]);
 		}
 		// Bad field
 		elseif (!is_a($field, "data") || ($class=get_class($this->fields[$name])) != get_class($field))
 		{
-			trigger_error("Datamodel '$this->name' : Update error : Field '$name' not an instance of '$class'");
+			if (DEBUG_DATAMODEL)
+				trigger_error("Datamodel '$this->name' : Update error : Field '$name' not an instance of '$class'");
 			unset($field[$name]);
 		}
 		// Extra table update : dataobject_list
@@ -802,19 +824,20 @@ else
  *
  * @param unknown_type $query_where
  */
-public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0)
+public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
 if (!is_array($fields))
 {
-	trigger_error("datamodel '$this->name' : incorrect field param.");
+	if (DEBUG_DATAMODEL)
+		trigger_error("datamodel '$this->name' : incorrect field param.");
 	return false;
 }
 else
 {
 	$agregat_name = $this->name."_agregat";
 	// Retrieve the resulting fields
-	if (is_array($result = $this->db_select($params, $fields, $sort, $limit)))
+	if (is_array($result = $this->db_select($params, $fields, $sort, $limit, $start)))
 	{
 		// Fields for each object
 		$objects = array();
@@ -835,7 +858,6 @@ else
 }
 
 }
-
 
 /**
  * Retrieve an array containing each the one an array of fields to be retrieved by giving query params
@@ -872,28 +894,32 @@ else
  *
  * @param unknown_type $query_where
  */
-public function db_select($params=array(), $fields_input=array(), $sort=array(), $limit=0)
+public function db_select($params=array(), $fields_input=array(), $sort=array(), $limit=0, $start=0)
 {
 
 if (!is_array($params))
 {
-	trigger_error("datamodel '$this->name' : incorrect params.");
+	if (DEBUG_DATAMODEL)
+		trigger_error("datamodel '$this->name' : incorrect params.");
 	return false;
 }
 elseif (!is_array($fields_input))
 {
-	trigger_error("datamodel '$this->name' : incorrect field list.");
+	if (DEBUG_DATAMODEL)
+		trigger_error("datamodel '$this->name' : incorrect field list.");
 	return false;
 }
 else
 {
 	// Requete sur la table principale
-	$query_base = array ( "fields" => array(), "where" => array(), "from" => array("`".$this->name."`") );
+	if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
+		$tablename = $this->db_opt["table"];
+	$query_base = array ( "fields" => array(), "where" => array(), "from" => array("`".$tablename."`") );
 	$query_lang = false;
 	// Autres requetes
 	$query_list = array();
 	// Fields to be retrieved with other queries : A MODIFIER, VERIFIER LA TABLE ! CAR TABLES COMPLEMENTAIRES AUSSI POSSIBLES
-	$type_special = array("dataobject_list", "dataobject_select"); // "list" à rajouter !
+	$type_special = array("list", "dataobject_list", "dataobject_select"); // "list" à rajouter !
 	// Result
 	$return = array();
 	// Result params mapping
@@ -934,6 +960,11 @@ else
 			{
 				//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
 				$query_list[$name] = array( "field" => $name , "table" => $this->fields[$name]->db_opt("ref_table") );
+			}
+			elseif ($field->type == "list")
+			{
+				//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
+				$query_list[$name] = array( "field" => $this->fields[$name]->db_opt("ref_field") , "table" => $this->fields[$name]->db_opt("ref_table") );
 			}
 		}
 	}
@@ -993,7 +1024,9 @@ else
 	// Lang
 	if ($query_lang)
 	{
-		$query_base["from"][] = "`".$this->name."_lang`";
+		if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
+			$tablename = $this->db_opt["table"];
+		$query_base["from"][] = "`".$tablename."_lang`";
 		$query_base["where"][] = "`".$this->name."`.`id` = `".$this->name."_lang`.`id`";
 		$query_base["where"][] = "`".$this->name."_lang`.`lang_id` = '".SITE_LANG_ID."'";
 	}
@@ -1016,7 +1049,7 @@ else
 	// Limit
 	if ($limit)
 	{
-		$query_limit = " LIMIT $limit";
+		$query_limit = " LIMIT $start, $limit";
 	}
 	else
 	{
@@ -1032,11 +1065,14 @@ else
 
 	// Effective Query
 	$query = db()->query($query_string);
+	$list_id = array();
+	
 	if ($query->num_rows() >= 1)
 	{
 		while ($row=$query->fetch_assoc())
 		{
 			$return[$row["id"]] = $row;
+			$list_id[] = $row["id"];
 			// Result params mapping
 			/*
 			$return_params[$nb] = array();
@@ -1053,21 +1089,50 @@ else
 	foreach($query_list as $name=>$detail)
 	{
 		$field = $this->fields[$detail["field"]];
-		if ($field->type == "dataobject_list")
+		if ($field->type == "list")
 		{
 			$ref_field = $field->db_opt("ref_field");
-			if (($ref_table = $field->db_opt["ref_table"]))
+			$ref_table = $field->db_opt("ref_table");
+			$ref_id = $field->db_opt("ref_id");
+			$detail["where"][] = "`".$this->db_opt["table"]."`.`id` = `$ref_table`.`$ref_id`";
+			$detail["where"][] = "`".$this->db_opt["table"]."`.`id` IN (".implode(" , ", $list_id).")";
+			$query_string = "
+				SELECT `$ref_table`.`$ref_id`, `$ref_table`.`$ref_field`
+				FROM `".$this->db_opt["table"]."` , `$ref_table`
+				WHERE ".implode(" AND ",$detail["where"]);
+			$query = db()->query($query_string);
+			if ($query->num_rows() >= 1)
 			{
-				$ref_id = $field->db_opt["ref_id"];
+				while ($row=$query->fetch_row())
+				{
+					$return[$row[0]][$name][] = $row[1];
+				}
+			}
+			foreach ($return as $id=>$detail)
+			{
+				if (!isset($return[$id][$name]))
+				{
+					$return[$id][$name] = array();
+				}
+			}
+		}
+		elseif ($field->type == "dataobject_list")
+		{
+			//print_r($field->db_opt_list_get());
+			$ref_field = $field->db_opt("ref_field");
+			if ($ref_table = $field->db_opt("ref_table"))
+			{
+				$ref_id = $field->db_opt("ref_id");
 			}
 			else
 			{
-				$ref_table = $field->structure_opt["databank"];
+				$ref_table = datamodel($field->structure_opt["databank"])->db_opt("table");
 				$ref_id = "id";
 			}
-			$detail["where"][] = "`".$this->db_opt["table"]."`.`id` = `$ref_table`.`$ref_id`";
+			$detail["where"][] = "`".$this->db_opt["table"]."`.`id` = `$ref_table`.`$ref_field`";
+			$detail["where"][] = "`".$this->db_opt["table"]."`.`id` IN (".implode(" , ", $list_id).")";
 			$query_string = "
-				SELECT `$ref_table`.`$ref_id` , `$ref_table`.`$ref_field`
+				SELECT `$ref_table`.`$ref_field` , `$ref_table`.`$ref_id`
 				FROM `".$this->db_opt["table"]."` , `$ref_table`
 				WHERE ".implode(" AND ",$detail["where"]);
 			$query = db()->query($query_string);
@@ -1215,11 +1280,11 @@ function databank_params_aff()
 <form name="zeform" action="" method="post">
 <input type="hidden" name="sort" value="id" />
 <div style="margin:5px 0px;border:1px black solid;padding: 4px;margin-right: 400px;">
-<p><a href="javascript:;" onclick="databank_params_aff()">Param�tres de s�lection</a></p>
+<p><a href="javascript:;" onclick="databank_params_aff()">Paramètres de sélection</a></p>
 <div id="databank_params" style="display:none;">
 <table cellspacing="0" cellspacing="0" cellpadding="0" width="100%">
 <tr>
-	<td valign="top"><h3>S�lection :</h3></td>
+	<td valign="top"><h3>Sélection :</h3></td>
 	<td><?php
 	foreach ($this->fields as $field)
 	{
@@ -1312,20 +1377,18 @@ return $this->action_list;
 
 }
 
-
 }
 
-
 /**
+ * Agrégats de donnée
  * 
- * Un agr�gat est une liste de champs r�pondant � un datamodel donn�.
- * 
- * Les agr�gats contiennent des chanps modifiables, qui sont des clones de ceux du datamodel.
+ * Un agrégat est une liste de champs répondant à un datamodel donné.
+ * Les agrégats contiennent des chanps modifiables, clones à partir du datamodel.
  * 
  */
 
 /**
- * Agr�gats de donn�es
+ * Agrégats de données
  *
  */
 class agregat
@@ -1354,13 +1417,11 @@ protected $form_opt = array
 	"method" => "POST",
 );
 
-public function __construct(datamodel $datamodel=NULL, $fields=array())
+public function __construct($datamodel=null, $fields=array())
 {
 
-if ($datamodel !== NULL && is_a($datamodel, "datamodel"))
+if ($datamodel !== null && is_a($datamodel, "datamodel"))
 	$this->datamodel_set($datamodel);
-else
-	$this->datamodel_set(new datamodel("defaultmodel"));
 
 }
 
@@ -1420,7 +1481,7 @@ elseif (isset($this->datamodel->{$name}))
 		return $this->fields[$name] = clone $this->datamodel->{$name};
 	}
 }
-else
+elseif (DEBUG_DATAMODEL)
 {
 	trigger_error("Datamodel '$this->name' agregat : Property '$name' not defined");
 }
@@ -1453,7 +1514,7 @@ if (isset($this->datamodel->{$name}))
 	}
 	$this->fields[$name]->value = $value;
 }
-else
+elseif (DEBUG_DATAMODEL)
 	trigger_error("Datamodel '$this->datamodel' agregat : Property '$name' not defined");
 	
 }
@@ -1504,28 +1565,7 @@ foreach ($this->datamodel->fields() as $name=>$field)
 public function display($name="")
 {
 
-$this->db_retrieve_all();
-$datamodel = $this->datamodel->name();
-$datamodel_id = $this->datamodel->id();
-
-// C'est un mega gros mix de toutes les façons de faire... va falloir choisir à un moment !
-
-if (is_string($name) && $name && file_exists(PATH_ROOT."/template/datamodel/".$name.".tpl.php"))
-{
-	$view = new datamodel_display_tpl_php($this->datamodel, $this->fields);
-	$view->tplfile_set($name);
-}
-elseif (file_exists(PATH_ROOT."/template/datamodel/".$datamodel.".tpl.php"))
-{
-	$view = new datamodel_display_tpl_php($this->datamodel, $this->fields);
-	$view->tplfile_set($datamodel);
-}
-else
-{
-	$view = new datamodel_display($this->datamodel, $this->fields);
-}
-
-return $view;
+return $this->view($name);
 
 }
 
@@ -1539,16 +1579,14 @@ public function form($name="")
 {
 
 $this->db_retrieve_all();
-$datamodel = $this->datamodel->name();
 
-if (is_string($name) && $name && file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
+if (!$name)
+	$name = $this->datamodel->name();
+
+if (file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
 {
 	$view = new datamodel_display_tpl_php($this->datamodel, $this->fields);
 	$view->tplfile_set($name);
-}
-elseif (file_exists(PATH_ROOT."/template/datamodel/".$datamodel.".form.tpl.php"))
-{
-	$view = new datamodel_display_tpl_php($this->datamodel, $this->fields);
 }
 else
 {
@@ -1560,6 +1598,29 @@ return $view;
 }
 
 public function view($name="")
+{
+
+if (!$name)
+	$name = $this->datamodel->name();
+
+$this->db_retrieve_all();
+
+// C'est un mega gros mix de toutes les façons de faire... va falloir choisir à un moment !
+if (file_exists(PATH_ROOT."/template/datamodel/".$name.".tpl.php"))
+{
+	$view = new datamodel_display_tpl_php($this->datamodel, $this->fields);
+	$view->tplfile_set($name);
+}
+else
+{
+	$view = new datamodel_display($this->datamodel, $this->fields);
+}
+
+return $view;
+
+}
+
+public function disp($name="")
 {
 
 $this->display($name)->disp();
@@ -1669,20 +1730,29 @@ return (string)$this->fields["id"];
  * @param unknown_type $fields
  * @return unknown
  */
-public function db_retrieve($fields)
+public function db_retrieve($fields, $force=false)
 {
 
 $query_ok = true;
 $params = array();
+// Verify params
 foreach ($this->datamodel->fields_key() as $name)
 	if (!isset($this->fields[$name]))
 	{
-		trigger_error("Datamodel '$this->name' agregat : missing key '$name' to retrieve fields");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Datamodel '$this->name' agregat : missing key '$name' to retrieve fields");
 		$query_ok = false;
 	}
 	else
 		$params[] = array( "name"=>$name, "type"=>"=", "value"=> $this->fields[$name]->value_to_db());
-if ($query_ok && ($list = $this->datamodel->db_fields($params, $fields)))
+
+// Delete the fields we already have
+if (!$force) foreach ($fields as $i=>$name)
+	if (isset($this->fields[$name]))
+		unset($fields[$i]);
+
+// Effective Query
+if ($query_ok && count($fields) && ($list = $this->datamodel->db_fields($params, $fields)))
 {
 	if (count($list) == 1)
 	{
@@ -1694,7 +1764,8 @@ if ($query_ok && ($list = $this->datamodel->db_fields($params, $fields)))
 	}
 	else
 	{
-		trigger_error("Datamodel '$this->name' agregat : too many objects resulting from query params");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Datamodel '$this->name' agregat : too many objects resulting from query params");
 		return false;
 	}
 }

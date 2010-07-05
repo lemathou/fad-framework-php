@@ -63,6 +63,8 @@ foreach($this->list_id as $name=>$id)
 function get($id)
 {
 
+//echo "<p>DATABANK_GESTION : accessing ID#$id</p>\n";
+
 if (isset($this->list[$id]))
 {
 	return $this->list[$id];
@@ -223,7 +225,6 @@ function __sleep()
 return session_select::__sleep($this->serialize_list);
 
 }
-
 function __wakeup()
 {
 
@@ -297,7 +298,8 @@ public function get($id, $fields=array())
 
 if (!$this->perm("r"))
 {
-	trigger_error("Databank $this->name : Permission error : Read access denied");
+	if (DEBUG_DATAMODEL)
+		trigger_error("Databank $this->name : Permission error : Read access denied");
 	return false;
 }
 elseif (is_numeric($id) && $id>0)
@@ -305,7 +307,10 @@ elseif (is_numeric($id) && $id>0)
 	//print_r($this->objects[$id]);
 	// Already in databank
 	if (isset($this->objects[$id]))
+	{
+		$this->objects[$id]->db_retrieve($fields);
 		return $this->objects[$id];
+	}
 	elseif ($object_list = datamodel($this->id)->db_get(array(array("name"=>"id", "value"=>$id)), $fields))
 	{
 		return $this->objects[$id] = array_pop($object_list);
@@ -313,7 +318,8 @@ elseif (is_numeric($id) && $id>0)
 	// Retrieve error
 	else
 	{
-		trigger_error("Databank $this->name : Object id $id does nos exists");
+		if (DEBUG_DATAMODEL)
+			trigger_error("Databank $this->name : Object id $id does nos exists");
 		return NULL;
 	}
 }
@@ -330,10 +336,10 @@ else
  * @param array $infos
  * @return mixed 
  */
-public function query($params=array(), $fields=array(), $sort=array(), $limit=0)
+public function query($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
-if (is_array($result=datamodel($this->id)->db_get($params, $fields, $sort, $limit)))
+if (is_array($result=datamodel($this->id)->db_get($params, $fields, $sort, $limit, $start)))
 {
 	foreach($result as $object)
 		$this->objects["$object->id"] = $object;
@@ -341,6 +347,16 @@ if (is_array($result=datamodel($this->id)->db_get($params, $fields, $sort, $limi
 }
 else
 	return false;
+
+}
+
+/**
+ * Compte
+ */
+public function count($params=array())
+{
+
+return datamodel($this->id)->db_count($params);
 
 }
 
@@ -491,12 +507,17 @@ else
  * Create a new object
  * 
  */
-public function create()
+public function create($fields_all_init=false)
 {
 
-$name = $this->name."_agregat";
-
-return new $name;
+$classname = $this->name."_agregat";
+$object = new $classname;
+if ($fields_all_init) foreach(datamodel($this->id)->fields() as $name=>$field)
+{
+	if (!isset($object->{$name}))
+		$object->{$name} = "";
+}
+return $object;
 
 }
 

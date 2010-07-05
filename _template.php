@@ -39,14 +39,13 @@ include "include/lang.inc.php";
 // Démarrage de la session
 include "include/session_start.inc.php";
 
-if (!isset($_SESSION["site_lang"]))
-	$_SESSION["site_lang"] = SITE_LANG;
+//include "header_full.inc.php";
 
 // Mise en place des banques de donnée et des fonctions associées !!
 databank();
 
-// Controller
-include "include/data_controller.inc.php";
+// Controller (Warning !!)
+//include "include/data_controller.inc.php";
 
 // Choix de la page
 include "include/page_choose.inc.php";
@@ -54,8 +53,27 @@ include "include/page_choose.inc.php";
 header("Content-type: text/html; charset=".SITE_CHARSET);
 
 // Affichage du template
+//echo PAGE_ID;
 page_current()->tpl()->disp();
 gentime("TEMPLATE_DISP");
+
+if ($dr=login()->info_get("disconnect_reason"))
+{
+if ($dr==1)
+	$dr="Ce compte ne figure pas dans nos bases.";
+elseif ($dr==4)
+	$dr="Mot de passe invalide.";
+elseif ($dr==5)
+	$dr="Compte temporairement désactivé, veuillez nous contacter pour plus d'information.";
+else
+	$dr="Erreur d'authentification.";
+?>
+<script type="text/javascript">
+alert('<?=$dr?>');
+</script>
+<?
+unset($dr);
+}
 
 // On incrémente le nombre de pages vues par le visiteur
 login()->page_count++;
@@ -64,23 +82,10 @@ gentime("END");
 
 ?>
 
-<?php if (DEBUG_GENTIME) { ?>
-<hr />
-<h1>Tests cache</h1>
-<?php
-ob_start();
-echo "<p>Une phrase de la mort qui tue</p>";
-?>
-<p>Une seconde phrase</p>
-<?php
-$tampon = ob_get_contents();
-//file_put_contents('cache/index.html', $tampon)
-ob_end_clean(); // toujours fermer et vider le tampon
-echo $tampon;
-?>
+<?php if (login()->perm(6)) { ?>
 
-<hr />
-<h1>Stats</h1>
+<div style="width:980px;margin:5px;padding:5px;background-color:white;">
+<h1>DEBUG Gentime</h1>
 <h3>PHP</h3>
 <?
 echo gentime()->total();
@@ -96,4 +101,5 @@ echo "<br />time_total ".db()->time_total;
 foreach(db()->query_list as $query)
 	echo "<br />$query\n";
 ?>
+</div>
 <?php } ?>

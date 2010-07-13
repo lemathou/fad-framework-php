@@ -2736,9 +2736,9 @@ function form_field_disp($print=true)
  */
 
 // Pas beaucoup de valeurs : liste simple
-if (($nb = datamodel($this->structure_opt["databank"])->db_count()) < 20)
+if (($nb=datamodel($this->structure_opt["databank"])->db_count()) < 20)
 {
-	$query = databank()->query($this->structure_opt["databank"]);
+	$query = databank($this->structure_opt["databank"])->query();
 	{
 		$values = array();
 		if (is_array($this->value))
@@ -2746,7 +2746,11 @@ if (($nb = datamodel($this->structure_opt["databank"])->db_count()) < 20)
 			{
 				$values[] = "$value->id";
 			}
-		$return = "<select name=\"".$this->name."[]\" multiple size=\"5\">\n";
+		if ($nb<10)
+			$size = $nb;
+		else
+			$size = 5;
+		$return = "<select name=\"".$this->name."[]\" multiple size=\"$size\">\n";
 		foreach($query as $object)
 		{
 			if (in_array("$object->id", $values))
@@ -2762,55 +2766,42 @@ if (($nb = datamodel($this->structure_opt["databank"])->db_count()) < 20)
 // Beaucoup de valeurs : liste Ajax complexe
 else
 {
-	$return = "<div id=\"".$this->name."_list\">\n";
-	$nb=0;
-	if ($this->value !== null && is_array($this->value))
-		foreach ($this->value as $nb=>$object)
-		{
-			if (is_a($object, "data_bank_agregat"))
-			{
-				$return .= "<div id=\"".$this->name."_$nb\">";
-				$return .= "<input type=\"hidden\" id=\"$this->name[$nb]\" value=\"".$object->id."\" />";
-				if ($this->disp_opt["ref_field_disp"] && isset(datamodel($this->structure_opt["databank"])->{$this->disp_opt["ref_field_disp"]}))
-					$value = (string)$object->{$this->disp_opt["ref_field_disp"]};
-				else
-					$value = (string)$object;
-				$return .= "<input type=\"text\" value=\"$value\" readonly />";
-				//$return .= "<input type=\"button\" value=\"UPDATE\" onclick=\"update('$this->name','$nb')\" />";
-				$return .= "<input type=\"button\" value=\"DEL\" onclick=\"dataobject_list_remove('$this->name','$nb')\" />";
-				$return .= "</div>\n";
-			}
-		}
+	$return = "<div id=\"".$this->name."_list\"></div>\n";
+	$return .= "<div id=\"".$this->name."_add\">";
+	$return .= "<input type=\"hidden\" id=\"$this->name\" value=\"\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"\" class=\"\" onkeyup=\"databank_lookup('$this->name');\" />\n";
 	$return .= "</div>\n";
-	{
-		$return .= "<div id=\"".$this->name."_add\">";
-		$return .= "<input type=\"hidden\" id=\"$this->name\" value=\"\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"Undefined\" class=\"undefined\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" />";
-		$return .= "<input type=\"button\" value=\"ADD\" onclick=\"dataobject_list_add('$this->name', document.getElementById('$this->name').value, document.getElementById('$this->name'+'_input').value)\" />";
-		$return .= "</div>\n";
-	}
-	{
-		$return .= "<div id=\"".$this->name."_addnew\">";
-		$return .= "<input type=\"button\" value=\"ADD NEW\" onclick=\"dataobject_add('$this->name')\" /> UPDATE BEFORE YOU CLIC";
-		$return .= "</div>\n";
-	}
 	$return .= "<div class=\"suggestionsBox\" id=\"".$this->name."_suggestions\" style=\"display: none;\"><div class=\"suggestionList\" id=\"".$this->name."_autoSuggestionsList\">&nbsp;</div></div>";
-	$return .= "<script type=\"text/javascript\">";
-	$return .= "fields['$this->name'] = new Array;";
-	$return .= "fields['$this->name']['type'] = 'dataobject_list';";
-	$return .= "fields['$this->name']['nb'] = '$nb';";
-	$return .= "fields['$this->name']['name_current'] = '';";
-	$return .= "fields['$this->name']['id_current'] = '';";
-	$return .= "fields['$this->name']['filled'] = true;";
-	$return .= "fields['$this->name']['databank'] = '".$this->structure_opt["databank"]."';";
+	$return .= "<script type=\"text/javascript\">\n";
+	$return .= "if (!fields) var fields = new Array();\n";
+	$return .= "fields['$this->name'] = new Array();\n";
+	$return .= "fields['$this->name']['type'] = 'link';\n";
+	$return .= "fields['$this->name']['nb'] = 0;\n";
+	$return .= "fields['$this->name']['name_current'] = '';\n";
+	$return .= "fields['$this->name']['id_current'] = '';\n";
+	$return .= "fields['$this->name']['filled'] = true;\n";
+	$return .= "fields['$this->name']['databank'] = ".$this->structure_opt["databank"].";\n";
 	$k=array();
-	if (isset($this->db_opt["select_params"]))
+	if (isset($this->db_opt["select_params"]) && is_array($this->db_opt["select_params"]))
 	{
 		foreach ($this->db_opt["select_params"] as $i=>$j)
 		{
 			$k[] = "'$i' : '$j'";
 		}
 	}
-	$return .= "fields['$this->name']['query_params'] = { ".implode(" , ",$k)." };";
+	$return .= "fields['$this->name']['query_params'] = { ".implode(" , ",$k)." };\n";
+	$return .= "fields['$this->name']['value'] = new Array();\n";
+	$return .= "$(document).ready(function(){\n";
+	if ($this->value !== null && is_array($this->value))
+	{
+		foreach ($this->value as $nb=>$object)
+		{
+			if (is_a($object, "data_bank_agregat"))
+			{
+				$return .= "databank_list_add('$this->name', $object->id, \"$object\");\n";
+			}
+		}
+	}
+	$return .= "});\n";
 	$return .= "</script>\n";
 }
 

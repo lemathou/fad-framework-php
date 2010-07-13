@@ -66,13 +66,11 @@ if ($query->num_rows())
 {
 	while (list($page_id)=$query->fetch_row())
 	{
-		$this->list[$page_id] = page($page_id);
+		if (is_a($page=page($page_id), "page"))
+			$this->list[$page_id] = page($page_id);
+		elseif (DEBUG_MENU)
+			trigger_error("Menu ID#$this->id : Page ID#$page_id access denied");
 	}
-	return true;
-}
-else
-{
-	return false;
 }
 
 }
@@ -84,7 +82,8 @@ if ($method == "table")
 {
 	$return = "<table class=\"menu_$this->id\"><tr>";
 	foreach ($this->list as $page)
-		$return .= "<td>".$page->link()."</td>";
+		if (is_a($page, "page"))
+			$return .= "<td>".$page->link()."</td>";
 	$return .= "</tr></table>";
 	return $return;
 }
@@ -92,7 +91,8 @@ elseif ($method == "ul")
 {
 	$return = "<ul class=\"menu_$this->id\">";
 	foreach ($this->list as $page)
-		$return .= "<li>".$page->link()."</li>";
+		if (is_a($page, "page"))
+			$return .= "<li>".$page->link()."</li>";
 	$return .= "</ul>";
 	return $return;
 }
@@ -100,7 +100,8 @@ elseif ($method == "div")
 {
 	$return = "<div class=\"menu_$this->id\">";
 	foreach ($this->list as $page)
-		$return .= "<span>".$page->link()."</span>";
+		if (is_a($page, "page"))
+			$return .= "<span>".$page->link()."</span>";
 	$return .= "</div>";
 	return $return;
 }
@@ -108,7 +109,8 @@ else // $method == "span"
 {
 	$return=array();
 	foreach ($this->list as $page)
-		$return[] = $page->link();
+		if (is_a($page, "page"))
+			$return[] = $page->link();
 	return "<span class=\"menu_$this->id\">".implode(" , ",$return)."</span>";
 }
 

@@ -10,7 +10,7 @@
   */
 
 // Inclusion des fichiers globaux du FrameWork
-ini_set("include_path",".:/usr/local/phpfadframework:/usr/share/php:/usr/share/pear");
+//ini_set("include_path",".:/usr/local/phpfadframework:/usr/share/php:/usr/share/pear");
 
 // Base de donnée
 define("DB","mysql");

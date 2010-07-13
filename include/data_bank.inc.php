@@ -286,7 +286,6 @@ return $this->perm;
 
 }
 
-
 /**
  * Retrieve an objet from the datamodel.
  * 
@@ -338,6 +337,8 @@ else
  */
 public function query($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
+
+//echo "<p>Databank ID#$this->id : query()</p>\n";
 
 if (is_array($result=datamodel($this->id)->db_get($params, $fields, $sort, $limit, $start)))
 {
@@ -415,7 +416,6 @@ else
 	return false;
 
 }
-
 
 /**
  * Search objects into the databank
@@ -531,7 +531,7 @@ return $object;
  * @param array $fields
  * @return mixed
  */
-function databank($datamodel=null, $id=null, $fields=array())
+function databank($datamodel_id=null, $id=null, $fields=array())
 {
 
 //echo "<p>Accessing databank : $datamodel</p>\n";
@@ -543,7 +543,7 @@ if (!isset($GLOBALS["databank_gestion"]))
 	$GLOBALS["databank_gestion"] = $_SESSION["databank_gestion"] = new data_bank_gestion();
 }
 
-if (is_numeric($datamodel) && (is_a($databank = $GLOBALS["databank_gestion"]->get($datamodel), "data_bank")))
+if (is_numeric($datamodel_id) && (is_a($databank=$GLOBALS["databank_gestion"]->get($datamodel_id), "data_bank")))
 {
 	if (is_numeric($id) && $id>0)
 		if (is_a($object = $databank->get($id, $fields), "data_bank_agregat"))

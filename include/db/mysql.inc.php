@@ -359,19 +359,19 @@ public function fetch($type="row")
 switch($type)
 {
 	case "array":
-		$this->fetch_array();
+		return $this->fetch_array();
 		break;
 	case "assoc":
-		$this->fetch_assoc();
+		return $this->fetch_assoc();
 		break;
 	case "object":
-		$this->fetch_object();
+		return $this->fetch_object();
 		break;
 	case "row":
-		$this->fetch_row();
+		return $this->fetch_row();
 		break;
 	default:
-		$this->fetch_row();
+		return $this->fetch_row();
 		break;
 }
 
@@ -385,13 +385,13 @@ switch($return)
 {
 	case "list":
 		$return = array();
-		while (list($i) = $this->fetch($type))
+		while ($i = $this->fetch($type))
 			$return[] = $i;
 		return $return;
 		break;
 	default:
 		$return = array();
-		while (list($i) = $this->fetch_row())
+		while ($i = $this->fetch_row())
 			$return[] = $i;
 		return $return;
 		break;

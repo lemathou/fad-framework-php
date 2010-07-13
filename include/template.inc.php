@@ -318,7 +318,8 @@ foreach ($this->param_list as $name)
 	${$name} = &$this->params[$name];
 
 foreach ($this->script_list as $script)
-	include "scripts/$script.inc.php";
+	if (file_exists("template/scripts/$script.inc.php"))
+		include "template/scripts/$script.inc.php";
 
 }
 

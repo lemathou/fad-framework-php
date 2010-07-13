@@ -184,7 +184,7 @@ elseif (isset($_POST["_login"]["disconnect"])) // déconnexion
 {
 	$this->disconnect();
 }
-elseif (!$this->id && isset($_COOKIE["sid"]) && is_string($_COOKIE["sid"]) && strlen($_COOKIE["sid"]) == "64")
+elseif (!$this->id && isset($_COOKIE["sid"]) && is_string($_COOKIE["sid"]) && strlen($_COOKIE["sid"]) == 32)
 {
 	$this->connect_sid($_COOKIE["sid"]);
 }

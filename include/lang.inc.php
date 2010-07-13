@@ -17,14 +17,15 @@ $l = array_shift($url_e);
 
 if (!$l || !isset($lang[$l]))
 {
-        define("SITE_LANG",SITE_LANG_DEFAULT);
-        define("SITE_LANG_ID",SITE_LANG_DEFAULT_ID);
-        header("Location: http://".SITE_DOMAIN."/".SITE_LANG."/");
+	define("SITE_LANG",SITE_LANG_DEFAULT);
+	define("SITE_LANG_ID",SITE_LANG_DEFAULT_ID);
+	define("REDIRECT",true);
 }
 else
 {
-        define("SITE_LANG",$l);
-        define("SITE_LANG_ID",$lang[$l]);
+	define("SITE_LANG",$l);
+	define("SITE_LANG_ID",$lang[$l]);
+	define("REDIRECT",false);
 }
 
 unset($l);

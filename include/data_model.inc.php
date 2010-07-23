@@ -1738,6 +1738,8 @@ public function db_retrieve($fields, $force=false)
 
 $query_ok = true;
 $params = array();
+if (!is_array($fields))
+	$fields = array($fields);
 // Verify params
 foreach ($this->datamodel->fields_key() as $name)
 	if (!isset($this->fields[$name]))

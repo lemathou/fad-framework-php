@@ -16,6 +16,9 @@
   * 
   */
 
+if (DEBUG_GENTIME ==  true)
+	gentime(__FILE__." [begin]");
+
 /**
  * Types de données gérés au niveau du framework.
  * Vous pourrez en ajouter s'il en manque mais j'essayerais d'être exhaustif.
@@ -24,8 +27,9 @@
  * - Ce sont les briques du "modèle" en MVC.
  * - Les controlleurs sont des méthodes associées à des instances de classe form pour l'utilisateur,
  *   permettant de définir différents formulaires suivant le contexte.
- * - Les vues sont des méthodes associées à des instances de classe data_display, ce permettant de
- *   définir plusieurs méthodes d'affichage pour une donnée.
+ * - Les vues sont des méthodes associées à des instances de classe data_display (quoi que j'évolue
+ *   vers une classe fille de la classe template, ce qui serait plus judicieux et permerrait de tout sauvegarder
+ *   en cache), ce permettant de définir plusieurs méthodes d'affichage pour une donnée.
  * - On dispose aussi de contraintes (regexp, maxlength, compare, etc.) utilisables via des méthodes de vérification
  *   et de conversion au plus juste (dans certains cas) associées à des instances de classes de conversion
  *   Des méthodes de vérification et de conversion seront aussi définies dans la classe form,
@@ -64,9 +68,6 @@
  * 
  */
 
-if (DEBUG_GENTIME ==  true)
-	gentime(__FILE__." [begin]");
-
 /**
  * Donnée générale
  * 
@@ -95,6 +96,8 @@ if (DEBUG_GENTIME ==  true)
 abstract class data
 {
 
+const test = "Test DATA";
+
 /**
  * Nom à utiliser comme identifiant (unique dans un contexte car sert de référence les agrégats)
  *
@@ -113,14 +116,14 @@ protected $datamodel=null;
 protected $datamodel_id=0;
 
 /**
- * Type de donn�e (audio, texte, video, file, etc.)
+ * Type de donnée (audio, texte, video, file, etc.)
  *
  * @var string
  */
 protected $type="";
 
 /**
- * Donn�es brutes dans le format d�fini et "contraint" le plus adapt�
+ * Données brutes dans le format dééfini et "contraint" le plus adapté
  *
  * @var mixed
  */
@@ -134,7 +137,7 @@ protected $value=null;
 protected $required=false;
 
 /**
- * Options de structure et par extension de Verification & Conversion (Voir les classes de conversion associ�es)
+ * Options de structure et par extension de Verification & Conversion (Voir les classes de conversion associées)
  *
  * @var array
  */
@@ -702,6 +705,8 @@ return $this->value;
 class data_string extends data
 {
 
+const test = "Test STRING";
+	
 protected static $id = 1;
 
 protected $type = "string";
@@ -1731,16 +1736,16 @@ else
  * Donnée de type fichier
  * 
  * Dans ce cas, form_field() doit permettre de visualiser & modifier le fichier.
- * Pas �vident... on doit pouvoir le modifier parmis une liste existante,
- * en charger un autre, et la visualisation va d�pendre de pas mal de choses !
- * Il faut donc lui donner les param�tres n�cessaires � ce bon fonctionnement...
+ * Pas évident... on doit pouvoir le modifier parmis une liste existante,
+ * en charger un autre, et la visualisation va dépendre de pas mal de choses !
+ * Il faut donc lui donner les paramètres nécessaires à ce bon fonctionnement...
  * 
- * Quitte � cr�er un autre datatype pour d'autres besoins,
- * le data_file doit passer par un gestionnaire de fichier ind�pendant,
- * et la donn�e sera effectivement stoqu�e sur le disque.
+ * Quitte à créer un autre datatype pour d'autres besoins,
+ * le data_file doit passer par un gestionnaire de fichier indépendant,
+ * et la donnée sera effectivement stoquée sur le disque.
  * 
- * Cette classe sera surcharg�e de nombreuses fois.
- * Elle fournit les m�thodes de base de t�l�chargement, lien, etc.
+ * Cette classe sera surchargée de nombreuses fois.
+ * Elle fournit les méthodes de base de téléchargement, lien, etc.
  * 
  */
 class data_file extends data

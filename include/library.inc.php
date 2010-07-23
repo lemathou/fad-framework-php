@@ -144,7 +144,7 @@ public function load()
 
 if (!$this->loaded)
 {
-	$filename = "library/".str_replace("_","/",$this->name).".inc.php";
+	$filename = "library/$this->name.inc.php";
 	if (file_exists($filename))
 	{
 		foreach($this->list as $ref => $id)

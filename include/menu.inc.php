@@ -80,7 +80,7 @@ public function disp($method="")
 
 if ($method == "table")
 {
-	$return = "<table class=\"menu_$this->id\"><tr>";
+	$return = "<table class=\"menu menu_$this->id\"><tr>";
 	foreach ($this->list as $page)
 		if (is_a($page, "page"))
 			$return .= "<td>".$page->link()."</td>";
@@ -89,7 +89,7 @@ if ($method == "table")
 }
 elseif ($method == "ul")
 {
-	$return = "<ul class=\"menu_$this->id\">";
+	$return = "<ul class=\"menu menu_$this->id\">";
 	foreach ($this->list as $page)
 		if (is_a($page, "page"))
 			$return .= "<li>".$page->link()."</li>";
@@ -98,7 +98,7 @@ elseif ($method == "ul")
 }
 elseif ($method == "div")
 {
-	$return = "<div class=\"menu_$this->id\">";
+	$return = "<div class=\"menu menu_$this->id\">";
 	foreach ($this->list as $page)
 		if (is_a($page, "page"))
 			$return .= "<span>".$page->link()."</span>";
@@ -111,7 +111,7 @@ else // $method == "span"
 	foreach ($this->list as $page)
 		if (is_a($page, "page"))
 			$return[] = $page->link();
-	return "<span class=\"menu_$this->id\">".implode(" , ",$return)."</span>";
+	return "<span class=\"menu menu_$this->id\">".implode(" , ",$return)."</span>";
 }
 
 }
@@ -231,6 +231,11 @@ else
 
 }
 
+/**
+ * Affichage d'un set de pages
+ * 
+ * @param unknown_type $options
+ */
 public function disp($options=array())
 {
 

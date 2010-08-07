@@ -5,28 +5,28 @@
   * 
   * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
 // Performance & Optimisation
-include "include/gentime.inc.php";
+include PATH_INCLUDE."/gentime.inc.php";
 
 // Classes de base
-include "include/classes.inc.php";
+include PATH_INCLUDE."/classes.inc.php";
 
 // Base de donnée
-include "include/db.inc.php";
+include PATH_INCLUDE."/db.inc.php";
 
 // Gestion des librairies de fonctions
-include "include/library.inc.php";
+include PATH_INCLUDE."/library.inc.php";
 
 // Types de donnée, datamodels, agrégats et banques de données
-include "include/data.inc.php";
-include "include/data_verify.inc.php";
-include "include/data_model.inc.php";
-include "include/data_display.inc.php";
-include "include/data_bank.inc.php";
+include PATH_INCLUDE."/data.inc.php";
+include PATH_INCLUDE."/data_verify.inc.php";
+include PATH_INCLUDE."/data_model.inc.php";
+include PATH_INCLUDE."/data_display.inc.php";
+include PATH_INCLUDE."/data_bank.inc.php";
 
 // Conteneurs de maquettes
 //require_once "include/container.inc.php";
@@ -35,7 +35,7 @@ include "include/data_bank.inc.php";
 //include "include/forms.inc.php";
 
 // Variables globales
-include "include/globals.inc.php";
+include PATH_INCLUDE."/globals.inc.php";
 
 // Erreurs, exceptions
 //include "include/error.inc.php";
@@ -48,13 +48,13 @@ include "include/globals.inc.php";
 //include "include/rewriting.inc.php";
 
 // Menu & Pages
-include "include/menu.inc.php";
+include PATH_INCLUDE."/menu.inc.php";
 
 // Login
-include "include/login.inc.php";
+include PATH_INCLUDE."/login.inc.php";
 
 // Templates
-include "include/template.inc.php";
+include PATH_INCLUDE."/template.inc.php";
 
 if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [end]");

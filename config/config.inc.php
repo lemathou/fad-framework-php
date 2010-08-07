@@ -27,15 +27,21 @@ define("DB_BASE","database");
 
 // Server path : root
 define("PATH_ROOT","/home/website");
+define("PATH_INCLUDE",PATH_ROOT."/include");
+define("PATH_LIBRARY",PATH_ROOT."/library");
+define("PATH_TEMPLATE",PATH_ROOT."/template");
+define("PATH_PAGE",PATH_ROOT."/page");
+define("PATH_CACHE",PATH_ROOT."/cache");
 
 // Site URL, Domain name and path
 define("SITE_URL","http://website/");
 define("SITE_DOMAIN","website");
 define("SITE_BASEPATH","/");
+define("SITE_SSL_ENABLE",false);
 define("SITE_SSL_REDIRECT",false);
 
+// Charset
 define("SITE_CHARSET","UTF-8");
-define("SITE_ORGANISATION","");
 
 // Default lang
 define("SITE_MULTILANG", true);
@@ -44,17 +50,25 @@ define("SITE_LANG_DEFAULT_ID",2);
 
 // Copyright
 define("SITE_COPYRIGHT","");
+define("SITE_ORGANISATION","");
 
-// Jpeg Quality
+// Image options : Jpeg Quality
 define("IMG_JPEG_QUALITY", 90);
 
 // Template cache
-define("TEMPLATE_CACHE",false);
-define("TEMPLATE_CACHE_TIME",60);
+define("TEMPLATE_CACHE",true);
+define("TEMPLATE_CACHE_TIME",300);
+define("TEMPLATE_CACHE_MIN_TIME",10);
+define("TEMPLATE_CACHE_MAX_TIME",300);
 
 // DEBUG
 define("DEBUG_GENTIME",false);
-define("DEBUG_SESSION",false);
 define("DEBUG_LIBRARY",false);
+define("DEBUG_LOGIN",false);
+define("DEBUG_SESSION",false);
+define("DEBUG_MENU",false);
+define("DEBUG_TEMPLATE",false);
+define("DEBUG_DATAMODEL",false);
+define("DEBUG_CACHE",false);
 
 ?>

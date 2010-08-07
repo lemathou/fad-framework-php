@@ -45,7 +45,7 @@ list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$_GET[id]
 if (isset($_POST["_datamodel_update"]))
 {
 	db()->query("UPDATE _datamodel SET `library_id`='".db()->string_escape($_POST["library_id"])."',  `name`='".db()->string_escape($_POST["name"])."', `table`='".db()->string_escape($_POST["table"])."' WHERE `id`='".$_GET["id"]."'");
-	db()->query("UPDATE _datamodel_lang SET `label`='".db()->string_escape($_POST["label"])."' , `description`='".db()->string_escape($_POST["description"])."' WHERE `id`='".$_GET["id"]."' AND `lang_id`='".SITE_LANG_ID."'");
+	db()->query("UPDATE _datamodel_lang SET `label`='".db()->string_escape($_POST["label"])."', `description`='".db()->string_escape($_POST["description"])."' WHERE `id`='".$_GET["id"]."' AND `lang_id`='".SITE_LANG_ID."'");
 }
 // Datamodel field update
 if (isset($_POST["_field_update"]))
@@ -346,7 +346,7 @@ while ($field=$query->fetch_assoc())
 		</tr>
 		<tr>
 		<?php foreach ($opt as $type=>$list) { ?>
-			<td style="padding:0px 5px;" valign="top">
+			<td valign="top">
 			<select id="<?=$type?>_opt_list"><option value="">-- Choisir --</option><?php
 			$f = $type."_opt_list_get";
 			foreach($datafield->$f() as $i=>$j)
@@ -358,17 +358,17 @@ while ($field=$query->fetch_assoc())
 				if (!isset($list[$i]))
 					echo "<option>$i</option>\n";
 			}
-			?></select><input type="button" value="ADD" />
-			<table>
+			?></select><input type="button" value="ADD" onclick="opt_add('<?=$type?>',document.getElementById('<?=$type?>_opt_list').value)" />
+			<div id="opt_<?=$type?>">
 			<?php
 			foreach($list as $i=>$j) if (in_array($i, data::${"${type}_opt_list"}))
 			{
-				echo "<tr>\n";
-				echo "	<td>$i :</td> <td><textarea name=\"optlist[$type][$i]\">".json_encode($j)."</textarea></td>\n";
-				echo "</tr>\n";
+				echo "<div id=\"opt_".$type."_$i\">\n";
+				echo "<p style=\"margin-bottom: 0px;\">$i <a href=\"javascript:;\" onclick=\"opt_del('$type','$i')\" style=\"color:red;\">X</a></p> <p style=\"margin: 0px;\"><textarea name=\"optlist[$type][$i]\">".json_encode($j)."</textarea></p>\n";
+				echo "</div>\n";
 			}
 			?>
-			</table>
+			</div>
 			</td>
 		<?php } ?>
 		</tr></table>
@@ -475,3 +475,17 @@ else
 <?php
 }
 ?>
+
+<script type="text/javascript">
+function opt_add(type, name)
+{
+	if (type && name && !document.getElementById('opt_'+type+'_'+name))
+	{
+		$("#opt_"+type).append('<div id="opt_'+type+'_'+name+'"><p style="margin-bottom: 0px;">'+name+' <a href="javascript:;" onclick="opt_del(\''+type+'\',\''+name+'\')" style="color:red;">X</a></p> <p style="margin-top: 0px;"><textarea name="optlist['+type+']['+name+']"></textarea></p>');
+	}
+}
+function opt_del(type, name)
+{
+	$("#opt_"+type+'_'+name).remove();
+}
+</script>

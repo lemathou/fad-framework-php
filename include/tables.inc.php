@@ -5,7 +5,7 @@
  * 
  * Tables
  * 
- * Cette librairie gère l'affichage de tableaux HTML
+ * Cette librairie gï¿½re l'affichage de tableaux HTML
  * 
  */
 

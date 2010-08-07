@@ -73,7 +73,7 @@ echo "<p>Le template a été ajouté avec succès, vous pouvez le modifier ci-de
 if (isset($_POST["update"]) && is_array($template=$_POST["update"]))
 {
 
-$query_string = "UPDATE `_template` SET `name` = '".addslashes($template["name"])."', `cache_maxtime` = '".addslashes($template["cache_maxtime"])."', `login_dependant` = '".addslashes($template["login_dependant"])."' WHERE id = '$template[id]' ";
+$query_string = "UPDATE `_template` SET `type` = '".addslashes($template["type"])."', `name` = '".addslashes($template["name"])."', `cache_maxtime` = '".addslashes($template["cache_maxtime"])."', `login_dependant` = '".addslashes($template["login_dependant"])."' WHERE id = '$template[id]' ";
 db()->query($query_string);
 
 $query_string = "UPDATE `_template_lang` SET `title` = '".addslashes($template["title"])."' , `description` = '".addslashes($template["description"])."' , `details` = '".addslashes($template["details"])."' WHERE id = '$template[id]' AND lang_id='".SITE_LANG_DEFAULT_ID."'";
@@ -132,7 +132,7 @@ while ($template = $query->fetch_assoc())
 }
 
 // EDITION
-if (isset($_GET["id"]) && ($id=$_GET["id"]) && ($query=db()->query("SELECT t1.id, t1.name, t1.cache_mintime , t1.cache_maxtime , t1.login_dependant , t2.title , t2.description , t2.details FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.id='$id'")) && $query->num_rows())
+if (isset($_GET["id"]) && ($id=$_GET["id"]) && ($query=db()->query("SELECT t1.id, t1.type , t1.name, t1.cache_mintime , t1.cache_maxtime , t1.login_dependant , t2.title , t2.description , t2.details FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.id='$id'")) && $query->num_rows())
 {
 
 $template = $query->fetch_assoc();
@@ -172,6 +172,23 @@ $template = $query->fetch_assoc();
 		$content="";
 	}
 	?></textarea></td>
+</tr>
+<tr>
+	<td class="label">Type</td>
+	<td><select name="update[type]"><?php
+	$type_list = array
+	(
+		"container"=>"Conteneur (passage de variables)",
+		"inc"=>"Inclusion fréquente",
+		"page"=>"Page de contenu",
+		"datamodel"=>"Datamodel",
+	);
+	foreach ($type_list as $i=>$j)
+		if ($template["type"] == $i)
+			echo "<option value=\"$i\" selected>$j</option>\n";
+		else
+			echo "<option value=\"$i\">$j</option>\n";
+	?></select></td>
 </tr>
 <tr>
 	<td class="label">Name</td>
@@ -233,7 +250,7 @@ $template = $query->fetch_assoc();
 // Ajout
 if (isset($_POST["param_add"]) && ($param_add=$_POST["param_add"]))
 {
-	db()->query("INSERT INTO `_template_params` ( template_id , datatype , name , defaultvalue ) VALUES ( '$id' , '".$param_add["datatype"]."' , '".$param_add["name"]."' , '".addslashes($param_add["defaultvalue"])."' )");
+	db()->query("INSERT INTO `_template_params` ( template_id , order, datatype , name , defaultvalue ) VALUES ( '$id' , '".$param_add["order"]."', '".$param_add["datatype"]."' , '".$param_add["name"]."' , '".addslashes($param_add["defaultvalue"])."' )");
 	db()->query("INSERT INTO `_template_params_lang` ( template_id , lang_id , name , description ) VALUES ( '$id' , '".SITE_LANG_ID."' , '".$param_add["name"]."' , '".addslashes($param_add["description"])."' )");
 	echo "<p>Le paramètre $param_add[name] a bien été ajouté.</p>\n";
 }
@@ -369,6 +386,7 @@ else
 <tr>
 	<td>&nbsp;</td>
 	<td>Name</td>
+	<td>Order</td>
 	<td>description</td>
 	<td>Datatype</td>
 	<td>Defaultvalue</td>
@@ -376,13 +394,14 @@ else
 <?
 
 $template["params"] = array();
-$query_params = db()->query(" SELECT t1.name , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' ");
+$query_params = db()->query(" SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' ORDER BY t1.order");
 while ($param = $query_params->fetch_assoc())
 {
 ?>
 <tr>
 	<td><a href="?id=<?php echo $id; ?>&param_delete=<?php echo $param["name"]; ?>" onclick="return(confirm('Êtes-vous sûr de vouloir effacer ?'))" style="color:red;border:1px red dotted;">X</a></td>
 	<td><a href="?id=<?php echo $id; ?>&param_edit=<?php echo $param["name"]; ?>"><?php echo $param["name"]; ?></a></td>
+	<td><?php echo $param["order"]; ?></td>
 	<td><?php echo $param["description"]; ?></td>
 	<td><?php echo $param["datatype"]; ?></td>
 	<td><input type="text" value="<?php echo $param["defaultvalue"]; ?>" readonly /></td>

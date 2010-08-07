@@ -19,6 +19,7 @@ class template_gestion
 protected $default_id = 0;
 protected $list = array();
 protected $list_id = array();
+protected $list_name = array();
 
 public function __construct()
 {
@@ -27,6 +28,7 @@ $query = db()->query("SELECT id, name FROM _template");
 while (list($id, $name)=$query->fetch_row())
 {
 	$this->list_id[$name] = $id;
+	$this->list_name[$id] = $name;
 }
 
 }
@@ -43,7 +45,10 @@ if (isset($this->list[$id]))
 }
 elseif ($this->exists($id))
 {
-	return $this->list[$id] = new template($id);
+	if (substr($this->list_name[$id], 0, 9) == "datamodel")
+		return $this->list[$id] = new template_datamodel($id);
+	else
+		return $this->list[$id] = new template($id);
 }
 else
 {
@@ -82,6 +87,7 @@ class template
 
 protected $id=0;
 
+protected $type="";
 protected $name="";
 
 /*
@@ -152,12 +158,12 @@ if (is_array($params) && count($params)>0)
  * Query required infos on template before using it
  * @param unknown_type $infos
  */
-function query($infos=array())
+protected function query($infos=array())
 {
 
 // Global infos
-list($this->name, $this->container, $this->cache_mintime, $this->cache_maxtime, $this->login_dependant) =
-	db()->query("SELECT `name`, `container`, `cache_mintime`, `cache_maxtime`, `login_dependant` FROM `_template` WHERE `id`='".$this->id."'")->fetch_row();
+list($this->type, $this->name, $this->container, $this->cache_mintime, $this->cache_maxtime, $this->login_dependant) =
+	db()->query("SELECT `type`, `name`, `container`, `cache_mintime`, `cache_maxtime`, `login_dependant` FROM `_template` WHERE `id`='".$this->id."'")->fetch_row();
 $this->tpl_filename = "template/".$this->name.".tpl.php";
 // Params
 $this->param_list = array();
@@ -169,7 +175,7 @@ while ($param = $query->fetch_row())
 	if (DEBUG_TEMPLATE)
 		echo "<p>TEMPLATE->QUERY ID#$this->id : PARAM $param[1]</p>\n";
 	$this->param_list[$param[0]] = $param[1];
-	$this->param_list_detail[$param[1]]["datatype"] = $param[2];
+	$this->param_list_detail[$param[1]] = array("datatype"=>$param[2], "value"=>$param[3]);
 	$this->params[$param[1]] = $param[3];
 }
 $query = db()->query("SELECT `name`, `opttype`, `optname`, `optvalue` FROM `_template_params_opt` WHERE `template_id`='".$this->id."'");
@@ -260,8 +266,8 @@ if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && 
 }
 else
 {
-		foreach ($this->params as $name=>$value)
-			${$name} = $value;
+		foreach ($this->params as $_name=>$_value)
+			${$_name} = $_value;
 		ob_start();
 		include "template/".$this->name.".tpl.php";
 		$return = ob_get_contents();
@@ -297,8 +303,8 @@ if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && 
 }
 else
 {
-		foreach ($this->params as $name=>$value)
-			${$name} = $value;
+		foreach ($this->params as $_name=>$_value)
+			${$_name} = $_value;
 		ob_start();
 		include "template/".$this->name.".tpl.php";
 		$return = ob_get_contents();
@@ -309,17 +315,39 @@ else
 }
 
 /**
+ * Reset params to default value
+ */
+function params_reset()
+{
+
+$this->params = array();
+foreach($this->param_list_detail as $name=>$param)
+{
+	//echo "<p>$name</p>";
+	$this->params[$name] = $param["value"];
+}
+
+}
+
+/**
  * Execute scripts on params
  */
 protected function params_check()
 {
 
-foreach ($this->param_list as $name)
-	${$name} = &$this->params[$name];
-
-foreach ($this->script_list as $script)
-	if (file_exists("template/scripts/$script.inc.php"))
-		include "template/scripts/$script.inc.php";
+if (count($this->script_list))
+{
+	foreach ($this->param_list as $_name)
+		${$_name} = $this->params[$_name];
+	foreach ($this->script_list as $_script)
+	{
+		//echo "<p>TEMPLATE ID#$this->id : INCLUDING script \"$script\"</p>";
+		if (file_exists("template/scripts/$_script.inc.php"))
+			include "template/scripts/$_script.inc.php";
+	}
+	foreach ($this->param_list as $_name)
+		$this->params[$_name] = ${$_name};
+}
 
 }
 
@@ -366,8 +394,10 @@ $this->cache_filename = "$this->cache_folder/$this->cache_id";
 protected function cache_generate()
 {
 
-foreach ($this->params as $name=>$value)
-	${$name} = $value;
+foreach ($this->params as $_name=>$_value)
+{
+	${$_name} = $_value;
+}
 
 ob_start();
 include $this->tpl_filename;
@@ -443,29 +473,7 @@ else
 protected function cache_disp()
 {
 
-$filesize = filesize($this->cache_filename);
-$tpl = fread(fopen($this->cache_filename, "r"), ($filesize>0) ? $filesize : 1);
-
-if (preg_match_all("/\[\[INCLUDE_TEMPLATE:(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
-{
-	foreach($matches as $match)
-	{
-		if (DEBUG_CACHE)
-			echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_disp() : Found subtemplate $match[1]</p>";
-		if ($id=template()->exists_name($match[1]))
-		{
-			if (DEBUG_CACHE)
-				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_disp() : sending params to (sub)template ID#$id ($match[1])</p>\n"; 
-			foreach($this->params as $name=>$value)
-			{
-				if (DEBUG_CACHE)
-					echo "<p>--> $name : $value</p>\n";
-				template($id)->__set($name, $value);
-			}
-			$tpl = str_replace($match[0], template($id), $tpl);
-		}
-	}
-}
+$tpl = $this->cache_return();
 
 /*
  * Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
@@ -474,7 +482,8 @@ if (preg_match_all("/\[\[INCLUDE_TEMPLATE:(.*)\]\]/", $tpl, $matches, PREG_SET_O
 //header('Status: 304 Not Modified', false, 304);
 //header('Last-Modified: '.gmdate('D, d M Y H:i:s',filemtime($filename)).' GMT');
 //header('Expires: '.gmdate('D, d M Y H:i:s',filemtime($filename)+60).' GMT');
-header('Content-Length: '.strlen($tpl));
+//header('Content-Length: '.strlen($tpl));
+
 echo $tpl;
 
 }
@@ -487,6 +496,214 @@ protected function cache_return()
 
 $filesize = filesize($this->cache_filename);
 $tpl = fread(fopen($this->cache_filename, "r"), ($filesize>0) ? $filesize : 1);
+
+if (preg_match_all("/\[\[INCLUDE_TEMPLATE:(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
+{
+	foreach($matches as $match)
+	{
+		if ($id=template()->exists_name($match[1]))
+		{
+			if (DEBUG_TEMPLATE)
+				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id</p>\n";
+			// TODO : VOIR SI PB DE RECURSION !!!!
+			template($id)->params_reset();
+			foreach($this->params as $name=>$value)
+			{
+				if (DEBUG_TEMPLATE)
+					echo "<p>--> $name : $value</p>\n";
+				template($id)->__set($name, $value);
+			}
+			$tpl = str_replace($match[0], template($id), $tpl);
+		}
+	}
+}
+
+if (preg_match_all("/\[\[INCLUDE_DATAMODEL:(.*),(.*),(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
+{
+	foreach($matches as $match)
+	{
+		if ($id=template()->exists_name("datamodel/$match[1]"))
+		{
+			if (DEBUG_TEMPLATE)
+				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id</p>\n";
+			template($id)->params_reset();
+			template($id)->object_set(databank($match[2])->get($match[3], true));
+			$tpl = str_replace($match[0], template($id), $tpl);
+		}
+	}
+}
+
+return $tpl;
+
+}
+
+function get($name)
+{
+
+if (isset($this->params[$name]))
+{
+	return $this->params[$name];
+}
+
+}
+
+}
+
+/**
+ * Version with MySQL Cache (TODO)
+ * @author mathieu
+ *
+ */
+class template_mysql extends template
+{
+
+protected $cache=null;
+
+/*
+ * Set template hash from params (cache ID) and folder to save/retrieve it
+ */
+protected function cache_id_set()
+{
+
+$params_str = "";
+if ($this->container)
+{
+	if ($this->login_dependant)
+		$params_str .= ",_account='".login()->id()."'";
+	foreach($this->params as $name=>$value)
+	{
+		$params_str .= ",$name='".addslashes(json_encode($value))."'";
+	}
+}
+else
+{
+	if ($this->login_dependant)
+		$params_str .= ",_account='".login()->id()."'";
+	foreach($this->param_list as $name)
+	{
+		$params_str .= ",$name";
+		if (isset($this->params[$name]))
+			$params_str .= "='".addslashes(json_encode($this->params[$name]))."'";
+	}
+}
+
+/*
+ * Set variables
+ */
+$this->cache_id = md5($params_str);
+
+}
+
+/**
+ * Regenerate cache file
+ */
+protected function cache_generate()
+{
+
+foreach ($this->params as $_name=>$_value)
+	${$_name} = $_value;
+
+ob_start();
+include $this->tpl_filename;
+db()->query("REPLACE INTO `_template_cache` (`template_id`, `hash`, `datetime`, `content`) VALUES ( '$this->id', '$this->cache_id', NOW(), '".(addslashes($tpl=ob_get_contents()))."')");
+$this->cache = array("time"=>time(), "content"=>$tpl);
+ob_end_clean();
+
+}
+
+/**
+ * Vérifie l'obsolescence du fichier en cache
+ */
+protected function cache_check()
+{
+
+$query = db()->query("SELECT UNIX_TIMESTAMP(`datetime`) as `time`, `content` FROM `_template_cache` WHERE `template_id`='$this->id' AND `hash`='$this->cache_id'");
+if ($nb=$query->num_rows())
+	$this->cache=$query->fetch_assoc();
+ 
+// Pas de fichier en cache
+if (!$nb)
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK (ID#$this->id) : Cache file does not exists -> FALSE</p>\n";
+	return false;
+}
+// Fichier en cache trop récent
+elseif (($this->cache["time"]+TEMPLATE_CACHE_MIN_TIME) > ($time=time()))
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK (ID#$this->id) : Cache file recently updated -> TRUE</p>\n";
+	return true;
+}
+// Fichier template plus récent que le cache
+elseif (($tpl_datetime=filemtime($this->tpl_filename)) > $this->cache["time"])
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK (ID#$this->id) : Template file recently updated -> FALSE</p>\n";
+	return false;
+}
+// Fichier en cache trop vieux 
+elseif (($this->cache["time"]+TEMPLATE_CACHE_MAX_TIME) < $time)
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK (ID#$this->id) : Cache filename too old -> FALSE</p>\n";
+	return false;
+}
+// Paramètres du template modifiés
+else
+{
+	$return = true;
+	foreach($this->param_list_detail as $name=>$param)
+	{
+		if ($return == true && $param["datatype"] == "dataobject")
+		{
+			$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["structure"]["databank"]."' AND `dataobject_id`='".$this->params[$name]."' ORDER BY `datetime` DESC LIMIT 1");
+			if ($query->num_rows())
+			{
+				list($i) = $query->fetch_row();
+				if (strtotime($i)>$this->cache["time"])
+					$return=false;
+			}
+		}
+	}
+	if (DEBUG_CACHE)
+		if ($return)
+			echo "<p>CACHE_CHECK (ID#$this->id) : Params not updated -> TRUE</p>\n";
+		else
+			echo "<p>CACHE_CHECK (ID#$this->id) : Params updated -> FALSE</p>\n";
+	return $return;
+}
+
+}
+
+/**
+ * Display cached template file
+ */
+protected function cache_disp()
+{
+
+$tpl = $this->cache_return();
+
+/*
+ * Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
+ */
+
+//header('Status: 304 Not Modified', false, 304);
+//header('Last-Modified: '.gmdate('D, d M Y H:i:s',filemtime($filename)).' GMT');
+//header('Expires: '.gmdate('D, d M Y H:i:s',filemtime($filename)+60).' GMT');
+//header('Content-Length: '.strlen($tpl));
+
+echo $tpl;
+
+}
+
+/**
+ * Returns cached template file
+ */
+protected function cache_return()
+{
+
+$tpl = $this->cache["content"];
 
 if (preg_match_all("/\[\[INCLUDE_TEMPLATE:(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
 {
@@ -514,6 +731,18 @@ return $tpl;
 }
 
 /**
+ * Version with memcached Cache (TODO)
+ * @author mathieu
+ *
+ */
+class template_emcached extends template
+{
+
+
+
+}
+
+/**
  * Special configuration optimized for datamodels.
  * @author mathieu
  *
@@ -521,29 +750,168 @@ return $tpl;
 class template_datamodel extends template
 {
 
-protected $datamodel_id = 0;
-protected $dataobject_id = 0;
+protected $object = null;
 
-function datamodel_set($id)
+function object_set(agregat $object)
 {
 
-$this->datamodel_id = $id;
+$this->object = $object;
 
-}
-
-function object_set($id)
-{
-
-$this->dataobject_id = $id;
+$this->object_retrieve_values();
 
 }
 
 function object_retrieve_values()
 {
+	
+$this->params = array();
+foreach(datamodel($this->object->datamodel()->id())->fields() as $field)
+{
+	$this->params[$field->name] = $this->object->{$field->name};
+}
 
+/*
+databank($this->datamodel_id)->get($this->object_id,$this->param_list);
 foreach($this->param_list as $name)
 {
-	$this->params[$name] = databank($this->datamodel_id)->get($this->dataobject_id)->{$name};
+	echo "<p>$name</p>";
+	$this->params[$name] = databank($this->datamodel_id)->get($this->object_id)->{$name};
+}
+*/
+}
+
+protected function cache_id_set()
+{
+
+if ($this->object)
+	$params_str = "'$this->id','".$this->object->datamodel()->id()."','".$this->object->id->value."'";
+else
+	$params_str = "'$this->id','0','0'";
+
+/*
+ * Set variables
+ */
+$this->cache_id = md5($params_str);
+$this->cache_folder = "cache/".substr($this->cache_id,0,1);
+$this->cache_filename = "$this->cache_folder/$this->cache_id";
+
+}
+
+/**
+ * Vérifie l'obsolescence du fichier en cache
+ */
+protected function cache_check()
+{
+
+// Pas de fichier en cache
+if (!file_exists($this->cache_filename))
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK : Cache file does not exists -> FALSE</p>\n";
+	return false;
+}
+// FIchier en cache trop récent
+elseif ((($cache_datetime=filemtime($this->cache_filename))+TEMPLATE_CACHE_MIN_TIME) > ($time=time()))
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK : Cache file recently updated -> TRUE</p>\n";
+	return true;
+}
+// Fichier template plus récent que le cache
+elseif (($tpl_datetime=filemtime($this->tpl_filename)) > $cache_datetime)
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK : Template file recently updated -> FALSE</p>\n";
+	return false;
+}
+// Fichier en cache trop vieux 
+elseif (($cache_datetime+TEMPLATE_CACHE_MAX_TIME) < $time)
+{
+	if (DEBUG_CACHE)
+		echo "<p>CACHE_CHECK : Cache filename too old -> FALSE</p>\n";
+	return false;
+}
+// Paramètres du template modifiés
+else
+{
+	$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$this->object->datamodel()->id()."' AND `dataobject_id`='".$this->object->id->value."' ORDER BY `datetime` DESC LIMIT 1");
+	if ($query->num_rows())
+	{
+		list($i) = $query->fetch_row();
+		if (strtotime($i)>$cache_datetime)
+			$return=false;
+		else
+			$return=true;
+	}
+	else
+		$return=true;
+	if (DEBUG_CACHE)
+		if ($return)
+			echo "<p>CACHE_CHECK : Params not updated -> TRUE</p>\n";
+		else
+			echo "<p>CACHE_CHECK : Params updated -> FALSE</p>\n";
+	return $return;
+}
+
+}
+
+/**
+ * Display template with headers
+ */
+public function disp()
+{
+
+$this->params_check();
+
+if (TEMPLATE_CACHE && $this->object && $this->object->id->value && ($this->cache_maxtime > 0) && !($this->login_dependant && login()->id()))
+{
+	$this->cache_id_set();
+	if (isset($_GET["_page_regen"]) || !$this->cache_check())
+	{
+		$this->cache_generate();
+	}
+	$this->cache_disp();
+}
+else
+{
+		foreach ($this->params as $_name=>$_value)
+			${$_name} = $_value;
+		ob_start();
+		include "template/".$this->name.".tpl.php";
+		$return = ob_get_contents();
+		ob_end_clean();
+		echo $return;
+}
+
+}
+
+/**
+ * Identical to disp() but without headers
+ * 
+ */
+public function __tostring()
+{
+
+$this->params_check();
+
+if (TEMPLATE_CACHE && $this->object && $this->object->id->value && ($this->cache_maxtime > 0) && !($this->login_dependant && login()->id()))
+{
+	$this->cache_id_set();
+	if (isset($_GET["_page_regen"]) || !$this->cache_check())
+	{
+		$this->cache_generate();
+	}
+	return $this->cache_return();
+}
+else
+{
+		foreach ($this->params as $_name=>$_value)
+			${$_name} = $_value;
+		ob_start();
+		include "template/".$this->name.".tpl.php";
+		$return = ob_get_contents();
+		ob_end_clean();
+		return $return;
 }
 
 }

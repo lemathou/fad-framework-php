@@ -3,9 +3,9 @@
 /**
   * $Id: classes.inc.php 59 2009-03-03 15:48:26Z mathieu $
   * 
-  * � Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr �
+  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
@@ -14,8 +14,7 @@ if (DEBUG_GENTIME ==  true)
 
 /**
  * The singleton abstract class, which cannot be extended because of the static problem in PHP 5.2,
- * so this is just an example but I prefer not to use it...
- *
+ * so I may use it when the bug will be solved...
  */
 abstract class singleton
 {

@@ -3,13 +3,13 @@
 /**
   * $Id: modules.inc.php 59 2009-03-03 15:48:26Z mathieu $
   * 
-  * « Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr »
+  * ï¿½ Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr ï¿½
   * 
   * This file is part of FTNGroupWare.
   * 
   */
 
-// Classe générale pour les modules
+// Classe gï¿½nï¿½rale pour les modules
 
 class modules
 {
@@ -36,7 +36,7 @@ else
 
 }
 
-// Pour chaque module chargé
+// Pour chaque module chargï¿½
 
 class module
 {
@@ -78,7 +78,7 @@ else
 
 }
 
-// Accès
+// Accï¿½s
 
 function module($name="")
 {

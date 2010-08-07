@@ -30,6 +30,7 @@ class datamodel_gestion
 
 protected $list = array();
 protected $list_id = array();
+protected $list_name = array();
 
 function __construct()
 {
@@ -39,6 +40,7 @@ while (list($id, $name) = $query->fetch_row())
 {
 	//$this->list[$datamodel["id"]] = new datamodel($datamodel["id"]);
 	$this->list_id[$name] = $id;
+	$this->list_name[$id] = $name;
 }
 
 }
@@ -50,10 +52,9 @@ if (isset($this->list[$id]))
 {
 	return $this->list[$id];
 }
-elseif (in_array($id, $this->list_id))
+elseif (isset($this->list_name[$id]))
 {
-	$this->list[$id] = new datamodel($id);
-	return $this->list[$id]; 
+	return $this->list[$id] = new datamodel($id);
 }
 elseif (DEBUG_DATAMODEL)
 {
@@ -114,7 +115,7 @@ return $this->list_id;
  * Modèle de données pour remplir une maquette
  *
  */
-class datamodel
+class datamodel_base
 {
 
 protected $id = 0;
@@ -140,40 +141,9 @@ protected $fields_key = array();
 protected $fields_required = array();
 protected $fields_calculated = array();
 
-protected $db_opt = array
-(
-	"table" => "",
-	"index" => array(),
-	"key" => array(),
-	"sort" => "",
-);
 
 protected $disp_opt = array();
 
-/*
- * Public actions / Kind of controller part of the MVC design
- */
-protected $action_list = array
-(
-	"update" => array
-	(
-		"label" => "Mettre à jour",
-		"method" => "update_from_form",
-		"params" => array(),
-	),
-	"delete" => array
-	(
-		"label" => "Supprimer",
-		"method" => "delete",
-		"params" => array(),
-	),
-	"view" => array
-	(
-		"label" => "Afficher",
-		"method" => "view",
-		"params" => array(),
-	),
-);
 
 // Données à sauver en session
 private $serialize_list = array("id", "name", "label", "library_id", "fields", "fields_key", "fields_required", "fields_calculated", "db_opt", "disp_opt", "action_list");
@@ -193,32 +163,13 @@ if (is_array($fields))
 
 }
 
-/*
- * Sauvegarde/Restauration de la session
- */
-/*
-function __sleep()
-{
-
-return session_select::__sleep($this->serialize_list);
-
-}
-
-function __wakeup()
-{
-
-session_select::__wakeup();
-
-if (DEBUG_SESSION == true)
-	echo "<p>WAKEUP : datamodel id#$this->id</p>\n";
-
-}
-*/
-
 public function library()
 {
 
-return library($this->library_id);
+if ($this->library_id)
+	return library($this->library_id);
+else
+	return null;
 
 }
 
@@ -270,39 +221,6 @@ public function __tostring()
 {
 
 return $this->label;
-
-}
-
-/**
- * Set database options.
- * 
- * To store the value in the database if needed.
- * 
- * @param string $name
- * @param mixed $value
- */
-public function db_opt_set($name, $value)
-{
-
-if (isset($this->db_opt[$name]))
-{
-	$this->db_opt[$name] = $value;
-	if ($name == "key")
-		$this->fields_key = $value;
-	return true;
-}
-else
-	return false;
-
-}
-
-public function db_opt($name)
-{
-
-if (isset($this->db_opt[$name]))
-	return $this->db_opt[$name];
-elseif (DEBUG_DATAMODEL)
-	trigger_error("Property db_opt[$name] doesn't exist");
 
 }
 
@@ -452,6 +370,215 @@ public function fields_calculated()
 {
 
 return $this->fields_calculated;
+
+}
+
+function insert_form($name="")
+{
+
+if ($name)
+	$datamodel_display = "$name";
+else
+	$datamodel_display = "datamodel_insert_form";
+
+return new $datamodel_display($this, $this->fields);
+
+}
+
+function table_list($params=array(), $fields=array(), $sort=array())
+{
+
+?>
+<script type="text/javascript">
+function databank_list_sort(form, field)
+{
+	document.zeform.sort.value = field;
+	document.zeform.submit();
+}
+function databank_params_aff()
+{
+	element = document.getElementById('databank_params');
+	if (element.style.display == 'none')
+		element.style.display = 'block';
+	else
+		element.style.display = 'none';
+}
+</script>
+<form name="zeform" action="" method="post">
+<input type="hidden" name="sort" value="id" />
+<div style="margin:5px 0px;border:1px black solid;padding: 4px;margin-right: 400px;">
+<p><a href="javascript:;" onclick="databank_params_aff()">Paramètres de sélection</a></p>
+<div id="databank_params" style="display:none;">
+<table cellspacing="0" cellspacing="0" cellpadding="0" width="100%">
+<tr>
+	<td valign="top"><h3>Sélection :</h3></td>
+	<td><?php
+	foreach ($this->fields as $field)
+	{
+		if ($field->type == "select")
+		{
+			echo "<p>\n";
+			echo "$field->name : ";
+			$field->form_field_select_disp(true, (isset($params[$field->name])) ? $params[$field->name] : "");
+			echo "</p>\n";
+		}
+		elseif ($field->type == "dataobject_select")
+		{
+			echo "<p>\n";
+			echo "$field->name : ";
+			$field->form_field_select_disp(true, (isset($params[$field->name])) ? $params[$field->name] : "");
+			echo "</p>\n";
+		}
+	}
+	?></td>
+</tr>
+<tr>
+	<td valign="top"><h3>Afficher les colonnes :</h3></td>
+	<td><select name="fields[]" multiple>
+<?php
+foreach ($this->fields as $name=>$field)
+	if (in_array($name, $this->fields_key))
+	{
+		echo "<option value=\"$name\" selected onclick=\"this.selected=true\" style=\"background-color:red;\">".$field->disp_opt("label")."</option>";
+	}
+	elseif (in_array($name, $this->fields_required))
+	{
+		echo "<option value=\"$name\" selected onclick=\"this.selected=true\" style=\"background-color:blue;\">".$field->disp_opt("label")."</option>";
+	}
+	elseif (in_array($name, $fields))
+	{
+		echo "<option value=\"$name\" selected>".$field->disp_opt("label")."</option>";
+	}
+	else
+	{
+		echo "<option value=\"$name\">".$field->disp_opt("label")."</option>";
+	}
+?>
+	</select></td>
+</tr>
+<tr>
+	<td>&nbsp;</td>
+	<td><input type="submit" value="Afficher" /></td>
+</tr>
+</table>
+</div>
+</div>
+<div><table cellspacing="0" cellpadding="2" border="1">
+<?php
+$nb=0;
+$list = $this->db_get($params, $fields, $sort);
+foreach($list as $object)
+{
+	if (!$nb)
+	{
+		echo "<tr>\n";
+		foreach($object->field_list() as $field)
+			echo "<td><b><a href=\"javascript:;\" onclick=\"databank_list_sort('zeform','$field->name')\">".$field->disp_opt["label"]."</a></b></td>";
+		echo "</tr>\n";
+	}
+	echo "<tr>\n";
+	foreach($object->field_list() as $field)
+		if ($field->name == "id")
+			echo "<td width=\"20\"><a href=\"".SITE_BASEPATH."/".$this->name."/$field/\">$field</a></td>";
+		elseif ($field->type == "dataobject" && $field->value)
+			echo "<td><a href=\"/".$field->structure_opt("databank")."/".$field->value->id."/\">$field</a></td>";
+		else
+			echo "<td>$field</td>";
+	echo "<td><a href=\"".SITE_BASEPATH."/".$this->name."/$object->id/\"><img src=\"".SITE_BASEPATH."/img/icon/icon-view.gif\" alt=\"View\" /></a></td>";
+	echo "<td><a href=\"".SITE_BASEPATH."/".$this->name."/$object->id/update\"><img src=\"".SITE_BASEPATH."/img/icon/icon-edit.gif\" alt=\"Update\" /></a></td>";
+	echo "<td><a href=\"javascript:;\" onclick=\"if (window.confirm('Etes-vous certain de supprimer ?')) location.href='".SITE_BASEPATH."/".$this->name."/$object->id/delete'\"><img src=\"".SITE_BASEPATH."/img/icon/icon-delete.gif\" alt=\"Delete\" /></a></td>";
+	echo "</tr>\n";
+	$nb++;
+}
+?>
+</table></div>
+</form>
+<?php
+
+}
+
+public function action_list()
+{
+
+return $this->action_list;
+
+}
+
+}
+
+/**
+ * 
+ * DATAMODEL !!!
+ * 
+ * @author mathieu
+ *
+ */
+class datamodel extends datamodel_base
+{
+
+protected $db_opt = array
+(
+	"table" => "",
+	"index" => array(),
+	"key" => array(),
+	"sort" => "",
+);
+
+/*
+ * Public actions / Kind of controller part of the MVC design
+ */
+protected $action_list = array
+(
+	"update" => array
+	(
+		"label" => "Mettre à jour",
+		"method" => "update_from_form",
+		"params" => array(),
+	),
+	"delete" => array
+	(
+		"label" => "Supprimer",
+		"method" => "delete",
+		"params" => array(),
+	),
+	"view" => array
+	(
+		"label" => "Afficher",
+		"method" => "view",
+		"params" => array(),
+	),
+);
+
+/**
+ * Set database options.
+ * 
+ * To store the value in the database if needed.
+ * 
+ * @param string $name
+ * @param mixed $value
+ */
+public function db_opt_set($name, $value)
+{
+
+if (isset($this->db_opt[$name]))
+{
+	$this->db_opt[$name] = $value;
+	if ($name == "key")
+		$this->fields_key = $value;
+	return true;
+}
+else
+	return false;
+
+}
+
+public function db_opt($name)
+{
+
+if (isset($this->db_opt[$name]))
+	return $this->db_opt[$name];
+elseif (DEBUG_DATAMODEL)
+	trigger_error("Property db_opt[$name] doesn't exist");
 
 }
 
@@ -802,11 +929,11 @@ if ($query_ok)
 		foreach($update_query as $name=>$insert_list)
 		{
 			// A MODIFIER CA NE FONCTIONNE QUE POUR LES DATAOBJECTS !!
-			if ($this->fields[$name]->type == "dataobject_list" && ($ref_field = $this->fields[$name]->db_opt("ref_field")) && ($ref_table = $this->fields[$name]->db_opt("ref_table")) && ($ref_id = $this->fields[$name]->db_opt("ref_id")))
+			if ($this->fields[$name]->type == "dataobject_list" && ($ref_field=$this->fields[$name]->db_opt("ref_field")) && ($ref_table=$this->fields[$name]->db_opt("ref_table")) && ($ref_id=$this->fields[$name]->db_opt("ref_id")))
 			{
-				$query_string = "DELETE FROM `$ref_table` WHERE `$ref_field` = '".$insert_params["id"]."'";
+				$query_string = "DELETE FROM `$ref_table` WHERE `$ref_id` = '".$insert_params["id"]."'";
 				db()->query($query_string);
-				$query_string = "INSERT INTO `$ref_table` (`$ref_field`,`$ref_id`) VALUES ".implode(",",$insert_list);
+				$query_string = "INSERT INTO `$ref_table` (`$ref_id`,`$ref_field`) VALUES ".implode(",",$insert_list);
 				db()->query($query_string);
 				$return = true;
 			}
@@ -1059,19 +1186,19 @@ else
 	}
 	
 	$query_string = "
-		SELECT ".implode(" , ",$query_base["fields"])."
+		SELECT DISTINCT ".implode(" , ",$query_base["fields"])."
 		FROM ".implode(" , ",$query_base["from"])."
 		WHERE ".implode(" AND ",$query_base["where"])."
 		ORDER BY ".implode(",", $query_sort)."
 		$query_limit";
-
+	//echo "<p>$query_string</p>";
 	// Effective Query
 	$query = db()->query($query_string);
-	$list_id = array();
 	
 	if ($query->num_rows() >= 1)
 	{
 		
+		$list_id = array();
 		while ($row=$query->fetch_assoc())
 		{
 			$return[$row["id"]] = $row;
@@ -1131,10 +1258,11 @@ else
 					$ref_table = datamodel($field->structure_opt["databank"])->db_opt("table");
 					$ref_id = "id";
 				}
-				$detail["where"][] = "`".$this->db_opt["table"]."`.`id` = `$ref_table`.`$ref_field`";
+				$detail["where"][] = "`".$this->db_opt["table"]."`.`id` = `$ref_table`.`$ref_id`";
 				$detail["where"][] = "`".$this->db_opt["table"]."`.`id` IN (".implode(" , ", $list_id).")";
+				// TODO : Retrieve other required fields and next step create the dependant object without other queried !
 				$query_string = "
-					SELECT `$ref_table`.`$ref_field` , `$ref_table`.`$ref_id`
+					SELECT `$ref_table`.`$ref_id`, `$ref_table`.`$ref_field`
 					FROM `".$this->db_opt["table"]."` , `$ref_table`
 					WHERE ".implode(" AND ",$detail["where"]);
 				$query = db()->query($query_string);
@@ -1249,144 +1377,13 @@ foreach ($objects as $object)
 <?
 }
 
-function insert_form($name="")
-{
-
-if ($name)
-	$datamodel_display = "$name";
-else
-	$datamodel_display = "datamodel_insert_form";
-
-return new $datamodel_display($this, $this->fields);
-
-}
-
-function table_list($params=array(), $fields=array(), $sort=array())
-{
-
-?>
-<script type="text/javascript">
-function databank_list_sort(form, field)
-{
-	document.zeform.sort.value = field;
-	document.zeform.submit();
-}
-function databank_params_aff()
-{
-	element = document.getElementById('databank_params');
-	if (element.style.display == 'none')
-		element.style.display = 'block';
-	else
-		element.style.display = 'none';
-}
-</script>
-<form name="zeform" action="" method="post">
-<input type="hidden" name="sort" value="id" />
-<div style="margin:5px 0px;border:1px black solid;padding: 4px;margin-right: 400px;">
-<p><a href="javascript:;" onclick="databank_params_aff()">Paramètres de sélection</a></p>
-<div id="databank_params" style="display:none;">
-<table cellspacing="0" cellspacing="0" cellpadding="0" width="100%">
-<tr>
-	<td valign="top"><h3>Sélection :</h3></td>
-	<td><?php
-	foreach ($this->fields as $field)
-	{
-		if ($field->type == "select")
-		{
-			echo "<p>\n";
-			echo "$field->name : ";
-			$field->form_field_select_disp(true, (isset($params[$field->name])) ? $params[$field->name] : "");
-			echo "</p>\n";
-		}
-		elseif ($field->type == "dataobject_select")
-		{
-			echo "<p>\n";
-			echo "$field->name : ";
-			$field->form_field_select_disp(true, (isset($params[$field->name])) ? $params[$field->name] : "");
-			echo "</p>\n";
-		}
-	}
-	?></td>
-</tr>
-<tr>
-	<td valign="top"><h3>Afficher les colonnes :</h3></td>
-	<td><select name="fields[]" multiple>
-<?php
-foreach ($this->fields as $name=>$field)
-	if (in_array($name, $this->fields_key))
-	{
-		echo "<option value=\"$name\" selected onclick=\"this.selected=true\" style=\"background-color:red;\">".$field->disp_opt("label")."</option>";
-	}
-	elseif (in_array($name, $this->fields_required))
-	{
-		echo "<option value=\"$name\" selected onclick=\"this.selected=true\" style=\"background-color:blue;\">".$field->disp_opt("label")."</option>";
-	}
-	elseif (in_array($name, $fields))
-	{
-		echo "<option value=\"$name\" selected>".$field->disp_opt("label")."</option>";
-	}
-	else
-	{
-		echo "<option value=\"$name\">".$field->disp_opt("label")."</option>";
-	}
-?>
-	</select></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" value="Afficher" /></td>
-</tr>
-</table>
-</div>
-</div>
-<div><table cellspacing="0" cellpadding="2" border="1">
-<?php
-$nb=0;
-$list = $this->db_get($params, $fields, $sort);
-foreach($list as $object)
-{
-	if (!$nb)
-	{
-		echo "<tr>\n";
-		foreach($object->field_list() as $field)
-			echo "<td><b><a href=\"javascript:;\" onclick=\"databank_list_sort('zeform','$field->name')\">".$field->disp_opt["label"]."</a></b></td>";
-		echo "</tr>\n";
-	}
-	echo "<tr>\n";
-	foreach($object->field_list() as $field)
-		if ($field->name == "id")
-			echo "<td width=\"20\"><a href=\"".SITE_BASEPATH."/".$this->name."/$field/\">$field</a></td>";
-		elseif ($field->type == "dataobject" && $field->value)
-			echo "<td><a href=\"/".$field->structure_opt("databank")."/".$field->value->id."/\">$field</a></td>";
-		else
-			echo "<td>$field</td>";
-	echo "<td><a href=\"".SITE_BASEPATH."/".$this->name."/$object->id/\"><img src=\"".SITE_BASEPATH."/img/icon/icon-view.gif\" alt=\"View\" /></a></td>";
-	echo "<td><a href=\"".SITE_BASEPATH."/".$this->name."/$object->id/update\"><img src=\"".SITE_BASEPATH."/img/icon/icon-edit.gif\" alt=\"Update\" /></a></td>";
-	echo "<td><a href=\"javascript:;\" onclick=\"if (window.confirm('Etes-vous certain de supprimer ?')) location.href='".SITE_BASEPATH."/".$this->name."/$object->id/delete'\"><img src=\"".SITE_BASEPATH."/img/icon/icon-delete.gif\" alt=\"Delete\" /></a></td>";
-	echo "</tr>\n";
-	$nb++;
-}
-?>
-</table></div>
-</form>
-<?php
-
-}
-
-public function action_list()
-{
-
-return $this->action_list;
-
-}
-
 }
 
 /**
  * Agrégats de donnée
  * 
  * Un agrégat est une liste de champs répondant à un datamodel donné.
- * Les agrégats contiennent des chanps modifiables, clones à partir du datamodel.
+ * Les agrégats contiennent des chanps modifiables, clonés à partir du datamodel.
  * 
  */
 
@@ -1606,27 +1603,22 @@ public function view($name="")
 if (!$name)
 	$name = $this->datamodel->name();
 
-$this->db_retrieve_all();
+//$this->db_retrieve_all();
 
 // C'est un mega gros mix de toutes les façons de faire... va falloir choisir à un moment !
-if (file_exists(PATH_ROOT."/template/datamodel/".$name.".tpl.php"))
+if ($id=template()->exists_name("datamodel/$name"))
 {
-	$view = new datamodel_display_tpl_php($this->datamodel, $this->fields);
-	$view->tplfile_set($name);
+	$view = template($id);
+	$view->object_set($this);
+	return $view;
 }
-else
-{
-	$view = new datamodel_display($this->datamodel, $this->fields);
-}
-
-return $view;
 
 }
 
 public function disp($name="")
 {
 
-$this->display($name)->disp();
+echo $this->display($name);
 
 }
 

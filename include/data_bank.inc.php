@@ -200,7 +200,14 @@ $this->id = $id;
 $this->name = &datamodel($this->id)->name();
 $this->label = &datamodel($this->id)->label();
 
-// Retrieving database Id
+// Retrieving Perm
+/*
+$query = db()->query("SELECT `perm` FROM `_databank_perm_ref` WHERE `databank_id` = '$this->id'");
+if ($query->num_rows())
+{
+	list($this->perm) = $query->fetch_row();
+}
+*/
 $query = db()->query("SELECT `perm` FROM `_account_databank_perm` WHERE `account_id` = '".login()->id()."' AND `databank_id` = '$this->id'");
 if ($query->num_rows())
 {

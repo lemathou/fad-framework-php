@@ -26,7 +26,7 @@ if (isset($_POST["insert"]) && is_array($_POST["insert"]))
 $query_string = " INSERT INTO `_library` ( `name` , `description` ) VALUES ( '".$_POST["insert"]["name"]."' , '".$_POST["insert"]["description"]."' ) ";
 $query = db()->query($query_string);
 
-if (($id = $query->last_id()))
+if (($id = $_GET["id"] = $query->last_id()))
 {
 	$query_string = " INSERT INTO `_library_lang` ( `id` , `lang_id` , `name` ) VALUES ( '$id' , '".SITE_LANG_ID."' , '".addslashes($_POST["insert"]["name_lang"])."' ) ";
 	$query = db()->query($query_string);
@@ -50,16 +50,17 @@ elseif ($error = db()->error())
 }
 
 // Update
-if (isset($_POST["update"]) && is_array($_POST["update"]) && ($update=$_POST["update"]))
+if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]))
 {
 
+$update = $_POST["update"];
 $id = $update["id"];
 
-$query_string = " UPDATE `_library` SET `name` = '$update[name]' , `description` = '".addslashes($update["description"])."' WHERE id = '$id' ";
+$query_string = " UPDATE `_library` SET `name` = '".addslashes($update["name"])."' , `description` = '".addslashes($update["description"])."' WHERE id = '$id' ";
 db()->query($query_string);
 $query_string = " UPDATE `_library_lang` SET `name` = '".addslashes($update["name_lang"])."' WHERE id = '$id' AND lang_id=".SITE_LANG_ID;
 db()->query($query_string);
-db()->query(" DELETE FROM `_library_ref` WHERE `id` = $id ");
+db()->query(" DELETE FROM `_library_ref` WHERE `id` = '$id' ");
 if (isset($update["library_list"]) && is_array($update["library_list"]) && (count($update["library_list"]) > 0))
 {
 	$query_library_list = array();
@@ -119,27 +120,27 @@ while (list($library_id) = $query_library->fetch_row())
 	
 ?>
 <p><a href="?list">Retour à la liste</a></p>
-<form action="" method="POST">
+<form action="?id=<?=$id?>" method="POST">
 <table width="100%">
 <tr style="font-weight:bold;">
 	<td>ID :</td>
-	<td><input name="update[id]" value="<?php echo $id; ?>" readonly /></td>
+	<td><input name="update[id]" value="<?=$id?>" readonly /></td>
 </tr>
 <tr>
 	<td>Name :</td>
-	<td><input name="update[name]" value="<?php echo $update["name"]; ?>" /></td>
+	<td><input name="update[name]" value="<?=$update["name"]?>" /></td>
 </tr>
 <tr>
 	<td>Nom complet :</td>
-	<td><input name="update[name_lang]" value="<?php echo $update["name_lang"]; ?>" /></td>
+	<td><input name="update[name_lang]" value="<?=$update["name_lang"]?>" /></td>
 </tr>
 <tr>
 	<td>Description :</td>
-	<td><textarea name="update[description]" style="width:100%" rows="4"><?php echo $update["description"]; ?></textarea></td>
+	<td><textarea name="update[description]" style="width:100%" rows="4"><?=$update["description"]?></textarea></td>
 </tr>
 <tr>
 	<td>Dependances :</td>
-	<td><select name="insert[library_list][]" size="4" multiple>
+	<td><select name="update[library_list][]" size="4" multiple>
 	<?
 	foreach($library_list as $i => $j)
 		if (in_array($i, $update["library_list"]))

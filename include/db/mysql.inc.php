@@ -5,7 +5,7 @@
   * 
   * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
@@ -172,7 +172,7 @@ if ($this->id)
 	$this->id = NULL;
 }
 
-return session_select::__sleep($this->serialize_list);
+return parent::__sleep($this->serialize_list);
 
 }
 
@@ -526,7 +526,10 @@ function db()
 {
 
 if (!isset($GLOBALS["db"]))
+{
 	return $GLOBALS["db"] = $_SESSION["db"] = new db(array("hostname"=>DB_HOST, "username"=>DB_USERNAME, "password"=>DB_PASSWORD, "database"=>DB_BASE, "charset"=>DB_CHARSET));
+	// destroy db password & co.
+}
 else
 	return $GLOBALS["db"];
 

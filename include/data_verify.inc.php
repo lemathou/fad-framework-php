@@ -166,6 +166,34 @@ else
 
 }
 
+/*
+ * Percent
+ */
+class data_verify_percent implements data_verify_i
+{
+
+public function verify($value,$params=array())
+{
+
+if (is_numeric($value) && $value>=0 && $value<=1)
+	return true;
+else
+	return false;
+
+}
+
+public function convert($value,$params=array())
+{
+
+if ($value)
+	return 1;
+else
+	return 0;
+
+}
+
+}
+
 /**
  * Boolean
  */
@@ -533,7 +561,7 @@ class data_verify_datetime implements data_verify_i
 public function verify($value,$params=array())
 {
 
-if (!is_string($value) || !preg_match("([0-9]{4})-((0[0-9])|(1[0-2]))-(([0-2][0-9])|(3[0-1])) (([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+if (!is_string($value) || !preg_match("/^\d{4}-\d{2}-\d{2} [0-2][0-3]:[0-5][0-9]:[0-5][0-9]$/",$value))
 	return false;
 else
 	return true;

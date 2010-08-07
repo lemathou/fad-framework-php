@@ -3,9 +3,11 @@
 /**
   * $Id: permission.inc.php 59 2009-03-03 15:48:26Z mathieu $
   * 
-  * « Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr »
+  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
+  * 
+  * Deprecated file
   * 
   */
 

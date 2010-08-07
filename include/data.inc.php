@@ -29,7 +29,7 @@ if (DEBUG_GENTIME ==  true)
  *   permettant de définir différents formulaires suivant le contexte.
  * - Les vues sont des méthodes associées à des instances de classe data_display (quoi que j'évolue
  *   vers une classe fille de la classe template, ce qui serait plus judicieux et permerrait de tout sauvegarder
- *   en cache), ce permettant de définir plusieurs méthodes d'affichage pour une donnée.
+ *   en cache).
  * - On dispose aussi de contraintes (regexp, maxlength, compare, etc.) utilisables via des méthodes de vérification
  *   et de conversion au plus juste (dans certains cas) associées à des instances de classes de conversion
  *   Des méthodes de vérification et de conversion seront aussi définies dans la classe form,
@@ -54,7 +54,7 @@ if (DEBUG_GENTIME ==  true)
  * - name : string
  * - richtext (html) : string
  * 
- * Liste des types riches :
+ * Liste des types médias :
  * - file
  * - stream
  * - audio
@@ -69,7 +69,7 @@ if (DEBUG_GENTIME ==  true)
  */
 
 /**
- * Donnée générale
+ * Abstract base data type
  * 
  * Il s'agit du modèle de données général qui sera surchargé pour obtenir les types de donnée suivant :
  * - texte basique
@@ -85,11 +85,16 @@ if (DEBUG_GENTIME ==  true)
  * - vidéo
  * - etc.
  * 
- * L'intérêt de spécifier chaque donnée entrée est aussi de s'abstraire du moteur de stockage (SQL).
+ * L'intérêt de spécifier chaque donnée entrée est aussi de s'abstraire du moteur de stockage (MySQL pour l'instant).
  * Chaque donnée dispose :
- * - de spécifications de format à respecter
- * - de champs de formulaire spécifiques (adaptés) pour l'édition
+ * - de spécifications de format à respecter avec méthodes de contrôle et lorsque cela est possible correction
+ * - de champs de formulaire spécifiques (adaptés) :
+ * 		- pour l'insertion,
+ * 		- pour l'édition,
+ * 		- pour le listing des éventuelles différentes valeurs
  * - de méthodes de traitement
+ * 		- importation/exportation pour le moteur de stockage
+ * 		- importation/exportation pour les formulaires
  * - de méthodes d'affichage
  * 
  */
@@ -142,7 +147,7 @@ protected $required=false;
  * @var array
  */
 protected $structure_opt = array();
-public static $structure_opt_list = array("size", "ereg" , "integer" , "float" , "array" , "boolean", "compare" , "count" , "select" , "fromlist" , "date" , "time" , "datetime" , "object" , "datamodel", "databank", "databank_select", "email", "url");
+public static $structure_opt_list = array("size", "ereg" , "integer" , "float" , "array" , "boolean", "percent", "compare" , "count" , "select" , "fromlist" , "date" , "time" , "datetime" , "object" , "datamodel", "databank", "databank_select", "email", "url");
 
 /**
  * Type en base de donnée (SQL) à renvoyer à la classe db (voir les classes associées)
@@ -516,7 +521,7 @@ public function __set($name, $value)
 {
 
 if ($name == "value")
-	$this->value_set($value);
+	return $this->value_set($value);
 else
 	return null;
 
@@ -653,10 +658,15 @@ if (!isset($this->db_opt["field"]) || !($fieldname = $this->db_opt["field"]))
 
 if (is_array($value))
 {
-	$q = array();
-	foreach($value as $i)
-		$q[] = "'".db()->string_escape($i)."'";
-	return "`".$fieldname."` IN (".implode(" , ",$q).")";
+	if (count($value))
+	{
+		$q = array();
+		foreach($value as $i)
+			$q[] = "'".db()->string_escape($i)."'";
+		return "`".$fieldname."` IN (".implode(" , ",$q).")";
+	}
+	else
+		return "`".$fieldname."` IN ( null )";
 }
 else
 	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
@@ -1255,9 +1265,7 @@ function value_to_db()
 
 if ($this->value)
 {
-	$d = explode("/",$this->value);
-	//echo "$d[2]-$d[1]-$d[0]";
-	return "$d[2]-$d[1]-$d[0]";
+	return implode("-",array_reverse(explode("/",$this->value)));
 }
 else
 {
@@ -1271,8 +1279,7 @@ function value_from_db($value)
 
 if ($value !== null)
 {
-	$d = explode("-",$value);
-	$this->value = "$d[2]/$d[1]/$d[0]";
+	$this->value = implode("-",array_reverse(explode("/",$value)));
 }
 else
 	return null;
@@ -1284,6 +1291,44 @@ public function db_field_create()
 
 return array( "type" => "date" );
 
+}
+
+/**
+ * Returns the timestamp calculated from the stored value
+ */
+public function timestamp()
+{
+
+return strtotime(implode("-",array_reverse(explode("/",$this->value))));
+
+}
+
+/**
+ * Compare date timestamps and returns if the stored value is larger, smaller or equal to the passed value
+ * @param timestamp $value
+ */
+public function compare($value)
+{
+
+if ($this->value)
+{
+	$time_1 = $this->timestamp();
+	$time_2 = $value;
+	if ($time_1 < $time_2)
+	{
+		return "<";
+	}
+	elseif ($time_1 == $time_2)
+	{
+		return "=";
+	}
+	else
+	{
+		return ">";
+	}
+}
+else
+	return false;
 }
 
 }
@@ -1899,6 +1944,71 @@ data_integer::__construct($name, $value, $label, array("integer"=>array("signed"
 
 }
 
+/**
+ * Percent
+ */
+class data_percent extends data_float
+{
+
+protected $structure_opt = array("percent"=>array());
+protected $form_opt = array("size"=>5);
+
+function __construct($name, $value=0, $label="Percent")
+{
+
+data::__construct($name, $value, $label, array());
+
+}
+
+function __tostring()
+{
+
+return ($this->value*100)." %";
+
+}
+function value_to_db()
+{
+
+return $this->value*100;
+
+}
+function value_from_db($value)
+{
+
+$this->value = $value/100;
+
+}
+public function form_field_disp($print=true, $options=array())
+{
+
+$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
+	? " readonly"
+	: "";
+
+$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\"$attrib_readonly />";
+
+if ($print)
+	print $return;
+else
+	return $return;
+
+}
+
+public function value_from_form($value)
+{
+
+$this->value_set($value/100, true);
+
+}
+
+public function db_field_create()
+{
+
+return array("type" => "float", "size" => 5, "precision" => 2);
+
+}
+
+}
 /**
  * Number field to priorize
  * 

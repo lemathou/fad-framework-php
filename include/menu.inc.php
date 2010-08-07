@@ -270,6 +270,7 @@ class page
 {
 
 protected $id = 0;
+protected $url = "";
 protected $name = "";
 protected $titre = "";
 protected $titre_court = "";
@@ -284,14 +285,16 @@ protected $params_get = array();
 protected $params = array();
 protected $params_default = array();
 
+// Scripts
+protected $script_list = array();
+ 
 // Gestion redirection
-protected $url = ""; // Ca sert à quoi cette variable ?
 protected $redirect_url = null;
 
 // Gestion alias
 protected $alias_page_id = null;
 
-protected static $info_list = array ("name", "url", "template_id", "titre", "titre_court", "redirect_url", "alias_page_id");
+protected static $info_list = array ("name", "url", "template_id", "titre", "titre_court", "redirect_url", "alias_page_id", "script_list");
 
 function __construct($id, $query=true, $infos=array())
 {
@@ -310,7 +313,14 @@ elseif (count($infos) > 0) // on intègre les données passées par infos
 			$this->{$i} = $j;
 		}
 	}
-			
+
+$this->script_list = array();
+$query = db()->query("SELECT `script_name` FROM `_page_scripts` WHERE `page_id`='$this->id' ORDER BY `pos`");
+while (list($filename)=$query->fetch_row())
+{
+	$this->script_list[] = $filename;
+}
+
 }
 
 /**
@@ -333,6 +343,8 @@ $this->params_update_post();
 public function params_load()
 {
 
+//echo "<p>INIT PAGE PARAMS</p>";
+$this->params = array();
 $query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
 while (list($i,$j,$k)=$query->fetch_row())
 {
@@ -396,12 +408,14 @@ protected function params_apply()
 $this->template = clone template($this->template_id);
 
 // Paramètres globaux à tout le site
-// Voir si on l'utilise, je ne suis pas bien convaincu...
+// Voir si on l'utilise, je ne suis pas du tout convaincu...
+/*
 foreach (globals()->get_list() as $name=>$value)
 {
 	$this->template->{$name} = $value;
 }
-// Paramètres particuliers à cette page
+*/
+// Paramètres particuliers à cette page... pas trop comme méthode mais mieux que rien...
 $this->template->titre = $this->titre;
 // Paramètres liés au rewriting
 foreach ($this->params as $name=>$value)
@@ -538,10 +552,16 @@ else
 public function action()
 {
 
-$filename = "page/$this->name.inc.php";
+foreach($this->params as $_name=>$_value)
+	${$_name} = &$this->params[$_name];
 
-if (file_exists($filename))
-	include $filename;
+foreach($this->script_list as $_filename)
+{
+	if (file_exists("page/scripts/$_filename"))
+	{
+		include "page/scripts/$_filename";
+	}
+}
 
 }
 

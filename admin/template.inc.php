@@ -16,19 +16,6 @@ if (!defined("ADMIN_OK"))
 
 define("LANG_ID", 2);
 
-/*
-datamodel("template")->add( new data_id() , "key" );
-
-datamodel("template")->add( new data_name("name", "", "Name", ""), "required" );
-datamodel("template")->add( new data_name("title", "", "Title", "", array("lang"=>true)), "required" );
-datamodel("template")->add( new data_text("description", "", array(), array("lang"=>true), array("label"=>"Description")), "required" );
-datamodel("template")->add( new data_richtext("details", "", array(), array("lang"=>true), array("label"=>"Details")) );
-
-datamodel("template")->add( new data_dataobject_list("library", null, "library", array("ref_table"=>"_template_library_ref")) );
-
-datamodel("template")->db_opt_set("table", "_template");
-*/
-
 // Libraries
 $library_list = array();
 $query = db()->query(" SELECT id , name FROM _library ");
@@ -115,7 +102,7 @@ table td
 
 // Templates
 $template_list = array();
-$query = db()->query(" SELECT t1.id , t1.name , t2.title FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." WHERE t1.name NOT LIKE '%/%'");
+$query = db()->query(" SELECT t1.id , t1.name , t2.title FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_DEFAULT_ID." WHERE t1.name NOT LIKE '%/%'");
 while ($template = $query->fetch_assoc())
 {
 	if (!$template["title"])
@@ -156,11 +143,11 @@ $template = $query->fetch_assoc();
 	});
 </script>
 
-<form action="?id=<?php echo $id; ?>" method="POST">
+<form action="?id=<?=$id?>" method="POST">
 <table width="100%" cellspacing="1" border="1" cellpadding="1">
 <tr>
 	<td class="label" width="200">ID</td>
-	<td width="300"><input name="update[id]" value="<?php echo $template["id"]; ?>" readonly /></td>
+	<td width="300"><input name="update[id]" value="<?=$template["id"]?>" readonly /></td>
 	<td rowspan="10"><textarea id="update[filecontent]" name="update[filecontent]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="30"><?php
 	$filename = "template/$template[name].tpl.php";
 	if (file_exists($filename) && filesize($filename))
@@ -192,31 +179,31 @@ $template = $query->fetch_assoc();
 </tr>
 <tr>
 	<td class="label">Name</td>
-	<td><input name="update[name]" onclick="this.style.backgroundColor='#fff';" value="<?php echo $template["name"]; ?>" style="background-color:#eee;width:100%;" /></td>
+	<td><input name="update[name]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["name"]?>" style="background-color:#eee;width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Title</td>
-	<td><input name="update[title]" onclick="this.style.backgroundColor='#fff';" value="<?php echo $template["title"]; ?>" style="background-color:#eee;width:100%;" /></td>
+	<td><input name="update[title]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["title"]?>" style="background-color:#eee;width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Description</td>
-	<td><textarea name="update[description]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?php echo $template["description"]; ?></textarea></td>
+	<td><textarea name="update[description]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template["description"]?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Details</td>
-	<td><textarea name="update[details]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?php echo $template["details"]; ?></textarea></td>
+	<td><textarea name="update[details]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template["details"]?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Durée Min du cache<br /><span style="color:#400">Attention avec ce paramètre !!</span></td>
-	<td><input name="update[cache_mintime]" onclick="this.style.backgroundColor='#fff';" value="<?php echo $template["cache_mintime"]; ?>" style="background-color:#eee;" size="3" maxlength="3" /></td>
+	<td><input name="update[cache_mintime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["cache_mintime"]?>" style="background-color:#eee;" size="3" maxlength="3" /></td>
 </tr>
 <tr>
 	<td class="label">Durée Max du cache<br />(0 = pas de cache)</td>
-	<td><input name="update[cache_maxtime]" onclick="this.style.backgroundColor='#fff';" value="<?php echo $template["cache_maxtime"]; ?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
+	<td><input name="update[cache_maxtime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["cache_maxtime"]?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
 </tr>
 <tr>
 	<td class="label">Dépendant du login</td>
-	<td><input name="update[login_dependant]" onclick="this.style.backgroundColor='#fff';" value="<?php echo $template["login_dependant"]; ?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
+	<td><input name="update[login_dependant]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["login_dependant"]?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
 </tr>
 <tr>
 	<td class="label">Libraries</td>
@@ -263,17 +250,21 @@ if (isset($_GET["param_delete"]) && ($param_delete=$_GET["param_delete"]))
 	echo "<p>Le paramètre $param_delete a bien été supprimé.</p>\n";
 }
 // Mise à jour
+if (isset($_GET["param_edit"]) && isset($_GET["option_del"]))
+{
+	//echo "DELETE FROM `_template_params_opt` WHERE template_id='$id' AND name='".$_GET["param_edit"]."' AND optname='".$_GET["option_del"]."'";
+	db()->query("DELETE FROM `_template_params_opt` WHERE template_id='$id' AND name='".$_GET["param_edit"]."' AND optname='".$_GET["option_del"]."'");
+}
 if (isset($_POST["param_edit"]))
 {
 	foreach ($_POST["param_edit"] as $name=>$param)
 	{
 		db()->query("UPDATE `_template_params` SET name='$param[name]' , datatype='$param[datatype]' , defaultvalue='$param[defaultvalue]' WHERE template_id='$id' AND name='$name'");
 		db()->query("UPDATE `_template_params_lang` SET description='".addslashes($param["description"])."' WHERE template_id='$id' AND name='$name' AND lang_id='".SITE_LANG_ID."'");
-		//db()->query("UPDATE `_template_params_opt` WHERE template_id='$id' AND name='$param_delete'");
 		if (isset($param["option_add"]["optname"]) && $opt_add=$param["option_add"])
 		{
-			db()->query("INSERT INTO `_template_params_opt` ( template_id , name , optname , opttype , optvalue ) VALUES ( '$id' , '$name' , '$opt_add[optname]' , '$opt_add[opttype]' , '".addslashes($opt_add["optvalue"])."' )");
-		}	
+			db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, opttype, optvalue) VALUES ('$id', '$name', '$opt_add[optname]', '$opt_add[opttype]', '".addslashes($opt_add["optvalue"])."')");
+		}
 		echo "<p>Le paramètre $name a bien été mis à jour.</p>\n";
 	}
 }
@@ -283,23 +274,33 @@ if (isset($_POST["param_edit"]))
 // Edition
 if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_params = db()->query(" SELECT t1.name , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' AND t1.name='$param_edit' ")) && ($param = $query_params->fetch_assoc()))
 {
+
+$optlist = array();
+$query = db()->query("SELECT opttype , optname , optvalue FROM _template_params_opt WHERE template_id='$id' AND name='$param_edit'");
+if ($query->num_rows())
+{
+	while ($opt=$query->fetch_assoc())
+	{
+		$optlist[$opt["opttype"]][$opt["optname"]] = $opt["optvalue"];
+	}
+}
+
 ?>
-<form action="?id=<?php echo $id; ?>" method="POST">
-<p><a href="?id=<?php echo $id; ?>">Ajouter un paramètre</a></p>
+<form action="?id=<?=$id?>&param_edit=<?=$param_edit?>" method="POST">
+<p><a href="?id=<?=$id?>">Retour / annulation</a></p>
 <table style="border:1px black solid;">
 <tr>
 	<td>Name :</td>
-	<td><input name="param_edit[<?php echo $param["name"]; ?>][name]" value="<?php echo $param["name"]; ?>" /></td>
+	<td><input name="param_edit[<?=$param["name"]?>][name]" value="<?=$param["name"]?>" /></td>
 </tr>
 <tr>
 	<td>Description :</td>
-	<td><textarea name="param_edit[<?php echo $param["name"]; ?>][description]" style="width:100%;"><?php echo $param["description"]; ?></textarea></td>
+	<td><textarea name="param_edit[<?=$param["name"]?>][description]" style="width:100%;"><?=$param["description"]?></textarea></td>
 </tr>
 <tr>
 	<td>Datatype</td>
-	<td><select name="param_edit[<?php echo $param["name"]; ?>][datatype]">
-	<?php
-	$query = db()->query("SELECT t1.name , t2.title FROM _datatype as t1 LEFT JOIN _datatype_lang as t2 ON t1.id=t2.datatype_id ORDER BY t2.title");
+	<td><select name="param_edit[<?=$param["name"]?>][datatype]"><?php
+	$query = db()->query("SELECT `_datatype`.`name` , `_datatype_lang`.`title` FROM `_datatype` LEFT JOIN `_datatype_lang` ON `_datatype`.`id`=`_datatype_lang`.`datatype_id` ORDER BY `_datatype_lang`.`title`");
 	while(list($name, $title)=$query->fetch_row())
 	{
 		if ($param["datatype"] == $name)
@@ -307,12 +308,39 @@ if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_p
 		else
 			echo "<option value=\"$name\">$title</option>\n";
 	}
-	?>
-	</select></td>
+	?></select></td>
 </tr>
 <tr>
 	<td>Valeur par défaut :</td>
-	<td><textarea name="param_edit[<?php echo $param["name"]; ?>][defaultvalue]" style="width:100%;"><?php echo $param["defaultvalue"]; ?></textarea></td>
+	<td><?php
+	if ($param["datatype"]=="dataobject" && isset($optlist["structure"]["databank"]) && is_a($databank=databank($optlist["structure"]["databank"]),"data_bank"))
+	{
+		echo "<select name=\"param_edit[$param[name]][defaultvalue]\">";
+			echo "<option value=\"0\">-- Choisir si besoin --</option>";
+		foreach($databank->query() as $object)
+		{
+			if (isset($object->title))
+				$aff = "ID#$object->id : $object->title";
+			elseif (isset($object->name))
+				$aff = "ID#$object->id : $object->name";
+			elseif (isset($object->ref))
+				$aff = "ID#$object->id : $object->ref";
+			else
+				$aff = "ID#$object->id";
+			if ($param["defaultvalue"] == $object->id->value)
+				echo "<option value=\"$object->id\" selected>$aff</option>";
+			else
+				echo "<option value=\"$object->id\">$aff</option>";
+		}
+		echo "</select>\n";
+	}
+	else
+	{
+	?>
+	<textarea name="param_edit[<?=$param["name"]?>][defaultvalue]" style="width:100%;"><?=$param["defaultvalue"]?></textarea>
+	<?php
+	}
+	?></td>
 </tr>
 <tr>
 	<td>Options :</td>
@@ -322,16 +350,32 @@ if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_p
 	{
 		while ($opt=$query->fetch_assoc())
 		{
-			echo "$opt[opttype] / $opt[optname] : $opt[optvalue]<br />";
+			echo "<p><a href=\"?id=$id&param_edit=$param_edit&option_del=$opt[optname]\" style=\"color:red;\">X</a>$opt[opttype] / $opt[optname] : $opt[optvalue]<br /></p>";
 		}
 	}
-	?>
-	<p>Ajouter :
-	<br />Type :<select name="param_edit[<?php echo $param["name"]; ?>][option_add][opttype]"><option value="structure">structure</option><option value="db">db</option><option value="disp">disp</option><option value="form">form</option></select>
-	<br />Name :<input name="param_edit[<?php echo $param["name"]; ?>][option_add][optname]" />
-	<br />Value :<input name="param_edit[<?php echo $param["name"]; ?>][option_add][optvalue]" />
-	</p>
-	</td>
+	?></td>
+<tr>
+	<td>Ajouter une option :</td>
+	<td><table cellspacing="0" cellpadding="0">
+	<tr>
+		<td>Type : </td>
+		<td><select name="param_edit[<?=$param["name"]?>][option_add][opttype]">
+			<option value="">-- Choisir --</option>
+			<option value="structure">structure</option>
+			<option value="db">db</option>
+			<option value="disp">disp</option>
+			<option value="form">form</option>
+		</select></td>
+	</tr>
+	<tr>
+		<td>Name : </td>
+		<td><input name="param_edit[<?=$param["name"]?>][option_add][optname]" /></td>
+	</tr>
+	<tr>
+		<td>Value : </td>
+		<td><input name="param_edit[<?=$param["name"]?>][option_add][optvalue]" /></td>
+	</tr>
+	</table></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>
@@ -341,11 +385,40 @@ if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_p
 </form>
 <?php
 }
-else
+?>
+
+<table>
+<tr>
+	<td>&nbsp;</td>
+	<td>Name</td>
+	<td>Order</td>
+	<td>description</td>
+	<td>Datatype</td>
+	<td>Defaultvalue</td>
+</tr>
+<?
+
+$template["params"] = array();
+$query_params = db()->query(" SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' ORDER BY t1.order");
+while ($param = $query_params->fetch_assoc())
 {
 ?>
+<tr>
+	<td><a href="?id=<?php echo $id; ?>&param_delete=<?=$param["name"]?>" onclick="return(confirm('Êtes-vous sûr de vouloir effacer ?'))" style="color:red;border:1px red dotted;">X</a></td>
+	<td><a href="?id=<?php echo $id; ?>&param_edit=<?=$param["name"]?>"><?=$param["name"]?></a></td>
+	<td><?=$param["order"]?></td>
+	<td><?=$param["description"]?></td>
+	<td><?=$param["datatype"]?></td>
+	<td><input type="text" value="<?=$param["defaultvalue"]?>" readonly /></td>
+</tr>
+<?php
+}
+
+?>
+</table>
+
 <p>Ajouter un paramètre :</p>
-<form action="?id=<?php echo $id; ?>" method="post">
+<form action="?id=<?=$id?>" method="post">
 <table>
 <tr>
 	<td>Name :</td>
@@ -378,39 +451,6 @@ else
 </tr>
 </table>
 </form>
-<?php
-}
-?>
-
-<table>
-<tr>
-	<td>&nbsp;</td>
-	<td>Name</td>
-	<td>Order</td>
-	<td>description</td>
-	<td>Datatype</td>
-	<td>Defaultvalue</td>
-</tr>
-<?
-
-$template["params"] = array();
-$query_params = db()->query(" SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' ORDER BY t1.order");
-while ($param = $query_params->fetch_assoc())
-{
-?>
-<tr>
-	<td><a href="?id=<?php echo $id; ?>&param_delete=<?php echo $param["name"]; ?>" onclick="return(confirm('Êtes-vous sûr de vouloir effacer ?'))" style="color:red;border:1px red dotted;">X</a></td>
-	<td><a href="?id=<?php echo $id; ?>&param_edit=<?php echo $param["name"]; ?>"><?php echo $param["name"]; ?></a></td>
-	<td><?php echo $param["order"]; ?></td>
-	<td><?php echo $param["description"]; ?></td>
-	<td><?php echo $param["datatype"]; ?></td>
-	<td><input type="text" value="<?php echo $param["defaultvalue"]; ?>" readonly /></td>
-</tr>
-<?php
-}
-
-?>
-</table>
 
 <?php
 
@@ -426,8 +466,17 @@ $template = array
 	"title" => "",
 	"description" => "",
 	"details" => "",
+	"cache_mintime" => TEMPLATE_CACHE_MIN_TIME,
+	"cache_maxtime" => TEMPLATE_CACHE_MAX_TIME,
 	"library" => array(),
 );
+
+if (isset($_POST["insert"]))
+{
+	foreach ($_POST["insert"] as $name=>$value)
+		if (isset($template[$name]))
+			$template[$name] = $value;
+}
 
 ?>
 
@@ -441,27 +490,27 @@ $template = array
 <table>
 <tr>
 	<td class="label">Name</td>
-	<td><input name="insert[name]" value="<?php echo $template["name"]; ?>" size="32" /></td>
+	<td><input name="insert[name]" value="<?=$template["name"]?>" size="32" /></td>
 </tr>
 <tr>
 	<td class="label">Title</td>
-	<td><input name="insert[title]" value="<?php echo $template["title"]; ?>" size="64" /></td>
+	<td><input name="insert[title]" value="<?=$template["title"]?>" size="64" /></td>
 </tr>
 <tr>
 	<td class="label">Description</td>
-	<td><textarea name="insert[description]" cols="64" rows="4"><?php echo $template["description"]; ?></textarea></td>
+	<td><textarea name="insert[description]" cols="64" rows="4"><?=$template["description"]?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Details</td>
-	<td><textarea name="insert[details]" cols="64" rows="8"><?php echo $template["details"]; ?></textarea></td>
+	<td><textarea name="insert[details]" cols="64" rows="8"><?=$template["details"]?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Durée mini du cache<br />Attention toutefois</td>
-	<td><input name="insert[cache_mintime]" value="<?=TEMPLATE_CACHE_MIN_TIME?>" size="3" maxlength="3" /></td>
+	<td><input name="insert[cache_mintime]" value="<?=$template["cache_mintime"]?>" size="3" maxlength="3" /></td>
 </tr>
 <tr>
 	<td class="label">Durée max du cache<br />(0 = pas de mise en cache)</td>
-	<td><input name="insert[cache_maxtime]" value="<?=TEMPLATE_CACHE_MAX_TIME?>" size="3" maxlength="4" /></td>
+	<td><input name="insert[cache_maxtime]" value="<?=$template["cache_maxtime"]?>" size="3" maxlength="4" /></td>
 </tr>
 <tr>
 	<td class="label">Libraries</td>

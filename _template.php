@@ -5,7 +5,7 @@
   * 
   * « Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr »
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD FRAMEWORK
   * 
   * FTNGroupWare is free software; you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@
   * GNU General Public License for more details.
   *
   * You should have received a copy of the GNU General Public License
-  * along with FTNGroupWare; if not, write to the Free Software
+  * along with PHP FAD FRAMEWORK; if not, write to the Free Software
   * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   *
-  * Package : FTNGroupWare
+  * Package : PHP FAD FRAMEWORK
   * Author : Mathieu Moulin, iProspective <lemathou@free.fr>
   * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   *
@@ -31,15 +31,13 @@
 include "config/config.inc.php";
 
 // Paramètres, Constantes, variables globales, constructeurs généraux, classes générales, fonctions diverses, etc.
-include "include/header.inc.php";
+include PATH_INCLUDE."/header.inc.php";
 
 // Gestion de la langue
-include "include/lang.inc.php";
+include PATH_INCLUDE."/lang.inc.php";
 
 // Démarrage de la session
-include "include/session_start.inc.php";
-
-//include "header_full.inc.php";
+include PATH_INCLUDE."/session_start.inc.php";
 
 // Mise en place des banques de donnée et des fonctions associées !!
 databank();
@@ -47,8 +45,13 @@ databank();
 // Controller (Warning !!)
 //include "include/data_controller.inc.php";
 
+if (REDIRECT)
+{
+	header("Location: http://".SITE_DOMAIN."/".SITE_LANG."/");
+}
+
 // Choix de la page
-include "include/page_choose.inc.php";
+include PATH_INCLUDE."/page_choose.inc.php";
 
 header("Content-type: text/html; charset=".SITE_CHARSET);
 
@@ -80,11 +83,8 @@ login()->page_count++;
 
 gentime("END");
 
-?>
-
-<?php if (login()->perm(6)) { ?>
-
-<div style="width:980px;margin:5px;padding:5px;background-color:white;">
+if (login()->perm(6)) { ?>
+<div style="width:980px;margin:5px;border:1px gray solid;padding:5px;background-color:white;">
 <h1>DEBUG Gentime</h1>
 <h3>PHP</h3>
 <?

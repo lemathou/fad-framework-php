@@ -137,23 +137,33 @@ $this->query();
 
 }
 
+/**
+ * Retrieve basic infos on all pages
+ */
 public function query()
 {
 
 $this->list = array();
-$query_string = " SELECT _page.id as id , _page.name as name , _page.template_id as template_id, _page.redirect_url as redirect_url, _page.alias_page_id as alias_page_id , _page_lang.titre as titre , _page_lang.titre_court as titre_court , _page_lang.url as url FROM _page , _page_lang , _page_perm_ref WHERE _page.id=_page_lang.id AND _page_lang.lang_id = '".SITE_LANG_ID."' AND _page_perm_ref.page_id = _page.id AND _page_perm_ref.perm_id IN ( ".implode(" , ",login()->perm_list())." )";
-if (DEBUG_MENU)
-	echo "<br />PAGE_GESTION : ".$query_string;
+$query_string = " SELECT `_page`.`id` as id , `_page`.`name` as name , `_page`.`template_id` as template_id, `_page`.`redirect_url` as redirect_url, `_page`.`alias_page_id` as alias_page_id, `_page_lang`.`titre` as titre, `_page_lang`.`titre_court` as titre_court, `_page_lang`.`url` as url FROM `_page`, `_page_lang` WHERE `_page`.`id`=`_page_lang`.`id` AND `_page_lang`.`lang_id`='".SITE_LANG_ID."'";
 $query = db()->query($query_string);
 while ($page = $query->fetch_assoc())
 {
 	if (DEBUG_MENU)
-		echo "<br />$page[id] : $page[name]\n";
+		echo "<p>page_gestion::query() : $page[id] : $page[name]</p>\n";
 	$this->list[$page["id"]] = new page($page["id"], false , $page);
 }
 
 }
 
+/**
+ * Set the default page
+ * 
+ * ID#1 : Homepage
+ * ID#2 : Page does not exists (HTTP 404)
+ * ID#3 : Page unavailable (HTTP 401)
+ * 
+ * TODO : include here all retrieved infos from the request url (language and params list)
+ */
 public function set()
 {
 
@@ -178,12 +188,12 @@ else
 			$i = substr($i,0,$j);
 		}
 	}
-	if (isset($this->list[$i]))
-		define("PAGE_ID", $i);
-	elseif ($this->exists($i))
+	if (!isset($this->list[$i]))
+		define("PAGE_ID", 2);
+	elseif (!$this->list[$i]->perm_login())
 		define("PAGE_ID", 3);
 	else
-		define("PAGE_ID", 2);
+		define("PAGE_ID", $i);
 }
 
 $this->page_id = PAGE_ID;
@@ -191,6 +201,10 @@ $this->get(PAGE_ID)->set($url_params);
 
 }
 
+/**
+ * Get a page
+ * @param unknown_type $id
+ */
 public function get($id=0)
 {
 
@@ -199,35 +213,51 @@ if (isset($this->list[$id]))
 elseif (!$id && $this->page_id)
 	return $this->list[$this->page_id];
 else
-	return false;
+	return null;
 
 }
 
+/**
+ * Get the current page
+ * @param unknown_type $id
+ */
 public function current_get()
 {
 
 if ($this->page_id)
 	return $this->list[$this->page_id];
 else
-	return false;
+	return null;
 
 }
 
 /**
- * La page existe en base de donnée
- * Mais elle n'est pas nécéssairement accessible (question de droits)
+ * returns if the page exists
  * 
  * @param int $id
  */
 public function exists($id)
 {
 
-list($return) = db()->query("SELECT count(*) FROM _page WHERE id = '".db()->string_escape($id)."'")->fetch_row();
-
-if ($return)
+if (isset($this->list[$id]))
 	return true;
 else
 	return false;
+
+}
+
+/**
+ * Returns if the user logged-in have the rights to see the page
+ *  
+ * @param int $id
+ */
+public function perm($id)
+{
+
+if (!isset($this->list[$i]))
+	return false;
+else
+	return $this->list[$i]->perm_login();
 
 }
 
@@ -270,34 +300,44 @@ class page
 {
 
 protected $id = 0;
+protected $type = "";
 protected $url = "";
 protected $name = "";
 protected $titre = "";
 protected $titre_court = "";
 protected $description = "";
-protected $keywords = "";
 
-// Gestion template
+// Template and params
 protected $template_id = null;
 protected $template = null;
+protected $params_default = array();
 protected $params_url = array();
 protected $params_get = array();
+// Effective parameters
 protected $params = array();
-protected $params_default = array();
-
-// Scripts
-protected $script_list = array();
  
+// Permissions
+protected $perm_list = array();
+
 // Gestion redirection
 protected $redirect_url = null;
 
 // Gestion alias
 protected $alias_page_id = null;
 
-protected static $info_list = array ("name", "url", "template_id", "titre", "titre_court", "redirect_url", "alias_page_id", "script_list");
+// Scripts
+protected $script_list = array();
+
+protected static $info_list = array("name", "url", "template_id", "titre", "titre_court", "redirect_url", "alias_page_id", "script_list");
+
+protected static $infos = array("type", "name", "description", "template_id", "redirect_url", "alias_page_id");
+protected static $infos_lang = array("url", "titre", "titre_court");
 
 function __construct($id, $query=true, $infos=array())
 {
+
+if (DEBUG_MENU)
+	echo "<p class=\"debug\">page(ID#$id)::__construct()</p>\n";
 
 $this->id = $id;
 
@@ -314,26 +354,116 @@ elseif (count($infos) > 0) // on intègre les données passées par infos
 		}
 	}
 
-$this->script_list = array();
-$query = db()->query("SELECT `script_name` FROM `_page_scripts` WHERE `page_id`='$this->id' ORDER BY `pos`");
-while (list($filename)=$query->fetch_row())
+$this->query_infos();
+
+}
+
+function query_infos()
 {
-	$this->script_list[] = $filename;
+
+$this->script_list = array();
+$query = db()->query("SELECT `pos`, `script_name` FROM `_page_scripts` WHERE `page_id`='$this->id' ORDER BY `pos`");
+while (list($pos, $script_name)=$query->fetch_row())
+{
+	$this->script_list[$pos] = $script_name;
+}
+
+$this->perm_list = array();
+$query = db()->query("SELECT `perm_id` FROM `_page_perm_ref` WHERE `page_id`='$this->id'");
+while (list($perm_id)=$query->fetch_row())
+{
+	$this->perm_list[] = $perm_id;
 }
 
 }
 
 /**
- * Set the page as default, so create the associated template
- *
+ * Update template (warning, there is a dedicated function to update each param)
+ * 
+ * @param integer $id
+ * @param array $template
  */
-public function set($params)
+public function update($infos=array())
 {
 
-$this->params_load();
-$this->params_update_url($params);
-$this->params_update_get();
-$this->params_update_post();
+foreach(self::$infos as $name)
+	if (isset($infos[$name]))
+		$this->{$name} = $infos[$name];
+foreach(self::$infos_lang as $name)
+	if (isset($infos[$name]))
+		$this->{$name} = $infos[$name];
+
+if (isset($infos["script_list"]) && is_array($infos["script_list"]))
+{
+	$this->script_list = array();
+	foreach ($infos["script_list"] as $pos=>$script_name)
+		$this->script_list[$pos] = $library_id;
+}
+
+if (isset($infos["perm_list"]) && is_array($infos["perm_list"]))
+{
+	$this->perm_list = array();
+	foreach ($infos["perm_list"] as $perm)
+		$this->perm_list[] = $perm;
+}
+
+$this->db_update();
+
+}
+/**
+ * Update template base infos in database
+ */
+public function db_update()
+{
+
+// Base infos
+$l = array();
+foreach (self::$infos as $name)
+	$l[] = "`_page`.`$name`='".db()->string_escape($this->{$name})."'";
+// Language infos
+foreach (self::$infos_lang as $name)
+	$l[] = "`_page_lang`.`$name`='".db()->string_escape($this->{$name})."'";
+
+//echo "UPDATE `_page`, `_page_lang` SET ".implode(", ", $l)." WHERE `_page`.`id`='$this->id' AND `_page`.`id`=`_page_lang`.`id` AND `_page_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID;
+
+db()->query("UPDATE `_page`, `_page_lang` SET ".implode(", ", $l)." WHERE `_page`.`id`='$this->id' AND `_page`.`id`=`_page_lang`.`id` AND `_page_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID);
+
+// Scripts
+db()->query("DELETE FROM `_page_scripts` WHERE `page_id`='$this->id'");
+$query_script_list = array();
+foreach($this->script_list as $pos=>$script_name)
+{
+	$query_script_list[] = "('$this->id', '$pos', '$script_name')";
+}
+if (count($query_script_list)>0)
+{
+	db()->query("INSERT INTO `_page_scripts` (`page_id`, `pos`, `script_name`) VALUES ".implode(" , ",$query_script_list));
+}
+
+// Permissions
+db()->query("DELETE FROM `_page_perm_ref` WHERE `page_id`='$this->id'");
+$query_perm_list = array();
+foreach($this->perm_list as $perm_id)
+{
+	$query_perm_list[] = "('$this->id', '$perm_id')";
+}
+if (count($query_perm_list)>0)
+{
+	db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(" , ",$query_perm_list));
+}
+
+}
+
+public function perm_login()
+{
+
+$return = false;
+
+foreach(login()->perm_list() as $perm_id)
+	if (in_array($perm_id, $this->perm_list))
+		$return = true;
+
+return $return;
 
 }
 
@@ -343,12 +473,12 @@ $this->params_update_post();
 public function params_load()
 {
 
-//echo "<p>INIT PAGE PARAMS</p>";
 $this->params = array();
 $query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
 while (list($i,$j,$k)=$query->fetch_row())
 {
 	$this->params[$i] = $j;
+	$this->params_default[$i] = $j;
 	if (is_numeric($k))
 	{
 		$this->params_url[$k] = $i;
@@ -357,80 +487,95 @@ while (list($i,$j,$k)=$query->fetch_row())
 
 }
 
-public function params_update_url($params)
+/**
+ * Add a param
+ * @param unknown_type $name
+ * @param unknown_type $infos
+ */
+public function param_add($name, $infos)
 {
 
-foreach($params as $i=>$value)
+$this->params_default[$name] = $infos[value];
+db()->query("INSERT INTO `_page_params` (`page_id`, `name`, `value`, `update_pos`) VALUES ('$this->id', '$name', '$infos[value]', NULL)");
+
+if (is_numeric($n=$infos["update_pos"]))
 {
-	if (DEBUG_TEMPLATE)
-		echo "<p>PAGE->params_update_url : $i : $value</p>";
-	if (isset($this->params_url[$i]) && ($name=$this->params_url[$i]))
+	for ($i=count($this->params_url)-1;$i=$n;$i--)
 	{
-		if (DEBUG_TEMPLATE)
-			echo "<p>PAGE->params_update_url : $name : $value</p>";
-		$this->params[$name] = $value;
+		$this->params_url[$i+1] = $this->params_url[$i];
+		unset($this->params_url[$i]);
 	}
+	$this->params_url[$n] = $name;
+	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`+1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
+	db()->query("UPDATE `_page_params` SET `update_pos`='$n' WHERE `page_id`='$this->id' AND `name`='$name'");
 }
 
 }
-public function params_update_get()
+/**
+ * Update a param
+ * @param unknown_type $name
+ * @param unknown_type $infos
+ */
+public function param_update($name, $infos)
 {
 
-foreach($_GET as $name=>$value)
+$this->params_default[$name] = $infos["value"];
+db()->query("UPDATE `_page_params` SET `value`='$infos[value]', `update_pos`= NULL WHERE `page_id`='$this->id' AND `name`='$name'");
+if ($n=array_search($name, $this->params_url))
 {
-	if (in_array($name, $this->params_url))
+	unset($this->params_url[$n]);
+	for ($i=$n+1;$i=count($this->params_url)-1;$i++)
 	{
-		$this->params[$name] = $value;
+		$this->params_url[$i-1] = $this->params_url[$i];
+		unset($this->params_url[$i]);
 	}
+	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`-1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
 }
 
-}
-public function params_update_post()
+if (is_numeric($n=$infos["update_pos"]))
 {
-
-foreach($_POST as $name=>$value)
-{
-	if (in_array($name, $this->params_url))
+	for ($i=count($this->params_url)-1;$i=$n;$i--)
 	{
-		$this->params[$name] = $value;
+		$this->params_url[$i+1] = $this->params_url[$i];
+		unset($this->params_url[$i]);
 	}
+	$this->params_url[$n] = $name;
+	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`+1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
+	db()->query("UPDATE `_page_params` SET `update_pos`='$n' WHERE `page_id`='$this->id' AND `name`='$name'");
 }
+
+}
+/**
+ * Delete a param
+ * @param $name
+ */
+public function param_delete($name)
+{
+
+unset($this->params_default[$name]);
+foreach ($this->params_url as $n=>$i)
+	if ($name == $i)
+		unset($this->params_url[$n]);
+db()->query("DELETE FROM `_page_params` WHERE `page_id`='$this->id' AND `name`='$name'");
 
 }
 
 /**
- * Applique les paramètres au template
+ * Returns list of actual params
  */
-protected function params_apply()
-{
-
-// Création du template
-$this->template = clone template($this->template_id);
-
-// Paramètres globaux à tout le site
-// Voir si on l'utilise, je ne suis pas du tout convaincu...
-/*
-foreach (globals()->get_list() as $name=>$value)
-{
-	$this->template->{$name} = $value;
-}
-*/
-// Paramètres particuliers à cette page... pas trop comme méthode mais mieux que rien...
-$this->template->titre = $this->titre;
-// Paramètres liés au rewriting
-foreach ($this->params as $name=>$value)
-{
-	if (DEBUG_TEMPLATE)
-		echo "<p>PAGE->params_apply : $name : $value</p>\n";
-	$this->template->{$name} = $value;
-}
-
-}
-
 public function params_list()
 {
 
 return $this->params;
+
+}
+/**
+ * Returns list of default params
+ */
+public function params_default_list()
+{
+
+return $this->params_default;
 
 }
 
@@ -441,20 +586,6 @@ return $this->params;
  * @return unknown
  */
 public function __get($name)
-{
-
-if (in_array($name, self::$info_list))
-	return $this->{$name};
-
-}
-
-/**
- * Get a property
- *
- * @param string $name
- * @return unknown
- */
-public function get($name)
 {
 
 if (in_array($name, self::$info_list))
@@ -481,18 +612,115 @@ return $this->name;
 }
 
 /**
- * Retourne le template associé
+ * Update params from URL, GET and POST
+ * @param unknown_type $params
+ */
+public function params_update_url($params=array())
+{
+
+// Retrieved from the URL
+foreach($params as $i=>$value)
+{
+	if (isset($this->params_url[$i]) && ($name=$this->params_url[$i]))
+	{
+		if (DEBUG_TEMPLATE)
+			echo "<p>page(ID#$this->id)::params_update_url() : URL $name => $value</p>";
+		$this->params[$name] = $value;
+	}
+}
+
+// Retrieved from _GET
+foreach($_GET as $name=>$value)
+{
+	if (in_array($name, $this->params_url))
+	{
+		if (DEBUG_TEMPLATE)
+			echo "<p>page(ID#$this->id)::params_update_url() : GET $name => $value</p>";
+		$this->params[$name] = $value;
+	}
+}
+
+// Retrieved from _POST
+foreach($_POST as $name=>$value)
+{
+	if (in_array($name, $this->params_url))
+	{
+		if (DEBUG_TEMPLATE)
+			echo "<p>page(ID#$this->id)::params_update_url() : POST $name => $value</p>";
+		$this->params[$name] = $value;
+	}
+}
+
+}
+
+/**
+ * Set the page as default, so create the associated template
+ *
+ */
+public function set($params)
+{
+
+$this->params_load();
+$this->params_update_url($params);
+
+}
+
+/**
+ * Template creation
+ */
+protected function template_create()
+{
+
+// Create the template
+$this->template = clone template($this->template_id);
+
+}
+/**
+ * Apply page parameters to the associated template
+ */
+protected function params_apply()
+{
+
+// Sends some predefined parameters specifics to a "container" template ..? Not convinced...
+$this->template->titre = $this->titre;
+
+// Sends params to the template
+foreach ($this->params as $name=>$value)
+{
+	if (DEBUG_TEMPLATE)
+		echo "<p>page(ID#$this->id)::params_apply() : $name => $value</p>\n";
+	$this->template->{$name} = $value;
+}
+
+}
+
+/**
+ * Returns the associated template
  */
 function tpl()
 {
 
+/*
+if ($this->template)
+{
+	return $this->template;
+}
+else
+{
+	$this->template_create();
+	$this->params_apply();
+	return $this->template;
+}
+*/
+
+$this->template_create();
 $this->params_apply();
 return $this->template;
 
 }
 
 /**
- * Construct the url
+ * Returns the url to the page
  *
  * @return string
  */
@@ -519,6 +747,12 @@ else // template
 }
 
 }
+/**
+ * Returns a rewritten url to the page
+ * @param unknown_type $ref
+ * @param unknown_type $params
+ * @param unknown_type $concat
+ */
 public function url_rewrite($ref, $params=array(), $concat=false)
 {
 
@@ -531,14 +765,22 @@ else
 	return SITE_BASEPATH.SITE_LANG."/$ref,$this->id.html";
 
 }
-
+/**
+ * Returns a rewritten url to the page
+ * @param unknown_type $text
+ */
 public function url_html($text="")
 {
 
 return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id.html";
 
 }
-
+/**
+ * Returns an HTML link to the page
+ * @param unknown_type $params
+ * @param unknown_type $text
+ * @param unknown_type $text2
+ */
 public function link($params=array(), $text="", $text2="")
 {
 
@@ -549,11 +791,14 @@ else
 
 }
 
+/**
+ * Execute scripts to update params, etc.
+ */
 public function action()
 {
 
-foreach($this->params as $_name=>$_value)
-	${$_name} = &$this->params[$_name];
+foreach($this->params as $_name=>&$_value)
+	${$_name} = $_value;
 
 foreach($this->script_list as $_filename)
 {

@@ -20,16 +20,28 @@ protected $default_id = 0;
 protected $list = array();
 protected $list_id = array();
 protected $list_name = array();
+protected $list_type = array();
 
 public function __construct()
 {
 
-$query = db()->query("SELECT id, name FROM _template");
-while (list($id, $name)=$query->fetch_row())
+$query = db()->query("SELECT id, name, type FROM _template");
+while (list($id, $name, $type)=$query->fetch_row())
 {
 	$this->list_id[$name] = $id;
 	$this->list_name[$id] = $name;
+	$this->list_type[$type][] = $id;
 }
+
+}
+
+/**
+ * Returns le 
+ */
+public function type_list($name)
+{
+
+return $this->list_type[$name];
 
 }
 
@@ -76,6 +88,51 @@ else
 
 }
 
+/**
+ * Add a template
+ * @param array $template
+ */
+public function add(array $template)
+{
+
+if (!(isset($template["name"]) && isset($template["type"]) && isset($template["cache_maxtime"]) && isset($template["title"]) && isset($template["description"]) && isset($template["details"])))
+{
+	return false;
+}
+else
+{
+	$query_string = "INSERT INTO `_template` (`name`, `type`, `cache_maxtime`) VALUES ('".$template["name"]."', '".$template["type"]."', '".$template["cache_maxtime"]."')";
+	$query = db()->query($query_string);
+	if ($id = $query->last_id())
+	{
+		$query_string = "INSERT INTO `_template_lang` (`id`, `lang_id`, `title`, `description`, `details`) VALUES ('$id', '".SITE_LANG_DEFAULT_ID."', '".addslashes($template["title"])."', '".addslashes($template["description"])."', '".addslashes($template["details"])."')";
+		$query = db()->query($query_string);
+		if (isset($template["library"]) && is_array($template["library"]) && (count($template["library"]) > 0))
+		{
+			$query_library_list = array();
+			foreach($template["library"] as $library_id)
+			{
+				if (library()->get($library_id))
+				{
+					$query_library_list[] = "($id, $library_id)";
+				}
+			}
+			if (count($query_library_list)>0)
+			{
+				$query_string = " INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
+				db()->query($query_string);
+			}
+		}
+		return $id;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+}
+
 }
 
 /**
@@ -88,7 +145,11 @@ class template
 protected $id=0;
 
 protected $type="";
+
 protected $name="";
+protected $title="";
+protected $description="";
+protected $details="";
 
 /*
  * Obsolète à terme
@@ -121,13 +182,6 @@ protected $tpl_filename = "";
 protected $script_list = array();
 
 /*
- * Acceptation de TOUTES les variables (attention danger)
- * Utiliser avec parcimonie (voire pas du tout) les variables dans ce type de template,
- * et préférer leur utilisation dans des sous-templates dédiés à des tâches (header, contenu, footer, etc.) 
- */
-protected $container = 0;
-
-/*
  * Cache related infos
  */
 protected $cache_id = "";
@@ -136,6 +190,9 @@ protected $cache_filename = "";
 protected $cache_mintime = 0;
 protected $cache_maxtime = 0;
 protected $login_dependant = 0;
+
+protected static $infos = array("type", "name", "cache_mintime", "cache_maxtime", "login_dependant");
+protected static $infos_lang = array("title", "description", "details");
 
 function __construct($id, $query=true, $params=array())
 {
@@ -148,23 +205,21 @@ if (is_array($params) && count($params)>0)
 	foreach ($params as $name=>$value)
 			$this->params[$name] = $value;
 
-// Voir si c'est bien utile, je pense que oui pour certaines biblio de fonctions
-//$this->library_query();
-//$this->library_load();
-
 }
 
 /**
  * Query required infos on template before using it
  * @param unknown_type $infos
  */
-protected function query($infos=array())
+public function query()
 {
 
 // Global infos
-list($this->type, $this->name, $this->container, $this->cache_mintime, $this->cache_maxtime, $this->login_dependant) =
-	db()->query("SELECT `type`, `name`, `container`, `cache_mintime`, `cache_maxtime`, `login_dependant` FROM `_template` WHERE `id`='".$this->id."'")->fetch_row();
+list($this->type, $this->name, $this->cache_mintime, $this->cache_maxtime, $this->login_dependant, $this->title, $this->description, $this->details) =
+	db()->query("SELECT `_template`.`type`, `_template`.`name`, `_template`.`cache_mintime`, `_template`.`cache_maxtime`, `_template`.`login_dependant`, `_template_lang`.`title`, `_template_lang`.`description`, `_template_lang`.`details` FROM `_template`, `_template_lang` WHERE `_template`.`id`=`_template_lang`.`id` AND `_template_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID." AND `_template`.`id`='".$this->id."'")->fetch_row();
+
 $this->tpl_filename = "template/".$this->name.".tpl.php";
+
 // Params
 $this->param_list = array();
 $this->param_list_detail = array();
@@ -183,6 +238,7 @@ while ($param = $query->fetch_row())
 {
 	$this->param_list_detail[$param[0]][$param[1]][$param[2]]=$param[3];
 }
+
 // Script list
 $this->script_list = array();
 $query = db()->query("SELECT `name` FROM `_template_scripts` WHERE `template_id`='".$this->id."'");
@@ -209,26 +265,87 @@ while (list($library_id) = $query->fetch_row())
 }
 
 /**
+ * Update template (warning, there is a dedicated function to update each param)
+ * 
+ * @param integer $id
+ * @param array $template
+ */
+public function update($infos)
+{
+
+foreach(self::infos as $name)
+	if (isset($infos[$name]))
+		$this->{$name} = $infos[$name];
+foreach(self::infos_lang as $name)
+	if (isset($infos[$name]))
+		$this->{$name} = $infos[$name];
+
+if (isset($infos["library_list"]) && is_array($infos["library_list"]))
+{
+	$this->library_list = array();
+	foreach ($infos["library_list"] as $library_id)
+		if (library()->exists($library_id))
+		{
+			$this->library_list[] = $library_id;
+		}
+}
+
+$this->db_update();
+
+}
+/**
+ * Update template base infos in database
+ */
+public function db_update()
+{
+
+// Base infos
+$l = array();
+foreach (self::infos as $name)
+	$l[] = "`_template`.`$name`='".db()->string_escape($this->{$name})."'";
+// Language infos
+$l = array();
+foreach (self::infos_lang as $name)
+	$l[] = "`_template_lang`.`$name`='".db()->string_escape($this->{$name})."'";
+
+db()->query("UPDATE `_template`, `_template_lang` SET ".implode(", ", $l)." WHERE `_template`.`id`='$this->id' AND `_template`.`id`=`_template_lang`.`id` AND `_template_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID);
+
+// Libraries dependences
+db()->query("DELETE FROM `_template_library_ref` WHERE `template_id`='$this->id'");
+$query_library_list = array();
+foreach($this->library_list as $library_id)
+{
+	$query_library_list[] = "($this->id, $library_id)";
+}
+if (count($query_library_list)>0)
+{
+	$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
+	db()->query($query_string);
+}
+
+}
+
+/**
  * Load the libraries associated to the template
  */
-function library_load()
+protected function library_load()
 {
 
 foreach ($this->library_list as $library_id)
 {
-	if (DEBUG_LIBRARY == true)
-		echo "<p>Loading library ID#$library_id from template ID#$this->id</p>\n";
+	if (DEBUG_LIBRARY)
+		echo "<p>template(ID#$this->id)::library_load() : ID#$library_id</p>\n";
 	library($library_id)->load();
 }
 
 }
 
 /**
- * Assignment of params
+ * Assignment of params from the page or parent templates
  */
 public function __set($name, $value)
 {
-	if ($this->container || in_array($name, $this->param_list))
+	if ($this->type == 'container' || in_array($name, $this->param_list)) // TODO : use only type and destroy container var
 	{
 		if (DEBUG_TEMPLATE)
 			echo "<p>DEBUG : TEMPLATE($this->id)->__set : $name : $value</p>\n";
@@ -239,6 +356,16 @@ public function __set($name, $value)
 		if (DEBUG_TEMPLATE)
 			echo "<p>DEBUG : TEMPLATE($this->id)->__set NOT DEFINED : $name</p>\n";
 	}
+}
+
+/**
+ * Returns the list of params
+ */
+public function param_list()
+{
+
+return $this->param_list_detail;
+
 }
 
 /**
@@ -357,20 +484,22 @@ if (count($this->script_list))
 protected function cache_id_set()
 {
 
-$params_str = "'$this->id'";
-if ($this->container)
+if ($this->login_dependant)
+		$params_str = "$this->id,".login()->id();
+else
+		$params_str = "$this->id,0";
+
+// Each param sent to the template is used, with precision of its name
+if ($this->type == "container")
 {
-	if ($this->login_dependant)
-		$params_str .= ",_account='".login()->id()."'";
 	foreach($this->params as $name=>$value)
 	{
 		$params_str .= ",$name='".addslashes(json_encode($value))."'";
 	}
 }
+// Each param defined in the template is used (no need to specify it, using the order)
 else
 {
-	if ($this->login_dependant)
-		$params_str .= ",_account='".login()->id()."'";
 	foreach($this->param_list as $name)
 	{
 		$params_str .= ",$name";
@@ -488,6 +617,33 @@ echo $tpl;
 
 }
 
+public static function subtemplates($tpl)
+{
+
+if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
+{
+	$return = array();
+	foreach($matches as $match)
+	{
+		if ($id=template()->exists_name($match[1]))
+		{
+			if (isset($match[3]))
+			{
+				//echo $match[3]." : ";
+				//print_r(json_decode($match[3], true));
+				$return[] = array("id"=>$id, "params"=>json_decode($match[3], true));
+			}
+			else
+			{
+				$return[] = array("id"=>$id);
+			}
+		}
+	}
+	return $return;
+}
+
+}
+
 /**
  * Returns cached template file
  */
@@ -495,7 +651,7 @@ protected function cache_return()
 {
 
 $filesize = filesize($this->cache_filename);
-$tpl = fread(fopen($this->cache_filename, "r"), ($filesize>0) ? $filesize : 1);
+$tpl = ($filesize>0) ? fread(fopen($this->cache_filename, "r"), $filesize) : "";
 
 if (preg_match_all("/\[\[INCLUDE_TEMPLATE:(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
 {
@@ -512,6 +668,48 @@ if (preg_match_all("/\[\[INCLUDE_TEMPLATE:(.*)\]\]/", $tpl, $matches, PREG_SET_O
 				if (DEBUG_TEMPLATE)
 					echo "<p>--> $name : $value</p>\n";
 				template($id)->__set($name, $value);
+			}
+			$tpl = str_replace($match[0], template($id), $tpl);
+		}
+	}
+}
+
+if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
+{
+	foreach($matches as $match)
+	{
+		if ($id=template()->exists_name($match[1]))
+		{
+			if (DEBUG_TEMPLATE)
+				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id</p>\n";
+			// TODO : VOIR SI PB DE RECURSION !!!!
+			template($id)->params_reset();
+			// Passage des paramètres
+			if (isset($match[3]))
+			{
+				$param_list = template($id)->param_list();
+				$params = json_decode($match[3], true);
+				if ($params == true)
+				{
+					foreach($param_list as $name=>$detail)
+					{
+						if (isset($this->params[$name]))
+						{
+							if (DEBUG_TEMPLATE)
+								echo "<p>--> $name : $name</p>\n";
+							template($id)->__set($name, $this->params[$name]);
+						}
+					}
+				}
+				elseif (is_array($params)) foreach ($params as $name=>$name_from)
+				{
+					if (isset($this->params[$value]) && isset($param_list[$name]))
+					{
+						if (DEBUG_TEMPLATE)
+							echo "<p>--> $name_from : $name</p>\n";
+						template($id)->__set($name, $name_from);
+					}
+				}
 			}
 			$tpl = str_replace($match[0], template($id), $tpl);
 		}
@@ -547,6 +745,27 @@ if (isset($this->params[$name]))
 
 }
 
+function id()
+{
+
+return $this->id;
+
+}
+
+function name()
+{
+
+return $this->name;
+
+}
+
+function title()
+{
+
+return $this->title;
+
+}
+
 }
 
 /**
@@ -568,8 +787,6 @@ protected function cache_id_set()
 $params_str = "";
 if ($this->container)
 {
-	if ($this->login_dependant)
-		$params_str .= ",_account='".login()->id()."'";
 	foreach($this->params as $name=>$value)
 	{
 		$params_str .= ",$name='".addslashes(json_encode($value))."'";
@@ -577,8 +794,6 @@ if ($this->container)
 }
 else
 {
-	if ($this->login_dependant)
-		$params_str .= ",_account='".login()->id()."'";
 	foreach($this->param_list as $name)
 	{
 		$params_str .= ",$name";

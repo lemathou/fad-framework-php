@@ -40,6 +40,19 @@ while ($library = $query->fetch_assoc())
 
 }
 
+public function exists($id)
+{
+	
+if (isset($this->list[$id]))
+{
+	return true;
+}
+else
+{
+	return false;
+}
+
+}
 
 public function get($id)
 {
@@ -50,7 +63,7 @@ if (isset($this->list[$id]))
 }
 else
 {
-	die("TRYING TO ACCESS A INCONSISTENT LIBRARY");
+	return null;
 }
 
 }

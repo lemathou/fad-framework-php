@@ -56,7 +56,11 @@ function globals()
 {
 
 if (!isset($GLOBALS["globals"]))
-	$GLOBALS["globals"] = $_SESSION["globals"] = new globals();
+{
+	if (!isset($_SESSION["globals"]))
+		$_SESSION["globals"] = new globals();
+	$GLOBALS["globals"] = $_SESSION["globals"];
+}
 
 return $GLOBALS["globals"];
 	

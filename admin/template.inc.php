@@ -5,7 +5,7 @@
   * 
   * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
@@ -15,14 +15,6 @@ if (!defined("ADMIN_OK"))
 }
 
 define("LANG_ID", 2);
-
-// Libraries
-$library_list = array();
-$query = db()->query(" SELECT id , name FROM _library ");
-while ($library = $query->fetch_assoc())
-{
-	$library_list[$library["id"]] = $library["name"];
-}
 
 // Insert
 if (isset($_POST["insert"]) && is_array($template=$_POST["insert"]) && isset($template["name"]))
@@ -39,53 +31,28 @@ if (isset($template["library"]) && is_array($template["library"]) && (count($tem
 	$query_perm_list = array();
 	foreach($template["library"] as $library_id)
 	{
-		if (isset($library_list[$library_id]))
+		if (library()->exists($library_id))
 		{
 			$query_library_list[] = "( $id , $library_id )";
 		}
 	}
 	if (count($query_library_list)>0)
 	{
-		$query_string = " INSERT INTO `_template_library_ref` ( `template_id` , `library_id` ) VALUES ".implode(" , ",$query_library_list);
+		$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
 		db()->query($query_string);
 	}
 }
 
 echo "<p>Le template a été ajouté avec succès, vous pouvez le modifier ci-dessous.</p>\n";
 
-
 }
 
 // Update
-if (isset($_POST["update"]) && is_array($template=$_POST["update"]))
+if (isset($_POST["update"]) && is_array($_POST["update"]))
 {
 
-$query_string = "UPDATE `_template` SET `type` = '".addslashes($template["type"])."', `name` = '".addslashes($template["name"])."', `cache_maxtime` = '".addslashes($template["cache_maxtime"])."', `login_dependant` = '".addslashes($template["login_dependant"])."' WHERE id = '$template[id]' ";
-db()->query($query_string);
-
-$query_string = "UPDATE `_template_lang` SET `title` = '".addslashes($template["title"])."' , `description` = '".addslashes($template["description"])."' , `details` = '".addslashes($template["details"])."' WHERE id = '$template[id]' AND lang_id='".SITE_LANG_DEFAULT_ID."'";
-db()->query($query_string);
-
-db()->query("DELETE FROM `_template_library_ref` WHERE `template_id`='$template[id]'");
-if (isset($template["library"]) && is_array($template["library"]) && (count($template["library"]) > 0))
-{
-	$query_library_list = array();
-	foreach($template["library"] as $library_id)
-		if (isset($library_list[$library_id]))
-			$query_library_list[] = "( '$template[id]' , '$library_id' )";
-	if (count($query_library_list)>0)
-	{
-		$query_string = " INSERT INTO `_template_library_ref` ( `template_id` , `library_id` ) VALUES ".implode(" , ",$query_library_list);
-		db()->query($query_string);
-	}
-}
-
-if (isset($template["filecontent"]))
-{
-	$filename = "template/$template[name].tpl.php";
-	fwrite(fopen($filename,"w"), htmlspecialchars_decode($template["filecontent"]));
-}
-
+$template = template($_POST["update"]["id"]);
+$template->update($_POST["update"]);
 
 }
 
@@ -141,6 +108,15 @@ $template = $query->fetch_assoc();
 		,language: "fr"
 		,syntax: "php"	
 	});
+	editAreaLoader.init({
+		id: "update[script]"	// id of the textarea to transform		
+		,start_highlight: true	// if start with highlight
+		,allow_resize: "both"
+		,allow_toggle: true
+		,word_wrap: false
+		,language: "fr"
+		,syntax: "php"	
+	});
 </script>
 
 <form action="?id=<?=$id?>" method="POST">
@@ -148,7 +124,9 @@ $template = $query->fetch_assoc();
 <tr>
 	<td class="label" width="200">ID</td>
 	<td width="300"><input name="update[id]" value="<?=$template["id"]?>" readonly /></td>
-	<td rowspan="10"><textarea id="update[filecontent]" name="update[filecontent]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="30"><?php
+	<td rowspan="11">
+	<h3 style="margin-bottom: 0px;">TEMPLATE</h3>
+	<textarea id="update[filecontent]" name="update[filecontent]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
 	$filename = "template/$template[name].tpl.php";
 	if (file_exists($filename) && filesize($filename))
 	{
@@ -158,7 +136,20 @@ $template = $query->fetch_assoc();
 	{
 		$content="";
 	}
-	?></textarea></td>
+	?></textarea>
+	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle (optionnel)</h3>
+	<textarea id="update[script]" name="update[script]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
+	$filename = "template/scripts/$template[name].inc.php";
+	if (file_exists($filename) && filesize($filename))
+	{
+		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
+	}
+	else
+	{
+		$content="";
+	}
+	?></textarea>
+	</td>
 </tr>
 <tr>
 	<td class="label">Type</td>
@@ -215,12 +206,12 @@ $template = $query->fetch_assoc();
 	{
 		$template["library"][] = $library_id;
 	}
-	foreach($library_list as $i => $j)
+	foreach(library()->list_get() as $i=>$library)
 	{
 		if (in_array($i, $template["library"]))
-			print "<option value=\"$i\" selected>$j</option>";
+			print "<option value=\"$i\" selected>$library->name</option>";
 		else
-			print "<option value=\"$i\">$j</option>";
+			print "<option value=\"$i\">$library->name</option>";
 	}
 	?>
 	</select></td>
@@ -235,10 +226,11 @@ $template = $query->fetch_assoc();
 <h2>Gestion des paramètres</h2>
 <?php
 // Ajout
-if (isset($_POST["param_add"]) && ($param_add=$_POST["param_add"]))
+if (isset($_POST["param_add"]) && is_array($param_add=$_POST["param_add"]))
 {
-	db()->query("INSERT INTO `_template_params` ( template_id , order, datatype , name , defaultvalue ) VALUES ( '$id' , '".$param_add["order"]."', '".$param_add["datatype"]."' , '".$param_add["name"]."' , '".addslashes($param_add["defaultvalue"])."' )");
-	db()->query("INSERT INTO `_template_params_lang` ( template_id , lang_id , name , description ) VALUES ( '$id' , '".SITE_LANG_ID."' , '".$param_add["name"]."' , '".addslashes($param_add["description"])."' )");
+	list($param_add["order"]) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$id'")->fetch_row();
+	db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `defaultvalue`) VALUES ('$id', '".$param_add["order"]."', '".$param_add["datatype"]."', '".$param_add["name"]."', '".addslashes($param_add["defaultvalue"])."' )");
+	db()->query("INSERT INTO `_template_params_lang` (`template_id`, `lang_id`, `name`, `description`) VALUES ('$id', '".SITE_LANG_ID."', '".$param_add["name"]."', '".addslashes($param_add["description"])."' )");
 	echo "<p>Le paramètre $param_add[name] a bien été ajouté.</p>\n";
 }
 // Suppression
@@ -261,7 +253,7 @@ if (isset($_POST["param_edit"]))
 	{
 		db()->query("UPDATE `_template_params` SET name='$param[name]' , datatype='$param[datatype]' , defaultvalue='$param[defaultvalue]' WHERE template_id='$id' AND name='$name'");
 		db()->query("UPDATE `_template_params_lang` SET description='".addslashes($param["description"])."' WHERE template_id='$id' AND name='$name' AND lang_id='".SITE_LANG_ID."'");
-		if (isset($param["option_add"]["optname"]) && $opt_add=$param["option_add"])
+		if (isset($param["option_add"]["optname"]) && ($opt_add=$param["option_add"]) && isset($opt_add["opttype"]) && $opt_add["opttype"])
 		{
 			db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, opttype, optvalue) VALUES ('$id', '$name', '$opt_add[optname]', '$opt_add[opttype]', '".addslashes($opt_add["optvalue"])."')");
 		}
@@ -300,7 +292,7 @@ if ($query->num_rows())
 <tr>
 	<td>Datatype</td>
 	<td><select name="param_edit[<?=$param["name"]?>][datatype]"><?php
-	$query = db()->query("SELECT `_datatype`.`name` , `_datatype_lang`.`title` FROM `_datatype` LEFT JOIN `_datatype_lang` ON `_datatype`.`id`=`_datatype_lang`.`datatype_id` ORDER BY `_datatype_lang`.`title`");
+	$query = db()->query("SELECT `_datatype`.`name`, `_datatype_lang`.`title` FROM `_datatype` LEFT JOIN `_datatype_lang` ON `_datatype`.`id`=`_datatype_lang`.`datatype_id` ORDER BY `_datatype_lang`.`title`");
 	while(list($name, $title)=$query->fetch_row())
 	{
 		if ($param["datatype"] == $name)
@@ -387,37 +379,59 @@ if ($query->num_rows())
 }
 ?>
 
+<form action="?id=<?=$id?>" method="post">
 <table>
 <tr>
-	<td>&nbsp;</td>
+	<td colspan="2">&nbsp;</td>
 	<td>Name</td>
-	<td>Order</td>
 	<td>description</td>
 	<td>Datatype</td>
 	<td>Defaultvalue</td>
 </tr>
 <?
 
-$template["params"] = array();
-$query_params = db()->query(" SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' ORDER BY t1.order");
+if (isset($_POST["order_change"]) && is_array($_POST["order_change"]))
+{
+	foreach ($_POST["order_change"] as $name=>$order)
+	{
+		if (list($oldorder) = db()->query("SELECT `order` FROM `_template_params` WHERE `template_id`='$id' AND `name`='".db()->string_escape($name)."'")->fetch_row())
+		{
+			db()->query("UPDATE `_template_params` SET `order`=`order`-1 WHERE `template_id`='$id' AND `order`>'$oldorder'");
+			db()->query("UPDATE `_template_params` SET `order`='".db()->string_escape($order)."' WHERE `template_id`='$id' AND `name`='".db()->string_escape($name)."'");
+			db()->query("UPDATE `_template_params` SET `order`=`order`+1 WHERE `template_id`='$id' AND `order`>='".db()->string_escape($order)."' AND  `name`!='".db()->string_escape($name)."'");
+		}
+	}
+}
+
+list($ordermax) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$id'")->fetch_row();
+
+$query_params = db()->query("SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' ORDER BY t1.order");
 while ($param = $query_params->fetch_assoc())
 {
 ?>
 <tr>
 	<td><a href="?id=<?php echo $id; ?>&param_delete=<?=$param["name"]?>" onclick="return(confirm('Êtes-vous sûr de vouloir effacer ?'))" style="color:red;border:1px red dotted;">X</a></td>
+	<td><select id="order_change[<?=$param["name"]?>]" onchange="this.name=this.id;this.form.submit();"><?php
+	for ($i=0;$i<$ordermax;$i++)
+	{
+		if ($param["order"] == $i)
+			echo "<option value=\"$i\" selected>$i</option>\n";
+		else
+			echo "<option value=\"$i\">$i</option>\n";
+	}
+	?></select></td>
 	<td><a href="?id=<?php echo $id; ?>&param_edit=<?=$param["name"]?>"><?=$param["name"]?></a></td>
-	<td><?=$param["order"]?></td>
 	<td><?=$param["description"]?></td>
-	<td><?=$param["datatype"]?></td>
+	<td><?=data()->title($param["datatype"])?></td>
 	<td><input type="text" value="<?=$param["defaultvalue"]?>" readonly /></td>
 </tr>
 <?php
 }
-
 ?>
 </table>
+</form>
 
-<p>Ajouter un paramètre :</p>
+<h3>Ajouter un paramètre :</h3>
 <form action="?id=<?=$id?>" method="post">
 <table>
 <tr>
@@ -433,10 +447,9 @@ while ($param = $query_params->fetch_assoc())
 	<td><select name="param_add[datatype]">
 		<option value="">-- Sélectionner --</option>
 	<?php
-	$query = db()->query("SELECT t1.name , t2.title FROM _datatype as t1 LEFT JOIN _datatype_lang as t2 ON t1.id=t2.datatype_id ORDER BY t2.title");
-	while(list($name, $title)=$query->fetch_row())
+	foreach(data()->list_get() as $datatype)
 	{
-		echo "<option value=\"$name\">$title</option>\n";
+		echo "<option value=\"$datatype[name]\">$datatype[title]</option>\n";
 	}
 	?>
 	</select></td>
@@ -516,12 +529,12 @@ if (isset($_POST["insert"]))
 	<td class="label">Libraries</td>
 	<td><select name="insert[library][]" size="4" multiple>
 	<?
-	foreach($library_list as $i => $j)
+	foreach(library()->list_get() as $i => $j)
 	{
 		if (in_array($i, $template["library"]))
-			print "<option value=\"$i\" selected>$j</option>";
+			print "<option value=\"$i\" selected>$j->title</option>";
 		else
-			print "<option value=\"$i\">$j</option>";
+			print "<option value=\"$i\">$j->title</option>";
 	}
 	?>
 	</select></td>

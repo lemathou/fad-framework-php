@@ -3,9 +3,9 @@
 /**
   * $Id: login.inc.php 76 2009-10-15 09:24:20Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
@@ -21,7 +21,7 @@ class account
 
 protected $id = 0;
 protected $email = "";
-protected $password_crypt = "";
+protected $password_crypt = ""; // TODO : verify and supress it if possible
 
 protected $type;
 protected $perm_list = array();
@@ -54,7 +54,8 @@ if (isset($this->{$name}))
 	return $this->{$name};
 else
 {
-	trigger_error("ACCOUNT(ID#$this->id)->__get('$name') : does not exists  ");
+	if (DEBUG_LOGIN)
+		trigger_error("ACCOUNT(ID#$this->id)->__get('$name') : does not exists  ");
 	return null;
 }
 
@@ -62,6 +63,9 @@ else
 
 function __set($name, $value)
 {
+
+if (!login()->perm(6))
+	die("NOT Authorized to update an user account directly !");
 
 if (isset($this->{$name}))
 {
@@ -84,11 +88,6 @@ if ($infos = $query->fetch_assoc())
 	foreach($infos as $i=>$j)
 		$this->{$i} = $j;
 }
-
-}
-
-function get($infos)
-{
 
 }
 
@@ -162,13 +161,16 @@ public function refresh()
 
 $this->disconnect_reason = 0;
 
+// Volontary session restart (and refresh the page)
 if (isset($_GET["_session_restart"]))
 {
 	$_SESSION = array();
 	session_regenerate_id();
 	session_destroy();
 	header("Location: ".$_SERVER["REDIRECT_URL"]);
+	die();
 }
+// Volontary session destruction
 elseif (isset($_GET["_session_kill"]))
 {
 	$_SESSION = array();
@@ -176,14 +178,17 @@ elseif (isset($_GET["_session_kill"]))
 	session_destroy();
 	die("Session successfully Killed. <a href=\"/".SITE_BASEPATH.SITE_LANG_DEFAULT."/\">Back to Home page</a>");
 }
-elseif (isset($_POST["_login"]["username"]) && isset($_POST["_login"]["password_crypt"])) // Login par formulaire
+// Usual login by form (reserved var _login)
+elseif (isset($_POST["_login"]["username"]) && isset($_POST["_login"]["password_crypt"]))
 {
 	$this->connect($_POST["_login"]["username"], $_POST["_login"]["password_crypt"], (isset($_POST["_login"]["permanent"]))?array("permanent"):array());
 }
-elseif (isset($_POST["_login"]["disconnect"])) // déconnexion
+// Volontary disconnection
+elseif (isset($_POST["_login"]["disconnect"]))
 {
 	$this->disconnect();
 }
+// Connexion by permanent cookie
 elseif (!$this->id && isset($_COOKIE["sid"]) && is_string($_COOKIE["sid"]) && strlen($_COOKIE["sid"]) == 32)
 {
 	$this->connect_sid($_COOKIE["sid"]);
@@ -439,7 +444,9 @@ function login()
 
 if (!isset($GLOBALS["login"]))
 {
-	$GLOBALS["login"] = $_SESSION["login"] = new login();
+	if (!isset($_SESSION["login"]))
+		$_SESSION["login"] = new login();
+	$GLOBALS["login"] = $_SESSION["login"];
 }
 
 return $GLOBALS["login"];

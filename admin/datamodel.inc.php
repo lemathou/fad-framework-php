@@ -3,9 +3,9 @@
 /**
   * $Id: datamodel.inc.php 58 2009-03-03 15:47:37Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
@@ -14,18 +14,21 @@ if (!defined("ADMIN_OK"))
 
 if (isset($_POST["_datamodel_insert"]))
 {
-	db()->query("INSERT INTO _datamodel ( `name`, `library_id`, `table` ) VALUES ( '".db()->string_escape($_POST["name"])."', '".db()->string_escape($_POST["library_id"])."', '".db()->string_escape($_POST["table"])."' )");
-	$id = db()->last_id();
-	db()->query("INSERT INTO _datamodel_lang ( `id` , `lang_id` , `label` , `description` ) VALUES ( '$id' , '".SITE_LANG_ID."' , '".db()->string_escape($_POST["label"])."' , '".db()->string_escape($_POST["description"])."' )");
+	datamodel()->add($_POST);
+}
+
+if (isset($_POST["_datamodel_delete"]))
+{
+	datamodel()->del($_POST["_datamodel_delete"]);
 }
 
 ?>
 
 <form method="get">
 <select name="id" onchange="this.form.submit()"><?php
-foreach (datamodel()->list_id_get() as $name=>$id)
+foreach (datamodel()->list_name_get() as $name=>$id)
 {
-	if (isset($_GET["id"]) && $id == $_GET["id"])
+	if (isset($_GET["id"]) && ($id==$_GET["id"]))
 		echo "<option value=\"$id\" selected>[$id] $name</option>";
 	else
 		echo "<option value=\"$id\">[$id] $name</option>";
@@ -36,17 +39,19 @@ foreach (datamodel()->list_id_get() as $name=>$id)
 
 <?php
 
-if (isset($_GET["id"]) && is_a($datamodel=datamodel($_GET["id"]), "datamodel"))
+if (isset($_GET["id"]) && datamodel()->exists($id=$_GET["id"]))
 {
 
-list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$_GET[id]'")->fetch_row();
+$datamodel = datamodel($id);
+
+list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$id'")->fetch_row();
 
 // Datamodel update
 if (isset($_POST["_datamodel_update"]))
 {
-	db()->query("UPDATE _datamodel SET `library_id`='".db()->string_escape($_POST["library_id"])."',  `name`='".db()->string_escape($_POST["name"])."', `table`='".db()->string_escape($_POST["table"])."' WHERE `id`='".$_GET["id"]."'");
-	db()->query("UPDATE _datamodel_lang SET `label`='".db()->string_escape($_POST["label"])."', `description`='".db()->string_escape($_POST["description"])."' WHERE `id`='".$_GET["id"]."' AND `lang_id`='".SITE_LANG_ID."'");
+	$datamodel->update($_POST);
 }
+
 // Datamodel field update
 if (isset($_POST["_field_update"]))
 {
@@ -443,7 +448,7 @@ else
 
 <hr />
 
-<form method="post">
+<form method="post" action="?add">
 <p>Ajouter un datamodel</p>
 <table>
 <tr>
@@ -456,7 +461,13 @@ else
 </tr>
 <tr>
 	<td>Librairie :</td>
-	<td><input name="library_id" value="0" size="2" /></td>
+	<td><select name="library_id"><?php
+	foreach (library()->list_get() as $library)
+	{
+		echo "<option value=\"$library->id\">$library->name</option>\n";
+	}
+	?>
+	</select></td>
 </tr>
 <tr>
 	<td>Table :</td>

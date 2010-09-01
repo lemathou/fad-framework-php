@@ -527,11 +527,13 @@ function db()
 
 if (!isset($GLOBALS["db"]))
 {
-	return $GLOBALS["db"] = $_SESSION["db"] = new db(array("hostname"=>DB_HOST, "username"=>DB_USERNAME, "password"=>DB_PASSWORD, "database"=>DB_BASE, "charset"=>DB_CHARSET));
-	// destroy db password & co.
+	if (!isset($_SESSION["db"]))
+		$_SESSION["db"] = new db(array("hostname"=>DB_HOST, "username"=>DB_USERNAME, "password"=>DB_PASSWORD, "database"=>DB_BASE, "charset"=>DB_CHARSET));
+	$GLOBALS["db"] = $_SESSION["db"];
+	// TODO : destroy db password & co and so do not.
 }
-else
-	return $GLOBALS["db"];
+
+return $GLOBALS["db"];
 
 }
 

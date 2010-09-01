@@ -55,6 +55,9 @@ define("SITE_ORGANISATION","");
 // Image options : Jpeg Quality
 define("IMG_JPEG_QUALITY", 90);
 
+// APC CACHE
+define("APC_CACHE",true);
+
 // Template cache
 define("TEMPLATE_CACHE",true);
 define("TEMPLATE_CACHE_TIME",300);

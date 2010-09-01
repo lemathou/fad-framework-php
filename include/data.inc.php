@@ -3,9 +3,9 @@
 /**
   * $Id: agregat.inc.php 40 2008-10-01 07:37:20Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   * location : /include : global include folder
   * 
@@ -16,7 +16,7 @@
   * 
   */
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 /**
@@ -69,20 +69,20 @@ if (DEBUG_GENTIME ==  true)
  */
 
 /**
- * Abstract base data type
+ * "Abstract" base datatype
  * 
- * Il s'agit du modèle de données général qui sera surchargé pour obtenir les types de donnée suivant :
- * - texte basique
- * - texte enrichi (html)
- * - nombres : entiers, à virgule
- * - date/heure
- * - liste
- * - tableau
- * - fichier executable
- * - fichier word
- * - fichier exell
- * - image
- * - vidéo
+ * This is the main datatype, from which we will create the others :
+ * - String (with maxlength)
+ * - Rich text (HTML)
+ * - Numbers : Integer, Float, etc.
+ * - Date/Time
+ * - Lists (width single or multiple selection)
+ * - Tables (complex arrays)
+ * - Binary and executables
+ * - Word, Excel, Openoffice, etc. files
+ * - Pictures, Photos, etc.
+ * - Videos
+ * - Sounds
  * - etc.
  * 
  * L'intérêt de spécifier chaque donnée entrée est aussi de s'abstraire du moteur de stockage (MySQL pour l'instant).
@@ -98,10 +98,8 @@ if (DEBUG_GENTIME ==  true)
  * - de méthodes d'affichage
  * 
  */
-abstract class data
+class data
 {
-
-const test = "Test DATA";
 
 /**
  * Nom à utiliser comme identifiant (unique dans un contexte car sert de référence les agrégats)
@@ -113,11 +111,10 @@ protected $name="";
 protected $label="";
 
 /**
- * Datamodel relié (optionnel)
+ * Linked datamodel (optionnal)
  * 
  * @var unknown_type
  */
-protected $datamodel=null;
 protected $datamodel_id=0;
 
 /**
@@ -177,11 +174,6 @@ public static $disp_opt_list = array("mime_type", "ref_field_disp");
  * @var array
  */
 protected $form_opt = array();
-// JS pour le traitement en formulaire
-//public $js_onchange="";
-//public $js_onselect="";
-//public $js_onfocus="";
-//public $js_onblur="";
 public static $form_opt_list = array("type", "tabindex", "accesskey", "size", "cols", "rows", "width", "height");
 
 /**
@@ -223,26 +215,24 @@ public function __get($name)
 
 if (in_array($name, array("name", "type", "label", "value", "structure_opt", "db_opt", "disp_opt", "form_opt")))
 	return $this->{$name};
+elseif ($name == "datamodel")
+	return datamodel($this->datamodel_id);
 else
 	return NULL;
-
-}
-
-public function __isset($name)
-{
-
-$list = array ( "name" , "type" , "label", "value" , "structure_opt" , "db_opt" , "disp_opt" , "form_opt" );
-if (in_array($name, $list))
-	return true;
-else
-	return false;
 
 }
 
 public function datamodel_set($datamodel_id=0)
 {
 
+// TODO : Cannot verify the consistence of the datamodel, the fields are constructed at the same time... 
 $this->datamodel_id = $datamodel_id;
+
+}
+public function datamodel()
+{
+
+return datamodel($this->datamodel_id);
 
 }
 
@@ -255,11 +245,10 @@ $this->datamodel_id = $datamodel_id;
 public function structure_opt_set($name, $value)
 {
 
-// A FINIR : V�rifier que $value donn�e est dans le bon format.
-// Et pour �a, rien de mieux que les data_verify ;-)
+// TODO : verify the type of the value given in each case, using data verify
 if (in_array($name, self::$structure_opt_list))
 {
-	//echo "<br />datamodel #$this->datamodel_id, field #$this->name, structure_opt #$name :";
+	//echo "<br />DATA field $this->name, DATAMODEL #ID$this->datamodel_id, structure_opt : #$name";
 	//print_r($value);
 	$this->structure_opt[$name] = $value;
 	return true;
@@ -489,6 +478,8 @@ else
 public function value_set($value, $force=false)
 {
 
+//echo "<p>$this->name : $value / ".$this->verify($value)."</p>\n";
+
 // Verify and update
 if ($this->verify($value))
 {
@@ -521,10 +512,10 @@ public function __set($name, $value)
 {
 
 if ($name == "value")
-	return $this->value_set($value);
-else
-	return null;
-
+	$this->value_set($value, true);
+elseif ($name == "datamodel" && is_a($value, "datamodel"))
+	$this->datamodel_id = $value->id();
+	
 }
 
 /**
@@ -546,8 +537,12 @@ if ($value !== null || $this->required==true)
 		if ($return == true)
 		{
 			$name = "data_verify_$name";
+			//print_r($parameters);
 			if ($name::verify($value, $parameters) == false)
+			{
+				//echo "<br />Verify : ".$name::convert($value, $parameters);
 				$return = false;
+			}
 		}
 	}
 	return $return;
@@ -675,11 +670,9 @@ else
 }
 
 /**
- * Convert the value in HTML form format
- * A MODIFIER !!!
+ * Convert the value from an HTML form format
  *
  * @param unknown_type $value
- * @return unknown
  */
 public function value_from_form($value)
 {
@@ -691,7 +684,6 @@ $this->value_set($value, true);
 
 /**
  * Convert the value in HTML form format
- * A MODIFIER !!!
  *
  * @param unknown_type $value
  * @return unknown
@@ -708,15 +700,15 @@ return $this->value;
 /* BASE DATA TYPES */
 
 /**
- * Donnée de type texte : plus plus basic
- * Le formulaire associé est de type input/text
+ * String
+ * 
+ * With a maxlength
+ * Associated to an input/text form, and a varchar db field
  *
  */
 class data_string extends data
 {
 
-const test = "Test STRING";
-	
 protected static $id = 1;
 
 protected $type = "string";
@@ -792,10 +784,10 @@ return array( "type" => "string", "size" => $this->structure_opt["size"] );
 }
 
 /**
- * Donnée de type mot de passe
+ * Password
  * 
- * Gèe le type d'encodage
- * Le formulaire associé est de type input/password
+ * Can handle different encryption types
+ * Associated to a input/password form
  *
  */
 class data_password extends data_string
@@ -825,14 +817,15 @@ protected $form_opt = array
 }
 
 /**
- * Donnée de type texte : num�rique
+ * Integer (numeric)
  *
  */
 class data_integer extends data_string
 {
 
 protected static $id = 3;
-	
+
+// TODO : static
 protected $type = "integer";
 
 protected $structure_opt = array
@@ -891,7 +884,7 @@ return $return;
 }
 
 /**
- * Donnée de type texte : float
+ * Float (numeric)
  *
  */
 class data_float extends data_string
@@ -951,7 +944,10 @@ return $return;
 
 
 /**
- * Donnée de type texte
+ * Text
+ * 
+ * Plain text which can contains everything
+ * Usefull for long text
  *
  */
 class data_text extends data_string
@@ -1022,8 +1018,10 @@ return array( "type" => "string" );
 }
 
 /**
- * Donnée de type texte enrichi
- *
+ * Rich Text (HTML)
+ * 
+ * Can limit the use of some tags.
+ * 
  */
 class data_richtext extends data_text
 {
@@ -1072,9 +1070,9 @@ return array( "type" => "richtext" );
 }
 
 /**
- * Donnée de type select
+ * Select from a list
  * 
- * Un élément provenant d'une liste
+ * An element from an exhaustive given list
  *
  */
 class data_select extends data_string
@@ -1180,7 +1178,11 @@ return array("type" => "select", "value_list" => $value_list);
 }
 
 /**
- * Donnée de type date
+ * Date
+ * 
+ * using strftime() for the displaying
+ * Stored in french format but can be changed
+ * Associated to a jquery datepickerUI form and a date DB field
  * 
  */
 class data_date extends data_string
@@ -1192,7 +1194,7 @@ protected $type = "date";
 
 protected $structure_opt = array
 (
-	"date" => "j/m/Y", // A CORRIGER
+	"date" => "%A %d %B %G", // Defined for strftime()
 	"size" => 10,
 );
 
@@ -1212,8 +1214,8 @@ protected $form_opt = array
 public function __tostring()
 {
 
-if ($this->value)
-	return $this->value;
+if ($this->value && $this->value != "00/00/0000")
+	return strftime($this->structure_opt["date"], strtotime($this->value));
 else
 	return "<i>undefined</i>";
 
@@ -1228,6 +1230,17 @@ else
 	return false;
 
 }
+
+function view($style="%A %d %B %G")
+{
+
+if ($this->value && $this->value != "00/00/0000")
+	return strftime($style, strtotime($this->value));
+else
+	return "<i>undefined</i>";
+
+}
+
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1334,7 +1347,9 @@ else
 }
 
 /**
- * Donnée de type date
+ * Year
+ * 
+ * Associated to a year DB field
  * 
  */
 class data_year extends data_string
@@ -1409,7 +1424,7 @@ return array( "type" => "year" );
 }
 
 /**
- * Donnée de type date
+ * Time
  * 
  */
 class data_time extends data_string
@@ -1442,7 +1457,9 @@ return array( "type" => "time" );
 }
 
 /**
- * Donnée de type datetime
+ * Datetime (timestamp)
+ * 
+ * Associated to a datetime/timestamp DB field
  * 
  */
 class data_datetime extends data_string
@@ -1452,7 +1469,7 @@ protected $type = "datetime";
 
 protected $structure_opt = array
 (
-	"datetime" => "j M Y",
+	"datetime" => "%A %d %B %G", // Defined for strftime()
 	"size" => 19,
 );
 
@@ -1466,10 +1483,24 @@ protected $db_opt = array
 public function __tostring()
 {
 
-if ($this->value && $this->value != "0000-00-00 00:00:00")
-	return date($this->structure_opt["datetime"],strtotime($this->value));
+if ($this->value)
+	return strftime($this->structure_opt["datetime"], $this->value);
 else
 	return "<i>undefined</i>";
+
+}
+
+public function value_from_db($value)
+{
+
+return strtotime($value);
+
+}
+
+public function value_to_db()
+{
+
+return date("Y-m-d H:i:s", $this->value);
 
 }
 
@@ -1483,11 +1514,14 @@ return array( "type" => "datetime" );
 }
 
 /**
- * Donnée de type list
+ * List (array)
  * 
- * Elles peuvent être ordonnées ou indexées.
+ * Can be indexed or ordered
  * 
- * Le contenu est un ensemble d'objets data de même type
+ * The content is a set en elements of the same type
+ * Use the data_list_mixed to put different datatypes inside
+ * 
+ * Displaying uses jquery, and data is stored in json in a text DB field
  *
  */
 class data_list extends data
@@ -1543,12 +1577,22 @@ else
 
 }
 
+public function value_to_form()
+{
+
+print_r($this->value); 
+
+return $this->value;
+
+}
+
 }
 
 /**
- * Donnée de type select multiple
+ * Select multiple like
  * 
- * Un set d'éléments provenant d'une liste
+ * A set of elements from a given exhaustive list
+ * Associated to a select multiple form, and a 'set' DB field
  *
  */
 class data_fromlist extends data_list
@@ -1821,7 +1865,7 @@ echo "<a href=\"$this->filelocation/$this->filename\">$this->filename</a>";
 }
 
 /**
- * Donnée de type stream
+ * Stream
  *
  */
 class data_stream extends data
@@ -1832,7 +1876,7 @@ protected $type = "stream";
 }
 
 /**
- * Donnée de type image
+ * Image/Picture
  *
  */
 class data_image extends data_file
@@ -1867,7 +1911,7 @@ if (isset(self::$format_list[$format]))
 }
 
 /**
- * Donnée de type audio
+ * Audio
  *
  */
 class data_audio extends data_file
@@ -1896,7 +1940,7 @@ if (isset(self::$format_list[$format]))
 }
 
 /**
- * Donnée de type video
+ * Video
  *
  */
 class data_video extends data_file
@@ -1927,8 +1971,9 @@ if (isset(self::$format_list[$format]))
 /* More complex and specific data fields */
 
 /**
- * Number field to count objects
+ * Number
  * 
+ * Used to count objects, with method to help
  * Integer unsigned
  * 
  */
@@ -2010,7 +2055,7 @@ return array("type" => "float", "size" => 5, "precision" => 2);
 
 }
 /**
- * Number field to priorize
+ * Priority
  * 
  * Integer unsigned
  * 
@@ -2028,7 +2073,9 @@ data_integer::__construct($name, $value, $label, array("integer"=>array("signed"
 }
 
 /**
- * Boolean Field
+ * Boolean
+ * 
+ * Yes/No field ^^
  * 
  * Integer unsigned size 1
  * 
@@ -2120,8 +2167,9 @@ data_float::__construct($name, $value, $label, array("float"=>array("signed"=>fa
 
 
 /**
- * Money field
+ * Amount
  * 
+ * Used for money 
  * Float unsigned
  * 
  */
@@ -2145,7 +2193,9 @@ return $this->value." &euro;";
 }
 
 /**
- * ID field
+ * ID
+ * 
+ * ID of a dataobject
  * 
  * Field name fixed to id
  * Label fixed to ID
@@ -2211,7 +2261,7 @@ return $return;
 }
 
 /**
- * Name field
+ * Name
  *
  * Maxlength fixed to 64
  * Field size fixed to 20
@@ -2230,7 +2280,7 @@ data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $dis
 }
 
 /**
- * Email field
+ * Email
  *
  * Preg verified
  * Maxlength fixed to 64
@@ -2254,7 +2304,7 @@ function link()
 }
 
 /**
- * URL Field
+ * URL
  * 
  * Preg verified
  * Maxlength fixed to the standard data_string size (actually 256)
@@ -2300,7 +2350,7 @@ data_text::__construct($name, $value, $label, array("size"=>$size), $db_opt=arra
 }
 
 /**
- * Donnée de type object
+ * Object
  * 
  */
 class data_object extends data
@@ -2333,8 +2383,9 @@ protected $form_opt = array
 }
 
 /**
- * Donnée de type agrégat
- * En effet c'est un objet !
+ * Agregat/Datamodel
+ * 
+ * Used to store an object created using a datamodel
  *
  */
 class data_agregat extends data_object
@@ -2357,9 +2408,11 @@ protected $db_opt = array
 }
 
 /**
- * Donnée de type dataobject
- * C'est un object géré par une classe
- * et qui ne nécessite qu'un id pour être instancié
+ * Dataobject/Databank
+ * 
+ * Dataobjects a specific agregats of class data_bank_agregat,
+ * corresponding to a datamodel associated to a database.
+ * Thoses objects needs only an ID to be retrieved
  */
 class data_dataobject extends data_agregat
 {
@@ -2395,25 +2448,68 @@ function __tostring()
 //print_r($this->disp_opt);
 //echo (string)$this->value->{$this->disp_opt["ref_disp_field"]};
 
-if (is_a($this->value, "data_bank_agregat"))
+if (is_a($object=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat"))
 {
 	if (isset($this->disp_opt["ref_field_disp"]) && ($fieldname=$this->disp_opt["ref_field_disp"]) && isset(datamodel($this->structure_opt["databank"])->{$fieldname}))
 	{
-		return (string)$this->value->{$fieldname};
+		return (string)$object->{$fieldname};
 	}
 	else
-		return (string)$this->value;
+		return (string)$object;
 }
 else
 	return "";
 
 }
 
+function __get($name)
+{
+
+if ($name == "value")
+{
+	if ($this->value)
+		return databank($this->structure_opt["databank"],$this->value);
+	else
+		return null;
+}
+else
+	return data::__get($name);
+
+}
+
+/**
+ * Returns the object
+ */
+function object()
+{
+
+if ($this->value)
+		return databank($this->structure_opt["databank"], $this->value);
+	else
+		return null;
+
+}
+
+function __set($name, $value)
+{
+
+if ($name == "value")
+{
+	if (is_a($value, "data_bank_agregat"))
+		$this->value = $value->id->value;
+	else
+		$this->value = null;
+}
+else
+	return data::__set($name, $value);
+
+}
+
 function disp_url()
 {
 
-if (is_a($this->value, $this->structure_opt["databank"]."_agregat"))
-	return "<a href=\"http://".SITE_DOMAIN.SITE_BASEPATH."/".$this->structure_opt["databank"]."/".$this->value->id."/\">".$this->__tostring()."</a>";
+if (is_a($object=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat"))
+	return "<a href=\"http://".SITE_DOMAIN.SITE_BASEPATH."/".$this->structure_opt["databank"]."/".$this->value."/\">".$object."</a>";
 else
 	return "";
 
@@ -2422,8 +2518,9 @@ else
 function value_from_db($value)
 {
 
-if (is_numeric($value) && is_a(($object = databank($this->structure_opt["databank"],$value)), "data_bank_agregat"))
-	$this->value = $object;
+// No need to verify, it's from db ^^
+if (is_numeric($value))
+	$this->value = $value;
 else
 	$this->value = null;
 
@@ -2432,8 +2529,8 @@ else
 function value_to_db()
 {
 
-if (is_a($this->value, "data_bank_agregat"))
-	return (string)$this->value->id;
+if (is_a($object=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat"))
+	return $this->value;
 else
 	return null;
 
@@ -2442,8 +2539,8 @@ else
 function value_from_form($value)
 {
 
-if (is_numeric($value) && is_a($object=databank($this->structure_opt["databank"],$value),"data_bank_agregat"))
-	$this->value = $object;
+if (is_numeric($value) && is_a(($object=databank($this->structure_opt["databank"],$value)), "data_bank_agregat"))
+	$this->value = $value;
 else
 	$this->value = null;
 
@@ -2462,7 +2559,7 @@ if (($databank=databank($this->structure_opt["databank"])) && (($nb=$databank->c
 			$return .= "<option value=\"\"><i>-- Aucune valeur --</i></option>";
 		foreach($query as $object)
 		{
-			if (is_a($this->value, "data_bank_agregat") && (string)$this->value->id->value == "$object->id")
+			if (is_a($o=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat") && ($o->id->value == $object->id->value))
 			{
 				$return .= "<option value=\"$object->id\" selected=\"selected\">$object</option>";
 			}
@@ -2475,15 +2572,13 @@ if (($databank=databank($this->structure_opt["databank"])) && (($nb=$databank->c
 // Beaucoup de valeurs : liste Ajax complexe
 else
 {
-	if (is_a($this->value, "agregat"))
+	if (is_a(($object=databank($this->structure_opt["databank"],$this->value)), "data_bank_agregat"))
 	{
-		$id = $this->value->id;
-		$return = "<input type=\"hidden\" id=\"$this->name\" value=\"$id\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"".$this->__tostring()."\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" /><!--<input type=\"button\" value=\"UPDATE\" onclick=\"update('$this->name')\" />-->";
+		$return = "<input type=\"hidden\" id=\"$this->name\" value=\"$this->value\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"".$this->__tostring()."\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" /><!--<input type=\"button\" value=\"UPDATE\" onclick=\"update('$this->name')\" />-->";
 	}
 	else
 	{
-		$id = "";
-		$return = "<input type=\"hidden\" id=\"$this->name\" value=\"$id\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"Undefined\" class=\"undefined\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" />";
+		$return = "<input type=\"hidden\" id=\"$this->name\" value=\"\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"Undefined\" class=\"undefined\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" />";
 	}
 	$return .= "<div class=\"suggestionsBox\" id=\"".$this->name."_suggestions\" style=\"display: none;\"><div class=\"suggestionList\" id=\"".$this->name."_autoSuggestionsList\">&nbsp;</div></div>";
 	$return .= "<script type=\"text/javascript\">";
@@ -2522,10 +2617,10 @@ $databank = $this->structure_opt("databank");
 $query = $databank()->query();
 foreach ($query as $object)
 {
-	if ($this->value && "$this->value->id" == "$object->id")
+	if ($this->value == "$object->id")
 		$return .= "<option value=\"$object->id\" selected=\"selected\">$object</option>";
 	else
-		$return .= "<option value=\"$object->id\"> $object</option>";
+		$return .= "<option value=\"$object->id\">$object</option>";
 }
 
 $return .= "</select>\n";
@@ -2728,9 +2823,9 @@ else
 }
 
 /**
- * Donnée de type dataobject
- * C'est un object géré par une classe
- * et qui ne nécessite qu'un id pour être instancié
+ * List of dataobjects
+ * 
+ * Set of dataobjects from the same databank
  */
 class data_dataobject_list extends data_list
 {
@@ -3098,7 +3193,103 @@ else
 
 }
 
-if (DEBUG_GENTIME ==  true)
+/**
+ * Data types global container class
+ */
+class data_gestion
+{
+
+protected $list = array();
+protected $list_name = array();
+
+public function __construct()
+{
+
+$query = db()->query("SELECT t1.id, t1.name , t2.title FROM _datatype as t1 LEFT JOIN _datatype_lang as t2 ON t1.id=t2.datatype_id ORDER BY t2.title");
+while(list($id, $name, $title)=$query->fetch_row())
+{
+	$this->list[$id] = array("name"=>$name, "title"=>$title);
+	$this->list_name[$name] = $id;
+}
+
+}
+
+public function get($id)
+{
+
+if (isset($this->list[$id]))
+{
+	$datatype = "data_".$this->list[$id]["name"];
+	return new $datatype($this->list[$id]["name"], null);
+}
+else
+	return null;
+
+}
+
+public function id($name)
+{
+
+if (isset($this->list_name[$name]))
+	return $this->list_name[$name];
+else
+	return null;
+
+}
+
+public function title($name)
+{
+
+if (isset($this->list_name[$name]))
+	return $this->list[$this->list_name[$name]]["title"];
+else
+	return null;
+
+}
+
+public function list_get()
+{
+
+return $this->list;
+
+}
+
+}
+
+/**
+ * Data types access function
+ */
+function data($id=0)
+{
+
+if (!isset($GLOBALS["data_gestion"]))
+{
+	// APC
+	if (APC_CACHE)
+	{
+		if (!($GLOBALS["data_gestion"]=apc_fetch("data_gestion")))
+		{
+			$GLOBALS["data_gestion"] = new data_gestion();
+			apc_store("data_gestion", $GLOBALS["data_gestion"], APC_CACHE_GESTION_TTL);
+		}
+	}
+	// Session
+	else
+	{
+		if (!isset($_SESSION["data_gestion"]))
+			$_SESSION["data_gestion"] = new data_gestion();
+		$GLOBALS["data_gestion"] = $_SESSION["data_gestion"];
+	}
+}
+
+if ($id)
+	return $GLOBALS["data"]->get($id);
+else
+	return $GLOBALS["data"];
+
+}
+
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

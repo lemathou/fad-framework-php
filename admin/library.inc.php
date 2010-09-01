@@ -3,21 +3,16 @@
 /**
   * $Id: library.inc.php 58 2009-03-03 15:47:37Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 
-$library_list = array();
-$query = db()->query("SELECT id , name FROM _library ORDER BY name");
-while (list($i,$j)=$query->fetch_row())
-{
-	$library_list[$i] = $j;
-}
+$library_list = library()->list_detail();
 
 // Insert
 if (isset($_POST["insert"]) && is_array($_POST["insert"]))
@@ -50,36 +45,10 @@ elseif ($error = db()->error())
 }
 
 // Update
-if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]))
+if (isset($_POST["update"]) && is_array($update=$_POST["update"]) && isset($update["id"]) && library()->exists($update["id"]))
 {
 
-$update = $_POST["update"];
-$id = $update["id"];
-
-$query_string = " UPDATE `_library` SET `name` = '".addslashes($update["name"])."' , `description` = '".addslashes($update["description"])."' WHERE id = '$id' ";
-db()->query($query_string);
-$query_string = " UPDATE `_library_lang` SET `name` = '".addslashes($update["name_lang"])."' WHERE id = '$id' AND lang_id=".SITE_LANG_ID;
-db()->query($query_string);
-db()->query(" DELETE FROM `_library_ref` WHERE `id` = '$id' ");
-if (isset($update["library_list"]) && is_array($update["library_list"]) && (count($update["library_list"]) > 0))
-{
-	$query_library_list = array();
-	foreach($update["library_list"] as $library_id)
-	{
-		$query_library_list[] = "( '$library_id' , '$id' )";
-	}
-	if (count($query_library_list)>0)
-	{
-		$query_string = " INSERT INTO `_library_ref` ( `parent_id` , `id` ) VALUES ".implode(" , ",$query_library_list);
-		db()->query($query_string);
-	}
-}
-
-if (isset($update["filecontent"]))
-{
-	$filename = "library/$update[name].inc.php";
-	fwrite(fopen($filename,"w"), htmlspecialchars_decode($update["filecontent"]));
-}
+library($update["id"])->update($update);
 
 }
 ?>
@@ -106,13 +75,10 @@ table td
 
 <?php
 
-if (isset($_GET["id"]) && ($id=$_GET["id"]))
+if (isset($_GET["id"]) && isset($library_list[$id=$_GET["id"]]))
 {
 
-$query = db()->query(" SELECT t1.id , t1.name , t1.description , t2.name as name_lang FROM _library as t1 LEFT JOIN _library_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." WHERE t1.id='$id' ");
-if ($update = $query->fetch_assoc())
-{
-
+$update = $library_list[$id];
 $update["library_list"]=array();
 $query_library = db()->query(" SELECT parent_id FROM _library_ref WHERE id = '$id' ");
 while (list($library_id) = $query_library->fetch_row())
@@ -123,8 +89,15 @@ while (list($library_id) = $query_library->fetch_row())
 <form action="?id=<?=$id?>" method="POST">
 <table width="100%">
 <tr style="font-weight:bold;">
-	<td>ID :</td>
+	<td width="200">ID :</td>
 	<td><input name="update[id]" value="<?=$id?>" readonly /></td>
+	<td rowspan="10"><textarea id="update[filecontent]" name="update[filecontent]" style="width:100%" rows="40"><?php 
+	$filename = "library/$update[name].inc.php";
+	if (file_exists($filename))
+	{
+		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
+	}
+	?></textarea></td>
 </tr>
 <tr>
 	<td>Name :</td>
@@ -132,7 +105,7 @@ while (list($library_id) = $query_library->fetch_row())
 </tr>
 <tr>
 	<td>Nom complet :</td>
-	<td><input name="update[name_lang]" value="<?=$update["name_lang"]?>" /></td>
+	<td><input name="update[title]" value="<?=$update["title"]?>" style="width:100%" /></td>
 </tr>
 <tr>
 	<td>Description :</td>
@@ -144,21 +117,11 @@ while (list($library_id) = $query_library->fetch_row())
 	<?
 	foreach($library_list as $i => $j)
 		if (in_array($i, $update["library_list"]))
-			echo "<option value=\"$i\" selected>$j</option>";
+			echo "<option value=\"$i\" selected>$j[title]</option>";
 		elseif ($id != $i)
-			echo "<option value=\"$i\">$j</option>";
+			echo "<option value=\"$i\">$j[title]</option>";
 	?>
 	</select></td>
-</tr>
-<tr>
-	<td>Fichier :</td>
-	<td><textarea id="update[filecontent]" name="update[filecontent]" style="width:100%" rows="40"><?php 
-	$filename = "library/$update[name].inc.php";
-	if (file_exists($filename))
-	{
-		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
-	}
-	?></textarea></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>
@@ -167,7 +130,6 @@ while (list($library_id) = $query_library->fetch_row())
 </table>
 </form>
 <?php
-}
 
 }
 
@@ -211,8 +173,7 @@ else
 	<td>Dependances</td>
 </tr>
 <?
-$query = db()->query(" SELECT t1.id , t1.name , t1.description , t2.name as name_lang FROM _library as t1 LEFT JOIN _library_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." ORDER BY t1.name ");
-while ($library = $query->fetch_assoc())
+foreach ($library_list as $library)
 {
 
 $library_library = array();
@@ -224,13 +185,13 @@ while (list($id) = $query_library->fetch_row())
 	<td><a href="" onclick="return(confirm('Êtes vous bien certain de vouloir supprimer cette librairie ?'))" style="color:red; border:1px red solid;">X</a></td>
 	<td><a href="?id=<?php echo $library["id"]; ?>"><?php echo $library["id"]; ?></a></td>
 	<td><a href="?id=<?php echo $library["id"]; ?>"><?php echo $library["name"]; ?></a></td>
-	<td><?php echo $library["name_lang"]; ?></td>
+	<td><?php echo $library["title"]; ?></td>
 	<td><?php echo $library["description"]; ?></td>
 	<td><?php
 	$library_show = array();
 	foreach($library_list as $i => $j)
 		if (in_array($i, $library_library))
-			$library_show[] = $j;
+			$library_show[] = $j["title"];
 	if (count($library_show))
 		echo implode(" , ", $library_show);
 	?></td>

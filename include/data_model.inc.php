@@ -1,50 +1,77 @@
 <?
 
 /**
- * Les datamodels (modèles de données) sont destinés à :
- * - Modéliser des tables de base de donnée
- * - Modéliser un formulaire
- * - Modéliser plus largement un ensemble de données
- * - Remplir une maquette avec un ensemble de données typées et vérifiées
- * 
- * Il s'agit d'une liste de définitions de champs ainsi que de méthodes de travail
- * 
- * Il dispose aussi de méthodes de communication avec la base de donnée :
- * - Lecture
- * - Insertion
- * - Mise à jour
- * - Suppression
- * - Recherche simple/avancée
- * 
- */
+  * $Id: data_model.inc.php 40 2008-10-01 07:37:20Z mathieu $
+  * 
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  * 
+  * location : /include : global include folder
+  * 
+  * Data models
+  * Datamodels are designed to :
+  * - Modelise tables in database
+  * - Modelise a form
+  * - Modelise a set of data
+  * - Fill a template with a verified set of typed data
+  * 
+  * Il s'agit d'une liste de définitions de champs ainsi que de méthodes de travail
+  * 
+  * Il dispose aussi de méthodes de communication avec la base de donnée :
+  * - Lecture
+  * - Insertion
+  * - Mise à jour
+  * - Suppression
+  * - Recherche simple/avancée
+  * 
+  */
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 /**
- * Gestion des modèles de donnée (sans forcément de banque associée)
+ * Datamodel global managing class
  * 
  */
 class datamodel_gestion
 {
 
 protected $list = array();
-protected $list_id = array();
+protected $list_detail = array();
 protected $list_name = array();
 
 function __construct()
 {
 
-$query = db()->query("SELECT `id`, `name` FROM `_datamodel`");
-while (list($id, $name) = $query->fetch_row())
+$this->query();
+
+}
+
+/**
+ * Retrieve informations from DB
+ */
+function query()
 {
+
+$this->list = array();
+$this->list_detail = array();
+$this->list_name = array();
+
+$query = db()->query("SELECT `_datamodel`.`id`, `_datamodel`.`name`, `_datamodel`.`library_id`, `_datamodel`.`table`, `_datamodel_lang`.`label`, `_datamodel_lang`.`description` FROM `_datamodel` LEFT JOIN `_datamodel_lang` ON `_datamodel`.`id`=`_datamodel_lang`.`id` AND `_datamodel_lang`.`lang_id`='".SITE_LANG_ID."'");
+while ($datamodel = $query->fetch_assoc())
+{
+	$this->list_detail[$datamodel["id"]] = $datamodel;
+	$this->list_name[$datamodel["name"]] = $datamodel["id"];
 	//$this->list[$datamodel["id"]] = new datamodel($datamodel["id"]);
-	$this->list_id[$name] = $id;
-	$this->list_name[$id] = $name;
 }
 
 }
 
+/**
+ * Returns a datamodel using its ID
+ * @param unknown_type $id
+ */
 function get($id)
 {
 
@@ -52,60 +79,155 @@ if (isset($this->list[$id]))
 {
 	return $this->list[$id];
 }
-elseif (isset($this->list_name[$id]))
+elseif (APC_CACHE && ($datamodel=apc_fetch("datamodel_$id")))
 {
-	return $this->list[$id] = new datamodel($id);
+	return $this->list[$id] = $datamodel;
+}
+elseif (isset($this->list_detail[$id]))
+{
+	$datamodel = new datamodel($id, false, $this->list_detail[$id]);
+	if (APC_CACHE)
+		apc_store("datamodel_$id", $datamodel, APC_CACHE_DATAMODEL_TTL);
+	return $this->list[$id] = $datamodel;
 }
 elseif (DEBUG_DATAMODEL)
 {
 	trigger_error("Cannot create datamodel ID#$id");
 }
+else
+{
+	return null;
+}
 
 }
 
+function __isset($name)
+{
+
+return isset($this->list_name[$name]);
+
+}
+
+/**
+ * Retrieve a datamodel using its (unique) name
+ * @param unknown_type $name
+ */
+function __get($name)
+{
+
+if (isset($this->list_name[$name]))
+{
+	return $this->get($this->list_name[$name]);
+}
+else
+{
+	return null;
+}
+
+}
 function get_name($name)
 {
 
-if (isset($this->list_id[$name]) && ($id=$this->list_id[$name]) && isset($this->list[$id]))
-{
-	return $this->list[$id];
-}
-elseif (isset($id))
-{
-	return $this->get($id);
-}
-elseif (DEBUG_DATAMODEL)
-{
-	trigger_error("Cannot create datamodel ID#$id");
-}
+return $this->__get($name);
 
 }
 
-function exists($name)
+/**
+ * Returns if a datamodel exists
+ * @param $id
+ */
+function exists($id)
 {
 
-return isset($this->list_id[$name]);
+return isset($this->list_detail[$id]);
 
 }
-
-function loaded($id)
+function exists_name($name)
 {
 
-return isset($this->list[$id]);
+return isset($this->list_name[$name]);
 
 }
 
+/**
+ * Returns the list
+ */
 public function list_get()
 {
 
 return $this->list;
 
 }
-
-public function list_id_get()
+public function list_name_get()
 {
 
-return $this->list_id;
+return $this->list_name;
+
+}
+
+/**
+ * Add a datamodel
+ * @param array $infos
+ */
+public function add($infos)
+{
+
+if (!login()->perm(6))
+	die();
+
+if (is_array($infos) && isset($infos["name"]) && isset($infos["library_id"]) && isset($infos["table"]) && isset($infos["label"]) && isset($infos["description"]))
+{
+	if (db()->query("INSERT INTO _datamodel (`name`, `library_id`, `table`) VALUES ('".db()->string_escape($infos["name"])."', '".db()->string_escape($infos["library_id"])."', '".db()->string_escape($infos["table"])."')") && ($id = db()->last_id()))
+	{
+		db()->query("INSERT INTO _datamodel_lang (`id`, `lang_id`, `label`, `description`) VALUES ('$id', '".SITE_LANG_ID."', '".db()->string_escape($infos["label"])."', '".db()->string_escape($infos["description"])."')");
+		$this->list_detail[$id] = $infos;
+		$this->list_name[$infos["name"]] = $id;
+		if (APC_CACHE)
+			apc_store("datamodel_gestion", $this, APC_CACHE_GESTION_TTL);
+		return $id;
+	}
+	else
+	{
+		return false;
+	}
+}
+else
+{
+	return false;
+}
+
+}
+
+/**
+ * Delete a datamodel
+ * @param $id
+ */
+public function del($id)
+{
+
+if (!login()->perm(6)) // TODO : send email to admin
+	die();
+
+if (isset($this->list_detail[$id]))
+{
+	db()->query("DELETE FROM `_datamodel` WHERE `id`='$id'");
+	db()->query("DELETE FROM `_datamodel_lang` WHERE `id`='$id'");
+	db()->query("DELETE FROM `_datamodel_fields` WHERE `datamodel_id`='$id'");
+	db()->query("DELETE FROM `_datamodel_fields_lang` WHERE `datamodel_id`='$id'");
+	db()->query("DELETE FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$id'");
+	db()->query("DELETE FROM `_datamodel_fields_opt_lang` WHERE `datamodel_id`='$id'");
+	unset($this->list_name[$this->list_detail[$id]["name"]]);
+	unset($this->list_detail[$id]);
+	if (isset($this->list[$id]))
+		unset($this->list[$id]);
+	if (APC_CACHE)
+		apt_store("datamodel_gestion", $this, APC_CACHE_GESTION_TTL);
+	return true;
+}
+else
+{
+	return false;
+}
 
 }
 
@@ -122,6 +244,9 @@ protected $id = 0;
 
 protected $name = "";
 protected $label = "";
+protected $description = "";
+
+protected $table = "";
 
 /**
  * Library containing required objects infos
@@ -141,19 +266,37 @@ protected $fields_key = array();
 protected $fields_required = array();
 protected $fields_calculated = array();
 
-
+protected $db_opt = array(); // TODO : usefull only in case of datamodel with databank !
 protected $disp_opt = array();
 
+protected $action_list = array();
+
+protected static $infos = array("id", "name", "library_id", "table");
+protected static $infos_lang = array("label", "description");
 
 // Données à sauver en session
-private $serialize_list = array("id", "name", "label", "library_id", "fields", "fields_key", "fields_required", "fields_calculated", "db_opt", "disp_opt", "action_list");
+private $serialize_list = array("id", "name", "library_id", "table", "label", "description", "fields", "fields_key", "fields_required", "fields_calculated", "db_opt", "disp_opt", "action_list");
 public $serialize_save_list = array();
 
-public function __construct($id, $fields=array())
+public function __construct($id, $query=true, $infos=array())
 {
 
 $this->id = $id;
-$this->query_info();
+
+$infos_list = array_merge(self::$infos, self::$infos_lang);
+
+foreach ($infos as $name=>$value)
+{
+	if (in_array($name, $infos_list))
+		$this->{$name} = $value;
+}
+
+$this->db_opt["table"] = $this->table; // TODO : usefull only in case of datamodel with databank !
+
+if ($query)
+	$this->query_info();
+
+$this->query_fields();
 
 /* DEPRECATED
 if (is_array($fields))
@@ -163,26 +306,25 @@ if (is_array($fields))
 
 }
 
-public function library()
-{
-
-if ($this->library_id)
-	return library($this->library_id);
-else
-	return null;
-
-}
-
 public function query_info()
 {
 
 // Infos de base sur le datamodel
-$query = db()->query("SELECT t1.`name`, t1.`library_id` , t1.`table` , t2.`label` FROM _datamodel as t1 LEFT JOIN _datamodel_lang as t2 ON t1.id=t2.id WHERE t1.id='".db()->string_escape($this->id)."'");
+$query = db()->query("SELECT t1.`name`, t1.`library_id` , t1.`table` , t2.`label` FROM _datamodel as t1 LEFT JOIN _datamodel_lang as t2 ON t1.id=t2.id AND t2.lang_id='".SITE_LANG_ID."' WHERE t1.id='$this->id'");
 if ($query->num_rows())
 {
-	list($this->name, $this->library_id, $this->db_opt["table"], $this->label) = $query->fetch_row();
+	list($this->name, $this->library_id, $this->table, $this->label) = $query->fetch_row();
+	$this->db_opt["table"] = $this->table;
 	//echo "<p>Datamodel $name : id $this->id</p>";
 }
+
+}
+
+/**
+ * Retrieve informations about fields
+ */
+public function query_fields()
+{
 
 $this->fields = array();
 $this->fields_key = array();
@@ -197,7 +339,12 @@ while ($field=$query->fetch_assoc())
 		$field["defaultvalue"] = "null";
 	}
 	$datatype = "data_$field[type]";
-	$this->add( new $datatype($field["name"], $field["defaultvalue"], $field["label"] ) , $field["opt"] );
+	$this->fields[$field["name"]] = new $datatype($field["name"], $field["defaultvalue"], $field["label"]);
+	$this->fields[$field["name"]]->datamodel_set($this->id);
+	if ($field["opt"] == "key")
+		$this->fields_key[] = $field["name"];
+	elseif ($field["opt"] == "required")
+		$this->fields_required[] = $field["name"];
 	if ($field["lang"])
 	{
 		$this->fields[$field["name"]]->db_opt_set("lang",true);
@@ -217,23 +364,112 @@ $this->library()->load();
 
 }
 
+public function update($infos)
+{
+
+if (!login()->perm(6))
+	die();
+
+if (is_array($infos))
+{
+	$infos_list = array_merge(self::$infos, self::$infos_lang);
+	foreach ($infos as $name=>$value)
+	{
+		if (in_array($name, $infos_list))
+			$this->{$name} = $value;
+	}
+	$this->db_opt["table"] = $this->table;
+	if (APC_CACHE)
+		apc_store("datamodel_$this->id", $this, APC_CACHE_DATAMODEL_TTL);
+	//$this->db_update();
+}
+
+}
+
+/**
+ * Update the datamodel in database
+ */
+public function db_update()
+{
+
+$query_list = array();
+foreach (self::$infos as $name)
+	$query_list[] = "`$name`='".$this->{$name}."'";
+db()->query("UPDATE _datamodel SET ".implode(", ", $query_list)." WHERE `id`='$this->id'");
+
+$query_list = array();
+foreach (self::$infos_lang as $name)
+	$query_list[] = "`$name`='".$this->{$name}."'";
+db()->query("UPDATE _datamodel_lang SET ".implode(", ", $query_list)." WHERE `id`='$this->id' AND `lang_id`='".SITE_LANG_ID."'");
+
+}
+
 public function __tostring()
 {
 
 return $this->label;
 
 }
+public function label()
+{
 
+return $this->label;
+
+}
+public function id()
+{
+
+return $this->id;
+
+}
+public function name()
+{
+
+return $this->name;
+
+}
+
+/**
+ * Returns the associated library
+ */
+public function library()
+{
+
+if ($this->library_id)
+	return library($this->library_id);
+else
+	return null;
+
+}
+
+/**
+ * Returns the complete data field list
+ */
+public function fields()
+{
+
+return $this->fields;
+
+}
+
+/**
+ * Returns a data field
+ * @param unknown_type $name
+ */
 public function __get($name)
 {
 
 if (isset($this->fields[$name]))
 	return $this->fields[$name];
 elseif (DEBUG_DATAMODEL)
-	trigger_error("Property $name doesn't exist");
+	trigger_error("datamodel($this->id)::__get($name) : field doesn't exists");
 
 }
 
+/**
+ * Returns if a data field is defined
+ * @param unknown_type $name
+ */
 public function __isset($name)
 {
 
@@ -241,13 +477,14 @@ return isset($this->fields[$name]);
 
 }
 
+/**
+ * Delete a data field
+ * @param unknown_type $name
+ */
 public function __unset($name)
 {
 
-if (isset($this->fields[$name]))
-	unset($this->fields[$name]);
-elseif (DEBUG_DATAMODEL)
-	trigger_error("Field $name doesn't exist");
+$this->field_delete($name);
 
 }
 
@@ -257,17 +494,20 @@ elseif (DEBUG_DATAMODEL)
 public function __set($name, data $field)
 {
 
-if (is_a($field, "data"))
-{
-	$field->datamodel_set($this);
-	return $this->fields[$name] = $field;
-}
-elseif (DEBUG_DATAMODEL)
-	trigger_error("Field $name is not a data field object");
+$this->field_add($field);
 
 }
-public function add(data &$field, $options="")
+public function add(data $field, $options="")
 {
+
+return $this->field_add($field, $options);
+
+}
+public function field_add(data $field, $options="")
+{
+
+if (!login()->perm(6))
+	die();
 
 if (!is_a($field, "data"))
 {
@@ -291,41 +531,35 @@ else
 }
 
 }
-public function field_add(data $field, $options="")
+/**
+ * Delete a field
+ * @param string $name
+ */
+public function field_delete($name)
 {
 
-$this->add($field, $options);
+if (!login()->perm(6))
+	die();
+
+if (isset($this->fields[$name]))
+{
+	db()->query("DELETE FROM `_datamodel_fields` WHERE `name`='$name' AND `datamodel_id`='$this->id'");
+	db()->query("DELETE FROM `_datamodel_fields_lang` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
+	db()->query("DELETE FROM `_datamodel_fields_opt` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
+	db()->field_delete($this->table, $name);
+	return true;
+}
+else
+{
+	return false;
+}
 
 }
 
-public function fields()
-{
-
-return $this->fields;
-
-}
-
-public function name()
-{
-
-return $this->name;
-
-}
-
-public function label()
-{
-
-return $this->label;
-
-}
-
-public function id()
-{
-
-return $this->id;
-
-}
-
+/**
+ * Add a field to the required field list
+ * @param unknown_type $name
+ */
 public function field_required_add($name)
 {
 
@@ -333,7 +567,12 @@ if ($name && isset($this->fields[$name]) && !in_array($name, $this->fields_requi
 	$this->fields_required[] = $name;
 
 }
+public function field_required_del($name)
+{
 
+// TODO
+
+}
 public function fields_required()
 {
 
@@ -341,6 +580,10 @@ return $this->fields_required;
 
 }
 
+/**
+ * Add a field to the key field list
+ * @param unknown_type $name
+ */
 public function field_key_add($name)
 {
 
@@ -348,7 +591,12 @@ if ($name && isset($this->fields[$name]) && !in_array($name, $this->fields_key))
 	$this->fields_key[] = $name;
 
 }
+public function field_key_del($name)
+{
 
+// TODO
+
+}
 public function fields_key()
 {
 
@@ -356,6 +604,11 @@ return $this->fields_key;
 
 }
 
+/**
+ * Add a field to the calculated field list
+ * @param unknown_type $name
+ * @param unknown_type $list
+ */
 public function field_calculated_add($name, $list)
 {
 
@@ -365,7 +618,12 @@ if ($name && isset($this->fields[$name]) && !isset($this->fields_calculated[$nam
 }
 
 }
+public function field_calculated_del($name, $list)
+{
 
+// TODO
+
+}
 public function fields_calculated()
 {
 
@@ -373,6 +631,21 @@ return $this->fields_calculated;
 
 }
 
+/**
+ * Returns the list of associated actions
+ */
+public function action_list()
+{
+
+return $this->action_list;
+
+}
+
+/**
+ * Display a form to create a new object with default values
+ * A better way is to create a new object and display the form using an object method 
+ * @param $name
+ */
 function insert_form($name="")
 {
 
@@ -497,13 +770,6 @@ foreach($list as $object)
 
 }
 
-public function action_list()
-{
-
-return $this->action_list;
-
-}
-
 }
 
 /**
@@ -525,7 +791,7 @@ protected $db_opt = array
 );
 
 /*
- * Public actions / Kind of controller part of the MVC design
+ * Public actions / Kind of controller part of a MVC-like design
  */
 protected $action_list = array
 (
@@ -571,7 +837,6 @@ else
 	return false;
 
 }
-
 public function db_opt($name)
 {
 
@@ -691,7 +956,7 @@ public function db_empty()
 public function db_insert($fields=array())
 {
 
-// On v�rifie les champs requis
+// Verify required fields
 foreach ($this->fields_required as $name)
 {
 	// Missing field
@@ -702,10 +967,9 @@ foreach ($this->fields_required as $name)
 			trigger_error("Dadamodel '$this->name' db_insert() : Missing required field '$name'");
 	}
 }
-// On v�rifie les champs et on vire les clefs
 
+// Verify fields and supress keys
 $query_list = array();
-
 foreach ($fields as $name=>$field)
 {
 	// Missing field
@@ -715,7 +979,7 @@ foreach ($fields as $name=>$field)
 		if (DEBUG_DATAMODEL)
 			trigger_error("Dadamodel '$this->name' db_insert() : Undefined field '$name'");
 	}
-	// Clef : a modifier car un index n'est pas forc�ment auto_increment et il peut y en avoir +ieurs...
+	// TODO : Keys : a modifier car un index n'est pas forc�ment auto_increment et il peut y en avoir +ieurs...
 	// disons que ce sera ainsi pour une classe h�rit�e qui g�gera les dataobjects
 	elseif (in_array($name, $this->fields_key))
 	{
@@ -1294,6 +1558,10 @@ else
 
 }
 
+/**
+ * Returns the number of objects corresponding to the given param list
+ * @param unknown_type $params
+ */
 public function db_count($params=array())
 {
 
@@ -1356,6 +1624,12 @@ else
 
 }
 
+/**
+ * Display a Select form
+ * @param $params
+ * @param $url
+ * @param $varname
+ */
 function select_form($params=array(), $url="", $varname="id")
 {
 ?>
@@ -1402,7 +1676,6 @@ protected $label = "";
  * 
  * @var array
  */
-protected $datamodel;
 protected $datamodel_id=0;
 
 /**
@@ -1429,17 +1702,23 @@ if ($datamodel !== null && is_a($datamodel, "datamodel"))
 public function datamodel_set(datamodel $datamodel)
 {
 
+$this->datamodel_id = $datamodel->id();
+$this->name = &$this->datamodel()->name();
+$this->label = &$this->datamodel()->label();
+
 $this->fields = array();
-
-$this->datamodel = $datamodel;
-$this->name = &$this->datamodel->name();
-$this->label = &$this->datamodel->label();
-
 // Champs par défaut :
-foreach($this->datamodel->fields_key() as $name)
-	$this->fields[$name] = clone $this->datamodel->{$name};
-foreach($this->datamodel->fields_required() as $name)
-	$this->fields[$name] = clone $this->datamodel->{$name};
+foreach($this->datamodel()->fields_key() as $name)
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+foreach($this->datamodel()->fields_required() as $name)
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+
+}
+
+public function datamodel()
+{
+
+return datamodel($this->datamodel_id);
 
 }
 
@@ -1457,30 +1736,9 @@ if (isset($this->fields[$name]))
 {
 	return $this->fields[$name];
 }
-elseif (isset($this->datamodel->{$name}))
+elseif (isset($this->datamodel()->{$name}))
 {
-	/*
-	$query_ok = true;
-	foreach ($this->datamodel->db_opt("key") as $key)
-		if (!isset($this->fields[$key]))
-		{
-			$query_ok = false;
-			trigger_error("Datamodel '$this->name' agregat : Missing index key '$key' to retrieve field '$name'");
-		}
-		else
-		{
-			$params[$key] = $this->fields[$key]->value_to_db();
-		}
-	if ($query_ok)
-	{
-		$this->db_retrieve(array($name));
-	return $this->fields[$name];
-	}
-	else
-	*/
-	{
-		return $this->fields[$name] = clone $this->datamodel->{$name};
-	}
+	return $this->fields[$name] = clone $this->datamodel()->{$name};
 }
 elseif (DEBUG_DATAMODEL)
 {
@@ -1507,11 +1765,11 @@ return $this->name;
 public function __set($name, $value)
 {
 
-if (isset($this->datamodel->{$name}))
+if (isset($this->datamodel()->{$name}))
 {
 	if (!isset($this->fields[$name]))
 	{
-		$this->fields[$name] = clone $this->datamodel->{$name};
+		$this->fields[$name] = clone $this->datamodel()->{$name};
 	}
 	$this->fields[$name]->value = $value;
 }
@@ -1520,6 +1778,10 @@ elseif (DEBUG_DATAMODEL)
 	
 }
 
+/**
+ * Returns defined field list (eventually not complete !)
+ * TODO : find a solution
+ */
 public function field_list()
 {
 
@@ -1527,6 +1789,11 @@ return $this->fields;
 
 }
 
+/**
+ * TODO : What is it ??
+ * @param unknown_type $data_name
+ * @param data $data
+ */
 public function update($data_name, data $data)
 {
 
@@ -1534,15 +1801,6 @@ public function update($data_name, data $data)
 
 }
 
-/*
- * Get Datamodel
- */
-public function datamodel()
-{
-
-return $this->datamodel;
-	
-}
 
 /**
  * Set/init all fileds to default value
@@ -1551,57 +1809,20 @@ return $this->datamodel;
 public function init()
 {
 
-foreach ($this->datamodel->fields() as $name=>$field)
+foreach ($this->datamodel()->fields() as $name=>$field)
 	$this->fields[$name] = clone $field;
 
 }
 
 /**
- * Return the default view
- *
+ * Return a view of the object, using a datamodel template
  * @param unknown_type $name
- * @return unknown
  */
-public function display($name="")
-{
-
-return $this->view($name);
-
-}
-
-/**
- * Return the default form view
- *
- * @param unknown_type $name
- * @return unknown
- */
-public function form($name="")
-{
-
-$this->db_retrieve_all();
-
-if (!$name)
-	$name = $this->datamodel->name();
-
-if (file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
-{
-	$view = new datamodel_display_tpl_php($this->datamodel, $this->fields);
-	$view->tplfile_set($name);
-}
-else
-{
-	$view = new datamodel_update_form($this->datamodel, $this->fields);
-}
-
-return $view;
-
-}
-
 public function view($name="")
 {
 
 if (!$name)
-	$name = $this->datamodel->name();
+	$name = $this->datamodel()->name();
 
 //$this->db_retrieve_all();
 
@@ -1614,25 +1835,75 @@ if ($id=template()->exists_name("datamodel/$name"))
 }
 
 }
-
+/**
+ * Display
+ * @param unknown_type $name
+ */
 public function disp($name="")
 {
 
 echo $this->display($name);
 
 }
-
-public function action_list()
+/**
+ * Return the default view
+ *
+ * @param unknown_type $name
+ * @return unknown
+ */
+public function display($name="")
 {
 
-return $this->datamodel->action_list();
+return $this->view($name);
+
+}
+/**
+ * Return the default form view
+ *
+ * @param unknown_type $name
+ * @return unknown
+ */
+public function form($name="")
+{
+
+$this->db_retrieve_all();
+
+if (!$name)
+	$name = $this->datamodel()->name();
+
+if (file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
+{
+	$view = new datamodel_display_tpl_php($this->datamodel(), $this->fields);
+	$view->tplfile_set($name);
+}
+else
+{
+	$view = new datamodel_update_form($this->datamodel(), $this->fields);
+}
+
+return $view;
 
 }
 
+/**
+ * Returns the datamodel action list
+ */
+public function action_list()
+{
+
+return $this->datamodel()->action_list();
+
+}
+
+/**
+ * Execute an action
+ * @param unknown_type $method
+ * @param unknown_type $params
+ */
 public function action($method, $params)
 {
 
-$action_list = &$this->datamodel->action_list();
+$action_list = &$this->datamodel()->action_list();
 if (isset($action_list[$method]) && $action=$action_list[$method]["method"])
 {
 	$this->$action($params);
@@ -1640,6 +1911,10 @@ if (isset($action_list[$method]) && $action=$action_list[$method]["method"])
 
 }
 
+/**
+ * Update the object from a form
+ * @param unknown_type $fields
+ */
 public function update_from_form($fields=array())
 {
 
@@ -1655,7 +1930,7 @@ if (count($fields) > 0)
 	// Champs calculés
 	$calculate = array();
 	$retrieve = array();
-	foreach($this->datamodel->fields_calculated() as $name=>$list)
+	foreach($this->datamodel()->fields_calculated() as $name=>$list)
 	{
 		// On parcours les champs utiles dans un calcul
 		foreach($list as $value)
@@ -1697,20 +1972,26 @@ if (count($fields) > 0)
  * Agregat pour databank
  *
  */
-class data_bank_agregat extends agregat
+abstract class data_bank_agregat extends agregat
 {
 
-function __construct(datamodel $datamodel, $id=null, $fields=array())
+protected $datamodel_id = 0; // NEEDS to be overloaded !!
+
+function __construct($id=null, $fields=array())
 {
 
-agregat::__construct($datamodel);
-if (is_numeric($id))
+agregat::__construct(datamodel($this->datamodel_id));
+if (is_numeric($id) && $id>0)
 {
 	$this->db_retrieve(array("id"=>$id), $fields);
 }
 
 }
 
+/**
+ * Returns the ID
+ * MUST be overloaded in datamodel library
+ */
 function __tostring()
 {
 
@@ -1721,9 +2002,9 @@ return (string)$this->fields["id"];
 /**
  * Retrieve fields from database
  *
- * @param unknown_type $params
- * @param unknown_type $fields
- * @return unknown
+ * @param array $fields
+ * @param boolean $force
+ * @return boolean
  */
 public function db_retrieve($fields, $force=false)
 {
@@ -1733,7 +2014,7 @@ $params = array();
 if (!is_array($fields))
 	$fields = array($fields);
 // Verify params
-foreach ($this->datamodel->fields_key() as $name)
+foreach ($this->datamodel()->fields_key() as $name)
 	if (!isset($this->fields[$name]))
 	{
 		if (DEBUG_DATAMODEL)
@@ -1749,7 +2030,7 @@ if (!$force) foreach ($fields as $i=>$name)
 		unset($fields[$i]);
 
 // Effective Query
-if ($query_ok && count($fields) && ($list = $this->datamodel->db_fields($params, $fields)))
+if ($query_ok && count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
 {
 	if (count($list) == 1)
 	{
@@ -1757,6 +2038,8 @@ if ($query_ok && count($fields) && ($list = $this->datamodel->db_fields($params,
 		{
 			$this->fields[$name] = $field;
 		}
+		if (APC_CACHE)
+			apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
 		return true;
 	}
 	else
@@ -1780,7 +2063,7 @@ public function db_retrieve_all()
 {
 
 $fields = array();
-foreach ($this->datamodel->fields() as $name=>$field)
+foreach ($this->datamodel()->fields() as $name=>$field)
 	if (!isset($this->fields[$name]))
 		$fields[]=$name;
 
@@ -1813,10 +2096,12 @@ $this->db_retrieve($params);
 public function db_update($options=array())
 {
 
-if ($result = $this->datamodel->db_update($this->fields))
+if ($result = $this->datamodel()->db_update($this->fields))
 {
 	//echo "INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )";
-	db()->query("INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )");
+	db()->query("INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel()->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )");
+	if (APC_CACHE)
+		apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
 }
 
 return $result;
@@ -1831,9 +2116,9 @@ return $result;
 public function db_insert($options=array())
 {
 
-if ($id = $this->datamodel->db_insert($this->fields))
+if ($id = $this->datamodel()->db_insert($this->fields))
 {
-	$this->id->value_from_form($id);
+	$this->fields["id"]->value_from_form($id);
 	return true;
 }
 else
@@ -1853,10 +2138,25 @@ function datamodel($id=null)
 
 if (!isset($GLOBALS["datamodel_gestion"]))
 {
-	$GLOBALS["datamodel_gestion"] = $_SESSION["datamodel_gestion"] = new datamodel_gestion();
+	// APC
+	if (APC_CACHE)
+	{
+		if (!($GLOBALS["datamodel_gestion"]=apc_fetch("datamodel_gestion")))
+		{
+			$GLOBALS["datamodel_gestion"] = new datamodel_gestion();
+			apc_store("datamodel_gestion", $GLOBALS["datamodel_gestion"], APC_CACHE_GESTION_TTL);
+		}
+	}
+	// Session
+	else
+	{
+		if (!isset($_SESSION["datamodel_gestion"]))
+			$_SESSION["datamodel_gestion"] = new datamodel_gestion();
+		$GLOBALS["datamodel_gestion"] = $_SESSION["datamodel_gestion"];
+	}
 }
 
-if (is_numeric($id) && $id>0)
+if ($id)
 	return $GLOBALS["datamodel_gestion"]->get($id);
 else
 	return $GLOBALS["datamodel_gestion"];

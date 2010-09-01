@@ -11,16 +11,15 @@ if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [begin]");
 
 /**
- * Gestion des databank
+ * Databank global managing class
  *
  */
 class data_bank_gestion extends session_select
 {
 
 protected $list = array();
-protected $list_id = array();
 
-private $serialize_list = array( "list" , "list_id" );
+private $serialize_list = array("list");
 public $serialize_save_list = array();
 
 function __construct()
@@ -34,9 +33,6 @@ function query()
 {
 
 $this->list = array();
-$this->list_id = array();
-
-$this->list_id = &datamodel()->list_id_get();
 
 $this->access_function_create();
 
@@ -48,7 +44,7 @@ $this->access_function_create();
 function access_function_create()
 {
 
-foreach($this->list_id as $name=>$id)
+foreach(datamodel()->list_name_get() as $name=>$id)
 {
 	eval("function $name(\$id=null, \$fields=array()) { return databank(\"$id\", \$id, \$fields); }");
 }
@@ -63,16 +59,21 @@ foreach($this->list_id as $name=>$id)
 function get($id)
 {
 
-//echo "<p>DATABANK_GESTION : accessing ID#$id</p>\n";
-
 if (isset($this->list[$id]))
 {
+	// TODO : Vérifier permissions d'accès !!
 	return $this->list[$id];
 }
-elseif (in_array($id, $this->list_id))
+elseif (APC_CACHE && ($databank=apc_fetch("databank_$id")))
 {
-	// Vérifier permissions d'accès !!
-	return $this->list[$id] = new data_bank($id);
+	return $this->list[$id] = $databank;
+}
+elseif (in_array($id, datamodel()->list_name_get()))
+{
+	$databank = new data_bank($id);
+	if (APC_CACHE)
+		apc_store("databank_$id", $databank, APC_CACHE_DATAMODEL_TTL);
+	return $this->list[$id] = $databank;
 }
 else
 {
@@ -89,7 +90,8 @@ else
 function get_name($name)
 {
 
-if (isset($this->list_id[$name]) && ($id=$this->list_id[$name]) && isset($this->list[$id]))
+$list_id = &datamodel()->list_name_get();
+if (isset($list_id[$name]) && ($id=$list_id[$name]) && isset($this->list[$id]))
 {
 	return $this->list[$id];
 }
@@ -102,16 +104,6 @@ else
 	trigger_error("Databank '$name' not found.");
 	return false;
 }
-
-}
-
-/**
- * 
- */
-function list_id_get()
-{
-
-return $this->list_id;
 
 }
 
@@ -197,8 +189,6 @@ public function __construct($id)
 {
 
 $this->id = $id;
-$this->name = &datamodel($this->id)->name();
-$this->label = &datamodel($this->id)->label();
 
 // Retrieving Perm
 /*
@@ -207,12 +197,15 @@ if ($query->num_rows())
 {
 	list($this->perm) = $query->fetch_row();
 }
-*/
 $query = db()->query("SELECT `perm` FROM `_account_databank_perm` WHERE `account_id` = '".login()->id()."' AND `databank_id` = '$this->id'");
 if ($query->num_rows())
 {
 	list($this->perm) = $query->fetch_row();
 }
+*/
+
+$this->perm = "arwl";
+$this->library_load();
 
 }
 
@@ -237,7 +230,7 @@ function __wakeup()
 
 session_select::__wakeup();
 $this->objects=array();
-//$this->library_load();
+$this->library_load();
 
 if (DEBUG_SESSION == true)
 	echo "<p>WAKEUP : data_bank id#$this->id</p>\n";
@@ -258,12 +251,12 @@ return $this->id;
 public function name()
 {
 
-return $this->name;
+return datamodel($this->id)->name();
 
 }public function label()
 {
 
-return $this->label;
+return datamodel($this->id)->label();
 
 }
 /**
@@ -293,6 +286,14 @@ return $this->perm;
 
 }
 
+function library_load()
+{
+
+if ($library=datamodel($this->id)->library())
+	$library->load();
+
+}
+
 /**
  * Retrieve an objet from the datamodel.
  * 
@@ -310,16 +311,22 @@ if (!$this->perm("r"))
 }
 elseif (is_numeric($id) && $id>0)
 {
-	//print_r($this->objects[$id]);
-	// Already in databank
+	// TODO : hack : Retrieve a maximum of data by default but might be better...
 	if (isset($this->objects[$id]))
 	{
-		$this->objects[$id]->db_retrieve($fields);
+		if (count($fields))
+			$this->objects[$id]->db_retrieve($fields);
 		return $this->objects[$id];
 	}
-	elseif ($object_list = datamodel($this->id)->db_get(array(array("name"=>"id", "value"=>$id)), $fields))
+	elseif (APC_CACHE && ($object=apc_fetch("dataobject_".$this->id."_".$id)))
 	{
-		return $this->objects[$id] = array_pop($object_list);
+		return $this->objects[$id] = $object;
+	}
+	elseif (is_array($object_list=datamodel($this->id)->db_get(array(array("name"=>"id", "value"=>$id)), $fields)) && ($object=array_pop($object_list)))
+	{
+		if (APC_CACHE)
+			apc_store("dataobject_".$this->id."_".$id, $object, APC_CACHE_DATAOBJECT_TTL);
+		return $this->objects[$id] = $object;
 	}
 	// Retrieve error
 	else
@@ -517,7 +524,7 @@ else
 public function create($fields_all_init=false)
 {
 
-$classname = $this->name."_agregat";
+$classname = datamodel($this->id)->name()."_agregat";
 $object = new $classname;
 if ($fields_all_init) foreach(datamodel($this->id)->fields() as $name=>$field)
 {
@@ -541,19 +548,33 @@ return $object;
 function databank($datamodel_id=null, $id=null, $fields=array())
 {
 
-//echo "<p>Accessing databank : $datamodel</p>\n";
-	
+if (DEBUG_DATAMODEL)
+	echo "<p>DEBUG : Accessing databank : $datamodel</p>\n";
+
 if (!isset($GLOBALS["databank_gestion"]))
 {
-	if (DEBUG_SESSION == true)
-		echo "<p>Retrieving databank_gestion from _session</p>\n";
-	$GLOBALS["databank_gestion"] = $_SESSION["databank_gestion"] = new data_bank_gestion();
+	// APC
+	if (APC_CACHE)
+	{
+		if (!($GLOBALS["databank_gestion"]=apc_fetch("databank_gestion")))
+		{
+			$GLOBALS["databank_gestion"] = new data_bank_gestion();
+			apc_store("databank_gestion", $GLOBALS["databank_gestion"], APC_CACHE_GESTION_TTL);
+		}
+	}
+	// Session
+	else
+	{
+		if (!isset($_SESSION["databank_gestion"]))
+			$_SESSION["databank_gestion"] = new data_bank_gestion();
+		$GLOBALS["databank_gestion"] = $_SESSION["databank_gestion"];
+	}
 }
 
 if (is_numeric($datamodel_id) && (is_a($databank=$GLOBALS["databank_gestion"]->get($datamodel_id), "data_bank")))
 {
-	if (is_numeric($id) && $id>0)
-		if (is_a($object = $databank->get($id, $fields), "data_bank_agregat"))
+	if ($id)
+		if (is_a($object=$databank->get($id, $fields), "data_bank_agregat"))
 			return $object;
 		else
 			return false;	

@@ -18,12 +18,12 @@ interface data_verify_i
 /*
  * Verify the value
  */
-function verify($value,$params=array());
+static function verify($value,$params=array());
 
 /*
  * Convert the value into the right type
  */
-function convert($value,$params=array());
+static function convert($value,$params=array());
 
 }
 
@@ -34,23 +34,27 @@ function convert($value,$params=array());
 class data_verify_size implements data_verify_i
 {
 
-public function verify($value,$maxlength=0)
+public static function verify($value,$maxlength=0)
 {
 
-if (!is_string($value) || (is_numeric($maxlength) && $maxlength > 0 && strlen($value) > $maxlength))
+if (is_numeric($maxlength) && $maxlength > 0 && strlen((string)$value) > $maxlength)
+	return false;
+elseif (is_numeric($value))
+	return true;
+elseif (!is_string($value))
 	return false;
 else
 	return true;
 
 }
 
-public function convert($value,$maxlength=0)
+public static function convert($value,$maxlength=0)
 {
 
 if (is_numeric($maxlength) && $maxlength > 0)
-	return substr((string)$value,0,$maxlength);
+	return substr((string) $value, 0, $maxlength);
 else
-	return (string)$value;
+	return (string) $value;
 
 }
 
@@ -63,14 +67,14 @@ else
 class data_verify_string_tag_authorized implements data_verify_i
 {
 
-public function verify($value,$tags=array())
+public static function verify($value,$tags=array())
 {
 
 return true;
 
 }
 
-public function convert($value,$maxlength=0)
+public static function convert($value,$maxlength=0)
 {
 
 return (string)$value;
@@ -86,32 +90,34 @@ return (string)$value;
 class data_verify_integer implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (!is_array($params) || !isset($params["signed"]))
 	$params["signed"] = false;
 
 // Should I use is_int ?
-if ((!is_numeric($value) || ((int)$value != $value)) && ($params["signed"] || $value>=0))
+if (!is_numeric($value) || ((int)$value != $value) || ($params["signed"] == false && $value < 0))
+{
 	return false;
+}
 else
+{
 	return true;
+}
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 if (!is_array($params) || !isset($params["signed"]))
 	$params["signed"] = false;
 
-if ($params["signed"])
-	return (int) $value;
-elseif ((int)$value < 0)
-	return -(int)$value;
+if (!$params["signed"] && (int)$value < 0)
+	return - (int) $value;
 else
-	return (int)$value;
+	return (int) $value;
 
 }
 
@@ -124,7 +130,7 @@ else
 class data_verify_float implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 //echo "<br/>$value";
@@ -152,7 +158,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 //echo "<br/>$value";
@@ -172,7 +178,7 @@ else
 class data_verify_percent implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (is_numeric($value) && $value>=0 && $value<=1)
@@ -182,7 +188,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 if ($value)
@@ -200,7 +206,7 @@ else
 class data_verify_boolean implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if ($value === true || $value === false)
@@ -210,7 +216,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 if ($value)
@@ -228,7 +234,7 @@ else
 class data_verify_array implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (!is_array($value))
@@ -238,7 +244,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return array($value);
@@ -253,7 +259,7 @@ return array($value);
 class data_verify_list implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (!is_array($value))
@@ -263,11 +269,11 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 if (!is_array($value))
-	return array($value);
+	return array();
 else
 	return $value;
 
@@ -281,7 +287,7 @@ else
 class data_verify_compare implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 $params = explode(" ",$params);
@@ -305,7 +311,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return $value;
@@ -320,14 +326,14 @@ return $value;
 class data_verify_count implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 return data_verify_compare::verify(count($value),$params);
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return array($value);
@@ -344,7 +350,7 @@ return array($value);
 class data_verify_select implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (!isset($params[$value]))
@@ -354,7 +360,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 if (!isset($params[$value]))
@@ -377,7 +383,7 @@ else
 class data_verify_email implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 $regex = ($params["strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
@@ -394,7 +400,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return "";
@@ -409,7 +415,7 @@ return "";
 class data_verify_url implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 $regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
@@ -421,7 +427,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return "";
@@ -437,7 +443,7 @@ return "";
 class data_verify_fromlist implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (!is_array($value))
@@ -457,7 +463,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 if (!is_array($value))
@@ -483,7 +489,7 @@ else
 class data_verify_date implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (is_string($value) && preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
@@ -493,7 +499,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return "00/00/0000";
@@ -508,7 +514,7 @@ return "00/00/0000";
 class data_verify_year implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (!is_string($value) || !preg_match("([0-9]{4})",$value))
@@ -518,7 +524,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return "0000";
@@ -533,7 +539,7 @@ return "0000";
 class data_verify_time implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
@@ -543,7 +549,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return "00:00:00";
@@ -558,20 +564,20 @@ return "00:00:00";
 class data_verify_datetime implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
-if (!is_string($value) || !preg_match("/^\d{4}-\d{2}-\d{2} [0-2][0-3]:[0-5][0-9]:[0-5][0-9]$/",$value))
+if (!is_numeric($value))
 	return false;
 else
 	return true;
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
-return "0000-00-00 00:00:00";
+return time();
 
 }
 
@@ -583,7 +589,7 @@ return "0000-00-00 00:00:00";
 class data_verify_ereg implements data_verify_i
 {
 
-public function verify($value,$params=array())
+public static function verify($value,$params=array())
 {
 
 if (is_array($params) && isset($params["ereg"]) && $params["ereg"] && !preg_match($params["ereg"],$value))
@@ -593,7 +599,7 @@ else
 
 }
 
-public function convert($value, $params=array())
+public static function convert($value, $params=array())
 {
 
 if (isset($params["default"]))
@@ -612,7 +618,7 @@ class data_verify_object implements data_verify_i
 {
 
 
-public function verify($value, $params=array())
+public static function verify($value, $params=array())
 {
 
 if (!is_a($value, $params["objecttype"]))
@@ -623,7 +629,7 @@ else
 }
 
 
-public function convert($value, $params=array())
+public static function convert($value, $params=array())
 {
 
 $objecttype = $params["objecttype"];
@@ -640,7 +646,7 @@ return new $objecttype();
 class data_verify_datamodel implements data_verify_i
 {
 
-public function verify($value, $params=array())
+public static function verify($value, $params=array())
 {
 
 if (!is_a($value, "agregat") || ($params && ($value->datamodel()->name() != $params)) || !$value->verify())
@@ -650,7 +656,7 @@ else
 
 }
 
-public function convert($value, $params=array())
+public static function convert($value, $params=array())
 {
 
 // A COMPLETER
@@ -680,14 +686,14 @@ else
 class data_verify_databank implements data_verify_i
 {
 
-public function verify($value, $params=array())
+public static function verify($value, $params=array())
 {
 
 if (is_array($value))
 {
 	$return = true;
 	foreach($value as $i)
-		if (!$databank($i))
+		if (!databank($params)->get($i))
 			$return = false;
 	return $return;
 }
@@ -698,7 +704,7 @@ else
 
 }
 
-public function convert($value, $params=array())
+public static function convert($value, $params=array())
 {
 
 return 0;
@@ -713,7 +719,7 @@ return 0;
 class data_verify_databank_select implements data_verify_i
 {
 
-public function verify($value, $params=array())
+public static function verify($value, $params=array())
 {
 
 if (!is_a($value, "databank_agregat"))
@@ -725,7 +731,7 @@ else
 
 }
 
-public function convert($value,$params=array())
+public static function convert($value,$params=array())
 {
 
 return null;

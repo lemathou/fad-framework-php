@@ -9,374 +9,104 @@
   * 
   */
 
-if (!defined("ADMIN_OK"))
+if (!defined("ADMIN_OK") || !ADMIN_OK)
 {
 	die("ACCES NON AUTORISE");
 }
 
-?>
-<style type="text/css">
-td
+if (isset($_POST["menu_add"]["name"]) && isset($_POST["menu_add"]["title"]))
 {
-	vertical-align: top;
-	font-size: 0.9em;
-}
-tr.title td
-{
-	font-weight: bold;
-}
-tr.header td
-{
-	font-size: 1em;
-	padding: 10px;
-}
-td.label
-{
-	font-weight: bold;
-}
-</style>
-
-<script type="text/javascript">
-function param_update(name)
-{
-	var element = document.getElementById('param['+name+'][value]');
-	element.name = element.id;
-	element = document.getElementById('param['+name+'][update_pos]');
-	element.name = element.id;
-}
-</script>
-<?
-// Types
-$type_list = array
-(
-	"template" => "Utilisation d'un template (valeur par défaut)",
-	"redirect" => "Redirection vers une page extérieure",
-	"alias" => "Alias d'une autre page du site",
-);
-
-// Templates
-$template_list = array();
-$query = db()->query("SELECT t1.id , t1.name , t2.title FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." WHERE t1.type='container'");
-while ($template = $query->fetch_assoc())
-{
-	if (!$template["title"])
-		$template["title"] = $template["name"];
-	$template_list[$template["id"]] = $template["title"];
-}
-
-// Permissions
-$perm_list = array();
-$query = db()->query("SELECT `id`, `name` FROM `_perm`");
-while ($perm = $query->fetch_assoc())
-{
-	$perm_list[$perm["id"]] = $perm["name"];
-}
-
-// ACTIONS
-
-// Insert
-if (isset($_POST["insert"]) && is_array($_POST["insert"]))
-{
-
-page()->add($_POST["insert"]);
-
-}
-
-// Update
-if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]) && page()->exists($_POST["update"]["id"]))
-{
-
-page($_POST["update"]["id"])->update($_POST["update"]);
-
-}
-
-// EDITION
-
-if (isset($_GET["id"]) && is_numeric($id=$_GET["id"]) && ($query=db()->query("SELECT t1.id , t1.name , t1.template_id , t2.url , t2.titre_court , t2.titre FROM _page as t1 LEFT JOIN _page_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." WHERE t1.id='$id'")) && $query->num_rows())
-{
-
-$page = $query->fetch_assoc();
-
-$page["perm"] = array();
-$query_perm = db()->query("SELECT perm_id FROM _page_perm_ref WHERE page_id='$page[id]'");
-while (list($perm_id) = $query_perm->fetch_row())
-{
-	$page["perm"][] = $perm_id;
+	menu()->add($_POST["menu_add"]["name"], $_POST["menu_add"]["title"]);
 }
 
 ?>
-<p><a href="?list">Retour à la liste</a></p>
 
-<h2>Edition d'une page</h2>
-
-<form action="" method="POST">
-<table>
-<tr>
-	<td class="label">ID :</td>
-	<td><input name="update[id]" value="<?php echo $page["id"]; ?>" readonly /></td>
-</tr>
-<tr>
-	<td class="label">Name :</td>
-	<td><input name="update[name]" value="<?php echo $page["name"]; ?>" size="32" /></td>
-</tr>
-<tr>
-	<td class="label">Template associé :</td>
-	<td><select name="update[template_id]"><?php
-	foreach ($template_list as $tpl_id=>$name)
-	{
-		if ($tpl_id == $page["template_id"])
-			echo "<option value=\"$tpl_id\" selected>$name</option>";
-		else
-			echo "<option value=\"$tpl_id\">$name</option>";
-	}
-	?></select></td>
-</tr>
-<tr>
-	<td class="label">URL (rewriting) :</td>
-	<td><input name="update[url]" value="<?php echo $page["url"]; ?>" size="64" /></td>
-</tr>
-<tr>
-	<td class="label">Titre court (lien) :</td>
-	<td><input name="update[titre_court]" value="<?php echo $page["titre_court"]; ?>" size="32" /></td>
-</tr>
-<tr>
-	<td class="label">Titre (header de page) :</td>
-	<td><input name="update[titre]" value="<?php echo $page["titre"]; ?>" size="64" /></td>
-</tr>
-<tr>
-	<td class="label">Permissions :</td>
-	<td><select name="update[perm_list][]" size="4" multiple>
-	<?
-	foreach($perm_list as $i => $j)
-	{
-		if (in_array($i, $page["perm"]))
-			print "<option value=\"$i\" selected>$j</option>";
-		else
-			print "<option value=\"$i\">$j</option>";
-	}
-	?>
-	</select></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" value="Mettre à jour" /></td>
-</tr>
-</table>
+<form method="get">
+<select name="id" onchange="if (this.value) this.form.submit()">
+<option value="0">-- Choisir si besoin --</option>
+<?php
+foreach (menu()->list_get() as $id=>$name)
+{
+	if (isset($_GET["id"]) && $_GET["id"]==$id)
+		echo "<option value=\"$id\" selected>$id : $name</option>";
+	else
+		echo "<option value=\"$id\">$id : $name</option>";
+}
+?></select>
+<input type="submit" value="GO" />
 </form>
+
+<form action="?add" method="POST">
+<p>Name : <input name="menu_add[name]" /> Title : <input name="menu_add[title]" /> <input type="submit" value="Ajouter" /></p>
+</form>
+
+<hr />
 
 <?php
 
-// ADD/Update a param
-if (isset($_POST["param"]) && is_array($_POST["param"]))
+if (isset($_GET["id"]) && (is_a($menu=menu($id=$_GET["id"]),"menu")))
 {
-	foreach ($_POST["param"] as $name=>$param)
+
+echo "<p>MENU  ID#$id</p>";
+
+if (isset($_POST["page_add"]) && $_POST["page_add"])
+{
+	$menu->add($_POST["page_add"]);
+}
+
+if (isset($_POST["pos_move"]))
+{
+	foreach ($_POST["pos_move"] as $pos_from=>$pos_to)
 	{
-		//echo "<p>Updating param $name : $value</p>\n";
-		db()->query("REPLACE INTO _page_params (page_id, name, value, update_pos) VALUES ('$id', '$name', '".db()->string_escape($param["value"])."', '".db()->string_escape($param["update_pos"])."')");
+		$menu->pos_change($pos_from, $pos_to);
 	}
 }
 
-// Delete a param
-if (isset($_POST["param_del"]) && ($name=$_POST["param_del"]))
+if (isset($_POST["pos_del"]) && $_POST["pos_del"])
 {
-	//echo "<p>Param $name DELETED</p>\n";
-	db()->query("DELETE FROM _page_params WHERE page_id='$id' AND name='$name'");
+	$menu->del($_POST["pos_del"]);
 }
-
-// Retrieve param list
-$params = array();
-$query_params = db()->query("SELECT name, value, update_pos FROM _page_params WHERE page_id='$id'");
-while ($param = $query_params->fetch_assoc())
-{
-	$params[$param["name"]] = $param;
-}
-
-if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]), "template")))
-{
-	?>
-	<h3>Liste des paramètres des templates associés :</h3>
-	<form method="post">
-	<table cellspacing="0" cellpadding="1" border="1">
-	<?php
-	if (count($template->param_list()))
-	{
-		?>
-		<tr class="title header"> <td colspan="4"><?=$template->title()?> : template ID#<?=$template->id()?></td> </tr>
-		<?php
-		foreach ($template->param_list() as $name=>$param)
-		{
-		?>
-		<tr>
-			<td class="label"><?=$name?></td>
-			<td></td>
-		</tr>
-		<?php
-		}
-	}
-	$tpl_filename = "template/".$template->name().".tpl.php";
-	$subtemplates = template::subtemplates( fread(fopen($tpl_filename, "r"), filesize($tpl_filename)) ); 
-	foreach($subtemplates as $tpl)
-	{
-		$template = template($tpl["id"]);
-		?>
-		<tr class="title header"> <td colspan="4"><?=$template->title()?> : sous-template ID#<?=$template->id()?></td> </tr>
-		<tr class="title">
-			<td>Paramètre</td>
-			<td>Valeur par défaut</td>
-			<td>Valeur surchargée par la page</td>
-			<td>Type de donnée</td>
-		</tr>
-		<?php
-		foreach ($template->param_list() as $name=>$param)
-		{
-		?>
-		<tr>
-			<td class="label"><?=$name?></td>
-			<td><? if ($param["value"] !== null) echo $param["value"]; else echo "NULL"; ?></td>
-			<td><?php
-			if (isset($tpl["params"]) && $tpl["params"] === true || (isset($tpl["params"][$name]) && $tpl["params"][$name] == $name))
-			{
-			?>
-			<input id="param[<?=$name?>][value]" value="<? if (isset($params[$name])) echo $params[$name]["value"]; ?>" />
-			<input id="param[<?=$name?>][update_pos]" value="<? if (isset($params[$name])) echo $params[$name]["update_pos"]; ?>" size="1" />
-			<input type="submit" value="<?php if (isset($params[$name])) echo "Update"; else echo "Add" ?>" onclick="param_update('<?=$name?>')" />
-			<? if (isset($params[$name])) echo "<input type=\"submit\" value=\"DEL\" style=\"color:red;\" onclick=\"this.name='param_del';this.value='$name';\" />"; ?>
-			<?
-			}
-			elseif (isset($tpl["params"][$name]))
-			{
-			?>
-			param retrieved from "<?=$tpl["params"][$name]?>"
-			<?
-			}
-			?></td>
-			<td><?=$param["datatype"]?></td>
-		</tr>
-		<?php
-		}
-	}
-	?>
-	</table>
-	</form>
-	<?php
-}
-
-}
-
-// INSERTION
-elseif (isset($_GET["add"]))
-{
-
-$page = array
-(
-	"name" => "",
-	"template_id" => "0",
-	"url" => "",
-	"titre_court" => "",
-	"titre" => "",
-	"perm" => array(),
-);
-
 ?>
-<p><a href="?list">Retour à la liste</a></p>
-
-<h2>Ajout d'une page</h2>
-
-<form action="" method="POST">
-<table>
-<tr>
-	<td class="label">Name</td>
-	<td><input name="insert[name]" value="<?php echo $page["name"]; ?>" size="32" /></td>
-</tr>
-<tr>
-	<td class="label">Template :</td>
-	<td><select name="insert[template_id]"><?php
-	foreach ($template_list as $id=>$name)
-	{
-		echo "<option value=\"$id\">$name</option>";
-	}
-	?></select></td>
-</tr>
-<tr>
-	<td class="label">URL (rewriting)</td>
-	<td><input name="insert[url]" value="<?php echo $page["url"]; ?>" size="64" /></td>
-</tr>
-<tr>
-	<td class="label">Titre court (lien)</td>
-	<td><input name="insert[titre_court]" value="<?php echo $page["titre_court"]; ?>" size="64" /></td>
-</tr>
-<tr>
-	<td class="label">Titre (header de page)</td>
-	<td><input name="insert[titre]" value="<?php echo $page["titre"]; ?>" size="64" /></td>
-</tr>
-<tr>
-	<td class="label">Permissions</td>
-	<td><select name="insert[perm][]" size="4" multiple>
-	<?
-	foreach($perm_list as $i => $j)
-	{
-		if (in_array($i, $page["perm"]))
-			print "<option value=\"$i\" selected>$j</option>";
-		else
-			print "<option value=\"$i\">$j</option>";
-	}
-	?>
-	</select></td>
-</tr>
-<tr>
+<form method="post" id="menu_form">
+<input id="pos_del" name="pos_del" type="hidden" value="0" />
+<p><select name="page_add"><option value="0">Sélectionnez une page à ajouter</option><?php
+foreach (page()->list_get() as $page)
+{
+	echo "<option value=\"".$page->id()."\">ID#".$page->id()." : ".$page->name()."</option>\n";
+}
+?></select> <input type="submit" value="Ajouter la page en fin de menu" /></p>
+<table cellspacing="0" cellpadding="2" border="1">
+<tr class="titre">
 	<td>&nbsp;</td>
-	<td><input type="submit" value="Ajouter" /></td>
-</tr>
-</table>
-</form>
-<?php
-}
-
-// LISTE
-else
-{
-?>
-
-<h2>Liste et paramétrage des pages disponibles</h2>
-
-<p>Une page est accessible par une url (à l'aide de rewriting).</p>
-<p>Une page est de type : "template", "alias" (d'une autre page) ou encore "redirection" (vers une page extérieure au site).</p>
-<p>Une page associée à un template se paréamètre en fonction de ce dernier.</p>
-<p>Une page peut être associée à un ou plusieurs menus.</p>
-
-<p><a href="?add">Ajouter une page</a></p>
-
-<table cellspacing="1" border="1" cellpadding="1">
-<tr style="font-weight:bold;">
+	<td>Pos.</td>
 	<td>ID</td>
-	<td>Name</td>
-	<td>Template</td>
-	<td>Title (head)</td>
-	<td>URL</td>
-	<td>Permissions</td>
+	<td>Nom</td>
+	<td>Aperçu</td>
 </tr>
-<?
-$query = db()->query(" SELECT t1.id , t1.name , t1.template_id , t2.url , t2.titre , t3.title as template FROM _page as t1 LEFT JOIN _page_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." LEFT JOIN _template_lang as t3 ON t3.id=t1.template_id AND t3.lang_id=".SITE_LANG_ID." ORDER BY t1.id ");
-while ($page = $query->fetch_assoc())
+<?php
+$list = $menu->list_get();
+$nbmax = count($list);
+foreach($list as $i=>$page_id)
 {
-
-print "<tr>\n";
-print "<td><a href=\"?id=$page[id]\">$page[id]</a></td>\n";
-print "<td><a href=\"?id=$page[id]\">$page[name]</a></td>\n";
-print "<td>$page[template]</td>\n";
-print "<td>$page[titre]</td>\n";
-print "<td>$page[url]</td>\n";
-print "<td>";
-$query_perm = db()->query("SELECT t1.name FROM _perm as t1 , _page_perm_ref as t2 WHERE t2.page_id = $page[id] AND t1.id=t2.perm_id");
-while (list($perm)=$query_perm->fetch_row())
-	echo "<p>$perm</p>\n";
-echo "</td>\n";
-print "</tr>\n";
-
+	echo "<tr>\n";
+	echo "<td><a href=\"javascript:;\" onclick=\"document.getElementById('pos_del').value=$i;document.getElementById('menu_form').submit();\" style=\"color:red;text-decoration:none;\">X</a></td>\n";
+	echo "<td><select id=\"pos_move[$i]\" onchange=\"this.name=this.id;this.form.submit();\">\n";
+	for ($j=0;$j<$nbmax;$j++)
+		if ($j == $i)
+			echo "<option value=\"$j\" selected>$j</option>";
+		else
+			echo "<option value=\"$j\">$j</option>";
+	echo "</select></td>\n";
+	echo "<td>".page($page_id)->id()."</td>\n";
+	echo "<td>".page($page_id)->name()."</td>\n";
+	echo "<td>".page($page_id)->link()."</td>\n";
+	echo "</tr>\n";
 }
 ?>
 </table>
-
+</form>
 <?php
+	
 }
+
 ?>

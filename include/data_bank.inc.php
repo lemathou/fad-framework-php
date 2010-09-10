@@ -1,9 +1,11 @@
 <?
 
 /**
- * Gestion des banques de donnée
+ * Data Banks management
  * 
- * Il s'agit d'une surcouche des datamodels qui communique avec la base de donnée.
+ * This is a layer upon datamodels which communicates with database and cache (APC)
+ * to fast and simply retrieve and store objects,
+ * using many functions
  * 
  */
 
@@ -135,14 +137,14 @@ if (DEBUG_SESSION == true)
 class data_bank extends session_select
 {
 
-protected $id = 0;
+protected $id=0;
 /**
  * Name of the databank = name of the datamodel
  *
  * @var string
  */
-protected $name = "";
-protected $label = "";
+protected $name="";
+protected $label="";
 
 /**
  * Account default permissions.
@@ -178,9 +180,13 @@ protected $label = "";
  * 
  * @var string
  */
-protected $perm = "";
+protected $perm="";
 
-protected $objects = array();
+/**
+ * List of retrieved objects, kept only during the page display
+ * @var unknown_type
+ */
+protected $objects=array();
 
 private $serialize_list = array( "id", "name", "label", "perm" );
 public $serialize_save_list = array();
@@ -209,13 +215,6 @@ $this->library_load();
 
 }
 
-public function datamodel()
-{
-
-return datamodel($this->id);
-
-}
-
 /*
  * Sauvegarde/Restauration de la session
  */
@@ -237,6 +236,13 @@ if (DEBUG_SESSION == true)
 
 }
 
+public function datamodel()
+{
+
+return datamodel($this->id);
+
+}
+
 /**
  * Databank Id
  *
@@ -253,7 +259,8 @@ public function name()
 
 return datamodel($this->id)->name();
 
-}public function label()
+}
+public function label()
 {
 
 return datamodel($this->id)->label();
@@ -289,7 +296,7 @@ return $this->perm;
 function library_load()
 {
 
-if ($library=datamodel($this->id)->library())
+if (is_a($library=datamodel($this->id)->library(), "library"))
 	$library->load();
 
 }
@@ -314,7 +321,7 @@ elseif (is_numeric($id) && $id>0)
 	// TODO : hack : Retrieve a maximum of data by default but might be better...
 	if (isset($this->objects[$id]))
 	{
-		if (count($fields))
+		if (count($fields) || $fields === true)
 			$this->objects[$id]->db_retrieve($fields);
 		return $this->objects[$id];
 	}
@@ -420,8 +427,9 @@ return $this->insert($fields);
 public function delete($params)
 {
 
-if ($id = datamodel($this->id)->delete($params))
+if ($id=datamodel($this->id)->delete($params))
 {
+	// TODO : multiple objects !!
 	if (isset($this->objects[$id]))
 		unset($this->objects[$id]);
 	return true;
@@ -532,6 +540,17 @@ if ($fields_all_init) foreach(datamodel($this->id)->fields() as $name=>$field)
 		$object->{$name} = "";
 }
 return $object;
+
+}
+
+/**
+ * Returns if an object exists
+ * @param unknown_type $id
+ */
+public function exists($id)
+{
+
+return $this->datamodel()->exists($id);
 
 }
 

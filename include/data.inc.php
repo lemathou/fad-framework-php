@@ -1998,10 +1998,10 @@ class data_percent extends data_float
 protected $structure_opt = array("percent"=>array());
 protected $form_opt = array("size"=>5);
 
-function __construct($name, $value=0, $label="Percent")
+function __construct($name, $value=0, $label="Percent", $options=array())
 {
 
-data::__construct($name, $value, $label, array());
+data::__construct($name, $value, $label, $options);
 
 }
 
@@ -2852,10 +2852,10 @@ protected $disp_opt = array
 	"ref_field_disp" => "", // field to display if needed
 );
 
-function __construct($name, $value, $label="Name", $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Name", $databank=0, $db_opt=array(), $disp_opt=array(), $form_opt=array())
 {
 
-data::__construct($name, $value, $label, array("databank"=>$name), $db_opt, $disp_opt, $form_opt);
+data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, $disp_opt, $form_opt);
 
 }
 
@@ -2865,14 +2865,43 @@ function __tostring()
 if (is_array($this->value) && $this->disp_opt["ref_field_disp"] && isset(datamodel($this->structure_opt["databank"])->{$this->disp_opt["ref_field_disp"]}))
 {
 	$return = array();
-	foreach($this->value as $object)
-		$return[] = $object->{$this->disp_opt["ref_field_disp"]};
+	foreach($this->value as $id)
+	{
+		$return[] = databank($this->structure_opt["databank"])->get($id, true)->{$this->disp_opt["ref_field_disp"]};
+	}
 	return implode(" , ",$return);
 }
-if (is_array($this->value))
-	return (string)implode(" , ",$this->value);
+elseif (is_array($this->value))
+{
+	$return = array();
+	foreach($this->value as $id)
+	{
+		$return[] = databank($this->structure_opt["databank"])->get($id, true);
+	}
+	return implode(" , ",$return);
+}
 else
 	return "";
+
+}
+function __get($name)
+{
+
+if ($name == "value")
+{
+	if (is_array($this->value))
+	{
+		$return = array();
+		foreach ($this->value as $nb=>$id)
+			if (is_a($object=databank($this->structure_opt["databank"])->get($id), "agregat"))
+				$return[$nb] = $object;
+		return $return;
+	}
+	else
+		return array();
+}
+else
+	return data::__get($name);
 
 }
 
@@ -2891,26 +2920,14 @@ return implode(" , ",$return);
 function value_from_db($value)
 {
 
-$this->value = array();
-foreach($value as $id)
-{
-	if (is_a($object=databank($this->structure_opt["databank"])->get($id), "agregat"))
-	{
-		$this->value[] = $object;
-	}
-}
+$this->value = $value;
 
 }
 
 function value_to_db()
 {
 
-$return = array();
-foreach ($this->value as $nb=>$object)
-{
-	$return[$nb] = "$object->id";
-}
-return $return;
+return $this->value;
 
 }
 
@@ -2922,10 +2939,9 @@ if (is_array($value))
 {
 	foreach($value as $nb=>$id)
 	{
-		if (is_a($object=databank($this->structure_opt["databank"])->get($id), "agregat"))
+		if (databank($this->structure_opt["databank"])->exists($id))
 		{
-			//echo "<p>$object</p>";
-			$this->value[$nb] = $object;
+			$this->value[$nb] = $id;
 		}
 	}
 }
@@ -3283,9 +3299,9 @@ if (!isset($GLOBALS["data_gestion"]))
 }
 
 if ($id)
-	return $GLOBALS["data"]->get($id);
+	return $GLOBALS["data_gestion"]->get($id);
 else
-	return $GLOBALS["data"];
+	return $GLOBALS["data_gestion"];
 
 }
 

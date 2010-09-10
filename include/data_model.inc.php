@@ -1537,7 +1537,8 @@ else
 						// Patch des fois qu'on ai des resultats en trop ^^
 						if (isset($return[$row[0]]))
 						{
-							$return[$row[0]][$name][] = $row[1];
+							$return[$row[0]]
+							[$name][] = $row[1];
 						}
 					}
 				}
@@ -1621,6 +1622,21 @@ else
 	$query_string = " SELECT count(*) FROM `".$this->db_opt["table"]."` WHERE ".implode(" AND ",$query_base["where"]);
 	return array_pop(db()->query($query_string)->fetch_row());
 }
+
+}
+
+/**
+ * Returns if an object exists with this ID
+ * @param $id
+ */
+public function exists($id)
+{
+	
+$query = db()->query("SELECT 1 FROM `".$this->db_opt["table"]."` WHERE `id`='".db()->string_escape($id)."'");
+if ($query->num_rows())
+	return true;
+else
+	return false;
 
 }
 

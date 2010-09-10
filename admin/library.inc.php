@@ -91,7 +91,7 @@ while (list($library_id) = $query_library->fetch_row())
 <tr style="font-weight:bold;">
 	<td width="200">ID :</td>
 	<td><input name="update[id]" value="<?=$id?>" readonly /></td>
-	<td rowspan="10"><textarea id="update[filecontent]" name="update[filecontent]" style="width:100%" rows="40"><?php 
+	<td rowspan="10" width="60%"><textarea id="update[filecontent]" name="update[filecontent]" style="width:100%" rows="40"><?php 
 	$filename = "library/$update[name].inc.php";
 	if (file_exists($filename))
 	{

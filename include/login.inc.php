@@ -55,7 +55,7 @@ if (isset($this->{$name}))
 else
 {
 	if (DEBUG_LOGIN)
-		trigger_error("ACCOUNT(ID#$this->id)->__get('$name') : does not exists  ");
+		trigger_error("DEBUG : account(ID#$this->id)->__get('$name') : does not exists  ");
 	return null;
 }
 
@@ -64,9 +64,10 @@ else
 function __set($name, $value)
 {
 
+/*
 if (!login()->perm(6))
 	die("NOT Authorized to update an user account directly !");
-
+*/
 if (isset($this->{$name}))
 {
 	$this->{$name} = $value;
@@ -74,6 +75,8 @@ if (isset($this->{$name}))
 }
 else
 {
+	if (DEBUG_LOGIN)
+		trigger_error("DEBUG : account(ID#$this->id)->__get('$name') : does not exists  ");
 	return false;
 }
 

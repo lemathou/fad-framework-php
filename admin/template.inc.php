@@ -3,7 +3,7 @@
 /**
   * $Id: template.inc.php 58 2009-03-03 15:47:37Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -17,38 +17,22 @@ if (!defined("ADMIN_OK"))
 define("LANG_ID", 2);
 
 // Insert
-if (isset($_POST["insert"]) && is_array($template=$_POST["insert"]) && isset($template["name"]))
+if (isset($_POST["insert"]))
 {
 
-$query_string = " INSERT INTO `_template` ( `name`, `cache_maxtime` ) VALUES ( '".$template["name"]."', '".$template["cache_maxtime"]."' ) ";
-$query = db()->query($query_string);
-
-$_GET["id"] = $id = $query->last_id();
-$query_string = " INSERT INTO `_template_lang` ( `id`, `lang_id` , `title` , `description` , `details` ) VALUES ( '$id' , '".SITE_LANG_DEFAULT_ID."' , '".addslashes($template["title"])."' , '".addslashes($template["description"])."' , '".addslashes($template["details"])."' ) ";
-$query = db()->query($query_string);
-if (isset($template["library"]) && is_array($template["library"]) && (count($template["library"]) > 0))
+if ($id=$_GET["id"]=template()->add($_POST["insert"]))
 {
-	$query_perm_list = array();
-	foreach($template["library"] as $library_id)
-	{
-		if (library()->exists($library_id))
-		{
-			$query_library_list[] = "( $id , $library_id )";
-		}
-	}
-	if (count($query_library_list)>0)
-	{
-		$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
-		db()->query($query_string);
-	}
+	echo "<p>Le template a été ajouté avec succès (ID#$id), vous pouvez le modifier ci-dessous.</p>\n";
 }
-
-echo "<p>Le template a été ajouté avec succès, vous pouvez le modifier ci-dessous.</p>\n";
+else
+{
+	echo "<p>Erreur à la création du template...</p>\n";
+}
 
 }
 
 // Update
-if (isset($_POST["update"]) && is_array($_POST["update"]))
+if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]) && template()->exists($_POST["update"]["id"]))
 {
 
 $template = template($_POST["update"]["id"]);
@@ -67,29 +51,11 @@ table td
 
 <?php
 
-// Templates
-$template_list = array();
-$query = db()->query(" SELECT t1.id , t1.name , t2.title FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_DEFAULT_ID." WHERE t1.name NOT LIKE '%/%'");
-while ($template = $query->fetch_assoc())
-{
-	if (!$template["title"])
-		$template["title"] = $template["name"];
-	if (is_numeric($pos=strpos($template["name"], "/")))
-	{
-		$template["type"] = substr($template["name"],0,$pos);
-		$template["name"] = substr($template["name"],$pos);
-	}
-	else
-		$template["type"] = "root";
-	$template_list[$template["type"]][] = array ("id" => $template["id"], "name" => $template["name"], "title" => $template["title"]);
-	
-}
-
 // EDITION
-if (isset($_GET["id"]) && ($id=$_GET["id"]) && ($query=db()->query("SELECT t1.id, t1.type , t1.name, t1.cache_mintime , t1.cache_maxtime , t1.login_dependant , t2.title , t2.description , t2.details FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.id='$id'")) && $query->num_rows())
+if (isset($_GET["id"]) && template()->exists($id=$_GET["id"]))
 {
 
-$template = $query->fetch_assoc();
+$template = template($id);
 
 ?>
 
@@ -123,11 +89,11 @@ $template = $query->fetch_assoc();
 <table width="100%" cellspacing="1" border="1" cellpadding="1">
 <tr>
 	<td class="label" width="200">ID</td>
-	<td width="300"><input name="update[id]" value="<?=$template["id"]?>" readonly /></td>
+	<td width="300"><input name="update[id]" value="<?=$id?>" readonly /></td>
 	<td rowspan="11">
 	<h3 style="margin-bottom: 0px;">TEMPLATE</h3>
 	<textarea id="update[filecontent]" name="update[filecontent]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
-	$filename = "template/$template[name].tpl.php";
+	$filename = "template/".$template->info("name").".tpl.php";
 	if (file_exists($filename) && filesize($filename))
 	{
 		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
@@ -139,7 +105,7 @@ $template = $query->fetch_assoc();
 	?></textarea>
 	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle (optionnel)</h3>
 	<textarea id="update[script]" name="update[script]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
-	$filename = "template/scripts/$template[name].inc.php";
+	$filename = "template/scripts/".$template->info("name").".inc.php";
 	if (file_exists($filename) && filesize($filename))
 	{
 		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
@@ -162,7 +128,7 @@ $template = $query->fetch_assoc();
 		"datamodel"=>"Datamodel",
 	);
 	foreach ($type_list as $i=>$j)
-		if ($template["type"] == $i)
+		if ($template->info("type") == $i)
 			echo "<option value=\"$i\" selected>$j</option>\n";
 		else
 			echo "<option value=\"$i\">$j</option>\n";
@@ -170,45 +136,39 @@ $template = $query->fetch_assoc();
 </tr>
 <tr>
 	<td class="label">Name</td>
-	<td><input name="update[name]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["name"]?>" style="background-color:#eee;width:100%;" /></td>
+	<td><input name="update[name]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("name")?>" style="background-color:#eee;width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Title</td>
-	<td><input name="update[title]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["title"]?>" style="background-color:#eee;width:100%;" /></td>
+	<td><input name="update[title]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("title")?>" style="background-color:#eee;width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Description</td>
-	<td><textarea name="update[description]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template["description"]?></textarea></td>
+	<td><textarea name="update[description]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("description")?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Details</td>
-	<td><textarea name="update[details]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template["details"]?></textarea></td>
+	<td><textarea name="update[details]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("details")?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Durée Min du cache<br /><span style="color:#400">Attention avec ce paramètre !!</span></td>
-	<td><input name="update[cache_mintime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["cache_mintime"]?>" style="background-color:#eee;" size="3" maxlength="3" /></td>
+	<td><input name="update[cache_mintime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_mintime")?>" style="background-color:#eee;" size="3" maxlength="3" /></td>
 </tr>
 <tr>
 	<td class="label">Durée Max du cache<br />(0 = pas de cache)</td>
-	<td><input name="update[cache_maxtime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["cache_maxtime"]?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
+	<td><input name="update[cache_maxtime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_maxtime")?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
 </tr>
 <tr>
 	<td class="label">Dépendant du login</td>
-	<td><input name="update[login_dependant]" onclick="this.style.backgroundColor='#fff';" value="<?=$template["login_dependant"]?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
+	<td><input name="update[login_dependant]" value="0" type="radio"<?php if (!$template->info("login_dependant")) echo " checked"; ?> /> <input name="update[login_dependant]" value="1" type="radio"<?php if ($template->info("login_dependant")) echo " checked"; ?> /></td>
 </tr>
 <tr>
 	<td class="label">Libraries</td>
 	<td><select name="update[library][]" size="4" multiple>
 	<?
-	$template["library"] = array();
-	$query_library = db()->query(" SELECT library_id FROM _template_library_ref WHERE template_id = $template[id] ");
-	while (list($library_id) = $query_library->fetch_row())
-	{
-		$template["library"][] = $library_id;
-	}
 	foreach(library()->list_get() as $i=>$library)
 	{
-		if (in_array($i, $template["library"]))
+		if (in_array($i, $template->info("library_list")))
 			print "<option value=\"$i\" selected>$library->name</option>";
 		else
 			print "<option value=\"$i\">$library->name</option>";
@@ -405,7 +365,7 @@ if (isset($_POST["order_change"]) && is_array($_POST["order_change"]))
 
 list($ordermax) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$id'")->fetch_row();
 
-$query_params = db()->query("SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' ORDER BY t1.order");
+$query_params = db()->query("SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$id' ORDER BY t1.order");
 while ($param = $query_params->fetch_assoc())
 {
 ?>

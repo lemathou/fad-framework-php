@@ -556,6 +556,162 @@ return $this->datamodel()->exists($id);
 
 }
 
+
+/**
+ * Agregat pour databank
+ *
+ */
+abstract class data_bank_agregat extends agregat
+{
+
+protected $datamodel_id = 0; // NEEDS to be overloaded !!
+
+/**
+ * 
+ * @param $id
+ * @param $fields
+ */
+function __construct($id=null, $fields=array())
+{
+
+agregat::__construct(datamodel($this->datamodel_id));
+if (is_numeric($id) && $id>0)
+{
+	$this->db_retrieve(array("id"=>$id), $fields);
+}
+
+}
+
+/**
+ * Returns the ID
+ * MUST be overloaded in datamodel library
+ */
+function __tostring()
+{
+
+return (string)$this->fields["id"];
+
+}
+
+/**
+ * Retrieve fields from database
+ *
+ * @param array $fields
+ * @param boolean $force
+ * @return boolean
+ */
+public function db_retrieve($fields, $force=false)
+{
+
+$query_ok = true;
+$params = array();
+if (!is_array($fields))
+	$fields = array($fields);
+// Verify params
+foreach ($this->datamodel()->fields_key() as $name)
+	if (!isset($this->fields[$name]))
+	{
+		if (DEBUG_DATAMODEL)
+			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : missing key '$name' to retrieve fields");
+		$query_ok = false;
+	}
+	else
+		$params[] = array( "name"=>$name, "type"=>"=", "value"=> $this->fields[$name]->value_to_db());
+
+// Delete the fields we already have
+if (!$force) foreach ($fields as $i=>$name)
+	if (isset($this->fields[$name]))
+		unset($fields[$i]);
+
+// Effective Query
+if ($query_ok && count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
+{
+	if (count($list) == 1)
+	{
+		foreach($list[0] as $name=>$field)
+		{
+			$this->fields[$name] = $field;
+		}
+		if (APC_CACHE)
+			apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
+		return true;
+	}
+	else
+	{
+		if (DEBUG_DATAMODEL)
+			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : too many objects resulting from query params");
+		return false;
+	}
+}
+else
+	return false;
+
+}
+
+/**
+ * Retrieve all data fields from database
+ *
+ * @return unknown
+ */
+public function db_retrieve_all()
+{
+
+$fields = array();
+foreach ($this->datamodel()->fields() as $name=>$field)
+	if (!isset($this->fields[$name]))
+		$fields[]=$name;
+
+if (count($fields)>0)
+{
+	return $this->db_retrieve($fields);
+}
+else
+	return false;
+
+}
+
+/**
+ * Update data into database
+ *
+ * @param unknown_type $options
+ */
+public function db_update($options=array())
+{
+
+if ($result = $this->datamodel()->db_update($this->fields))
+{
+	//echo "INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )";
+	db()->query("INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel()->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )");
+	if (APC_CACHE)
+		apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
+}
+
+return $result;
+
+}
+
+/**
+ * Insert new data into database
+ *
+ * @param unknown_type $options
+ */
+public function db_insert($options=array())
+{
+
+if ($id = $this->datamodel()->db_insert($this->fields))
+{
+	$this->fields["id"]->value_from_form($id);
+	return true;
+}
+else
+{
+	return false;
+}
+
+}
+
+}
+
 /**
  * Databank Access
  *
@@ -570,6 +726,9 @@ function databank($datamodel_id=null, $id=null, $fields=array())
 if (DEBUG_DATAMODEL)
 	echo "<p>DEBUG : Accessing databank : $datamodel</p>\n";
 
+/*
+ * Retrieve or create the managing databank object
+ */
 if (!isset($GLOBALS["databank_gestion"]))
 {
 	// APC

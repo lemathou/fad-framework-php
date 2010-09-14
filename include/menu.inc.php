@@ -691,6 +691,12 @@ public function name()
 return $this->name;
 
 }
+public function label()
+{
+
+return $this->titre_court;
+
+}
 /**
  * Access the associated template
  */

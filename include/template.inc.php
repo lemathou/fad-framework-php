@@ -24,11 +24,11 @@ protected $list_detail = array();
 public function __construct()
 {
 
-$query = db()->query("SELECT `id`, `name`, `type` FROM `_template`");
-while (list($id, $name, $type)=$query->fetch_row())
+$query = db()->query("SELECT `_template`.`id`, `_template`.`name`, `_template`.`type`, `_template_lang`.`title` FROM `_template` LEFT JOIN `_template_lang` ON `_template`.`id`=`_template_lang`.`id` AND `_template_lang`.`lang_id`='".SITE_LANG_ID."'");
+while (list($id, $name, $type, $label)=$query->fetch_row())
 {
 	$this->list_name[$name] = $id;
-	$this->list_detail[$id] = array ("name"=>$name, "type"=>$type);
+	$this->list_detail[$id] = array ("name"=>$name, "type"=>$type, "label"=>$label);
 }
 
 }
@@ -45,7 +45,7 @@ if (isset($this->list[$id]))
 }
 elseif (APC_CACHE && ($template=apc_fetch("template_$id")))
 {
-	return  $this->list[$id] = $template;
+	return $this->list[$id] = $template;
 }
 elseif ($this->exists($id))
 {
@@ -86,20 +86,20 @@ else
  * Add a template
  * @param array $template
  */
-public function add(array $template)
+public function add($template)
 {
 
-if (!(isset($template["name"]) && isset($template["type"]) && isset($template["cache_maxtime"]) && isset($template["title"]) && isset($template["description"]) && isset($template["details"])))
+if (!(is_array($template) && isset($template["name"]) && isset($template["cache_mintime"]) && isset($template["cache_maxtime"]) && isset($template["title"]) && isset($template["description"]) && isset($template["details"])))
 {
 	return false;
 }
 else
 {
-	$query_string = "INSERT INTO `_template` (`name`, `type`, `cache_maxtime`) VALUES ('".$template["name"]."', '".$template["type"]."', '".$template["cache_maxtime"]."')";
+	$query_string = "INSERT INTO `_template` (`name`, `type`, `cache_mintime`, `cache_maxtime`) VALUES ('".$template["name"]."', 'page', '".$template["cache_mintime"]."', '".$template["cache_maxtime"]."')";
 	$query = db()->query($query_string);
 	if ($id = $query->last_id())
 	{
-		$query_string = "INSERT INTO `_template_lang` (`id`, `lang_id`, `title`, `description`, `details`) VALUES ('$id', '".SITE_LANG_DEFAULT_ID."', '".addslashes($template["title"])."', '".addslashes($template["description"])."', '".addslashes($template["details"])."')";
+		$query_string = "INSERT INTO `_template_lang` (`id`, `lang_id`, `title`, `description`, `details`) VALUES ('$id', '".SITE_LANG_ID."', '".addslashes($template["title"])."', '".addslashes($template["description"])."', '".addslashes($template["details"])."')";
 		$query = db()->query($query_string);
 		if (isset($template["library"]) && is_array($template["library"]) && (count($template["library"]) > 0))
 		{
@@ -117,6 +117,13 @@ else
 				db()->query($query_string);
 			}
 		}
+		$this->list_detail[$id] = array("name"=>$template["name"], "type"=>'page');
+		$this->list_name[$template["name"]] = $id;
+		if (APC_CACHE == true)
+		{
+			$this->list = array();
+			apc_store("template_gestion", $this, APC_CACHE_GESTION_TTL);
+		}
 		return $id;
 	}
 	else
@@ -124,6 +131,13 @@ else
 		return false;
 	}
 }
+
+}
+
+public function list_detail()
+{
+
+return $this->list_detail;
 
 }
 
@@ -395,6 +409,42 @@ public function __set($name, $value)
 		if (DEBUG_TEMPLATE)
 			echo "<p>DEBUG : TEMPLATE($this->id)->__set NOT DEFINED : $name</p>\n";
 	}
+}
+
+/**
+ * Returns usefull infos
+ */
+public function id()
+{
+
+return $this->id;
+
+}
+public function name()
+{
+
+return $this->name;
+
+}
+public function label()
+{
+
+return $this->title;
+
+}
+function title()
+{
+
+return $this->title;
+
+}
+
+public function info($name)
+{
+
+if ($name == "library_list" || in_array($name, array_merge(self::$infos, self::$infos_lang)))
+	return $this->{$name};
+
 }
 
 /**
@@ -722,27 +772,6 @@ if (preg_match_all("/\[\[INCLUDE_DATAMODEL:(.*),(.*),(.*)\]\]/", $tpl, $matches,
 }
 
 return $tpl;
-
-}
-
-function id()
-{
-
-return $this->id;
-
-}
-
-function name()
-{
-
-return $this->name;
-
-}
-
-function title()
-{
-
-return $this->title;
 
 }
 

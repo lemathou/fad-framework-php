@@ -19,33 +19,32 @@ if (DEBUG_GENTIME ==  true)
         gentime(__FILE__." [begin]");
 
 /**
- * GLobal update controller
+ * Global update controller
  * @param unknown_type $update
  */
-function data_update($update)
+function data_update($databank, $dataobject_id, $fields)
 {
 
-if (!is_array($update))
+if (!databank()->exists($databank))
 {
-	die("Update must be an array");
+	die("Wrong databank name given : $databank");
 }
-elseif (!isset($update["datamodel"]) || !is_a($databank=databank($update["datamodel"]), "data_bank"))
+elseif (!databank($databank)->exists($dataobject_id))
 {
-	die("datamodel required ($update[datamodel] given)");
+	die("Dataobject $databank ID#$dataobject_id does not exists");
 }
-elseif (!isset($update["id"]) || !is_a($object = $databank->get($update["id"]), "data_bank_agregat"))
+elseif (!is_array($fields))
 {
-	die("dataobject id required ($update[id] given)");
-}
-elseif (!is_array($update["fields"]))
-{
-	die("data required");
+	die("Update fields must be an array");
 }
 else
 {
-	$object->update_from_form($update["fields"]);
-	if (isset($update["save"]) && $update["save"] == true)
+	$object = databank($databank)->get($dataobject_id);
+	$object->update_from_form($fields);
+	if (false)
+	{
 		$object->db_update();
+	}
 }
 
 }
@@ -54,10 +53,10 @@ else
  * Global insert controller
  * @param $insert
  */
-function data_insert($insert)
+function data_insert($databank, $fields)
 {
 
-die("VERBVOTTEN !");
+die("VERBOTTEN !");
 
 }
 
@@ -65,10 +64,10 @@ die("VERBVOTTEN !");
  * GLobal delete controller
  * @param unknown_type $delete
  */
-function data_delete($delete)
+function data_delete($databank, $dataobject_id)
 {
 
-die("VERBVOTTEN !");
+die("VERBOTTEN !");
 
 }
 
@@ -84,9 +83,9 @@ if (isset($_POST["_insert"]))
 	data_insert($_POST["_insert"]);
 }
 
-if (isset($_POST["_update"]))
+if (isset($_POST["_update"]) && is_array($_POST["_update"]) && isset($_POST["_update"]["databank"]) && isset($_POST["_update"]["dataobject"]) && isset($_POST["_update"]["fields"]))
 {
-	data_update($_POST["_update"]);
+	data_update($_POST["_update"]["databank"], $_POST["_update"]["dataobject"], $_POST["_update"]["fields"]);
 }
 
 if (DEBUG_GENTIME ==  true)

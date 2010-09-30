@@ -103,7 +103,7 @@ $template = template($id);
 		$content="";
 	}
 	?></textarea>
-	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle (optionnel)</h3>
+	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle / Modification / Mise à jour (optionnel)</h3>
 	<textarea id="update[script]" name="update[script]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
 	$filename = "template/scripts/".$template->info("name").".inc.php";
 	if (file_exists($filename) && filesize($filename))
@@ -160,7 +160,7 @@ $template = template($id);
 </tr>
 <tr>
 	<td class="label">Dépendant du login</td>
-	<td><input name="update[login_dependant]" value="0" type="radio"<?php if (!$template->info("login_dependant")) echo " checked"; ?> /> <input name="update[login_dependant]" value="1" type="radio"<?php if ($template->info("login_dependant")) echo " checked"; ?> /></td>
+	<td><input name="update[login_dependant]" value="0" type="radio"<?php if (!$template->info("login_dependant")) echo " checked"; ?> /> NON <input name="update[login_dependant]" value="1" type="radio"<?php if ($template->info("login_dependant")) echo " checked"; ?> /> OUI</td>
 </tr>
 <tr>
 	<td class="label">Libraries</td>
@@ -224,7 +224,7 @@ if (isset($_POST["param_edit"]))
 
 <?php
 // Edition
-if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_params = db()->query(" SELECT t1.name , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$template[id]' AND t1.name='$param_edit' ")) && ($param = $query_params->fetch_assoc()))
+if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_str="SELECT t1.name, t1.datatype, t1.defaultvalue, t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '".$template->id()."' AND t1.name='$param_edit'") && ($query_params = db()->query($query_str)) && ($param = $query_params->fetch_assoc()))
 {
 
 $optlist = array();
@@ -337,6 +337,7 @@ if ($query->num_rows())
 </form>
 <?php
 }
+echo mysql_error();
 ?>
 
 <form action="?id=<?=$id?>" method="post">

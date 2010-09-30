@@ -331,7 +331,7 @@ $this->fields_key = array();
 $this->fields_required = array();
 $this->fields_calculated = array();
 // Création des champs du datamodel
-$query = db()->query("SELECT t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t2.`label` FROM _datamodel_fields as t1 LEFT JOIN _datamodel_fields_lang as t2 ON t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname WHERE t1.datamodel_id='$this->id' ORDER BY t1.pos");
+$query = db()->query("SELECT t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
 	if ($field["defaultvalue"] === null)
@@ -350,10 +350,11 @@ while ($field=$query->fetch_assoc())
 		$this->fields[$field["name"]]->db_opt_set("lang",true);
 	}
 }
-$query = db()->query("SELECT fieldname, opt_type, opt_name, opt_value FROM _datamodel_fields_opt WHERE datamodel_id='$this->id'");
+$query = db()->query("SELECT `fieldname`, `opt_type`, `opt_name`, `opt_value` FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
 while ($opt=$query->fetch_assoc())
 {
 	//echo "<p>$this->id : $opt[fieldname] : $opt[opt_type] : $opt[opt_name]</p>\n";
+	//print_r(json_decode($opt["opt_value"]));
 	$method="$opt[opt_type]_opt_set";
 	$this->fields[$opt["fieldname"]]->$method($opt["opt_name"], json_decode($opt["opt_value"], true));
 }

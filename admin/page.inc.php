@@ -3,7 +3,7 @@
 /**
   * $Id: page.inc.php 58 2009-03-03 15:47:37Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -49,7 +49,11 @@ table.tpl_params tr.title td
 {
 	font-weight: bold;
 	background-color: #ffa;
-} 
+}
+input, textarea
+{
+	width: 100%;
+}
 </style>
 
 <script type="text/javascript">
@@ -139,13 +143,13 @@ while (list($perm_id) = $query_perm->fetch_row())
 <h2>Edition d'une page</h2>
 
 <form action="" method="POST">
-<table width="100%">
+<table width="100%" cellspacing="0" cellpadding="0">
 <tr>
 	<td width="200 class="label">ID :</td>
-	<td width="200"><input name="update[id]" value="<?php echo $page["id"]; ?>" readonly /></td>
+	<td width="300"><input name="update[id]" value="<?php echo $page["id"]; ?>" readonly /></td>
 	<td rowspan="8">
 	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle (optionnel)</h3>
-	<textarea id="update[script]" name="update[script]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
+	<textarea id="update[script]" name="update[script]" style="background-color:#eee;" rows="20"><?php
 	$filename = "page/scripts/$page[name].inc.php";
 	if (file_exists($filename) && filesize($filename))
 	{
@@ -160,7 +164,7 @@ while (list($perm_id) = $query_perm->fetch_row())
 </tr>
 <tr>
 	<td class="label">Name :</td>
-	<td><input name="update[name]" value="<?php echo $page["name"]; ?>" size="32" /></td>
+	<td><input name="update[name]" value="<?php echo $page["name"]; ?>" /></td>
 </tr>
 <tr>
 	<td class="label">Template associé :</td>
@@ -176,15 +180,15 @@ while (list($perm_id) = $query_perm->fetch_row())
 </tr>
 <tr>
 	<td class="label">URL (rewriting) :</td>
-	<td><input name="update[url]" value="<?php echo $page["url"]; ?>" size="64" /></td>
+	<td><input name="update[url]" value="<?php echo $page["url"]; ?>" /></td>
 </tr>
 <tr>
 	<td class="label">Titre court (lien) :</td>
-	<td><input name="update[titre_court]" value="<?php echo $page["titre_court"]; ?>" size="32" /></td>
+	<td><input name="update[titre_court]" value="<?php echo $page["titre_court"]; ?>" /></td>
 </tr>
 <tr>
 	<td class="label">Titre (header de page) :</td>
-	<td><input name="update[titre]" value="<?php echo $page["titre"]; ?>" size="64" /></td>
+	<td><input name="update[titre]" value="<?php echo $page["titre"]; ?>" /></td>
 </tr>
 <tr>
 	<td class="label">Permissions :</td>

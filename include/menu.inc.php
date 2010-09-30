@@ -694,7 +694,7 @@ return $this->name;
 public function label()
 {
 
-return $this->titre_court;
+return $this->titre;
 
 }
 /**

@@ -3,9 +3,9 @@
 /**
   * $Id: template.inc.php 76 2009-10-15 09:24:20Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
@@ -231,7 +231,7 @@ while ($param = $query->fetch_row())
 $query_opt = db()->query("SELECT `name`, `opttype`, `optname`, `optvalue` FROM `_template_params_opt` WHERE `template_id`='".$this->id."'");
 while ($opt = $query_opt->fetch_row())
 {
-	$this->param_list_detail[$opt[0]][$opt[1]][$opt[2]]=$opt[3];
+	$this->param_list_detail[$opt[0]][$opt[1]][$opt[2]]=json_decode($opt[3], true);
 }
 foreach ($this->param_list_detail as $name=>$param)
 {
@@ -312,7 +312,7 @@ if (isset($infos["filecontent"]))
 // Template optionnal script file
 if (isset($infos["script"]))
 {
-	$filename = "template/scripts/$this->name.inc.php";
+	echo $filename = "template/scripts/$this->name.inc.php";
 	if ($infos["script"])
 	{
 		fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["script"]));

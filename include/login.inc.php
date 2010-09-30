@@ -202,6 +202,7 @@ elseif (!$this->id && isset($_COOKIE["sid"]) && is_string($_COOKIE["sid"]) && st
 protected function connect($email, $password_crypt, $options=array())
 {
 
+//echo "SELECT id , actif , password , lang_id , email FROM _account WHERE email LIKE '".db()->string_escape($email)."'";
 $query = db()->query("SELECT id , actif , password , lang_id , email FROM _account WHERE email LIKE '".db()->string_escape($email)."' ");
 
 if (!$query->num_rows() || !($account = $query->fetch_assoc()))
@@ -221,7 +222,7 @@ elseif (!$account["actif"])
 elseif (md5($this->sid."".$account["password"]) != $password_crypt)
 {
 	if (DEBUG_LOGIN)
-		echo "<p>PASSWORD ERROR</p>\n";
+		echo "<p>PASSWORD ERROR : ".$account["password"]." : $password_crypt != ".md5($this->sid."".$account["password"])."</p>\n";
 	$this->disconnect(4);
 	return false;
 }

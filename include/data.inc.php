@@ -613,8 +613,7 @@ else
 
 /**
  * Convert the value in database format
- * A MODIFIER !!!
- *
+ * 
  * @param unknown_type $value
  * @return unknown
  */
@@ -864,7 +863,7 @@ else
 public function db_field_create()
 {
 
-print_r($this->structure_opt);
+//print_r($this->structure_opt);
 
 $return = array
 (
@@ -874,7 +873,7 @@ $return = array
 );
 if ($this->structure_opt["integer"]["signed"])
 {
-	$return["signed"]=true;
+	$return["signed"] = true;
 }
 
 return $return;
@@ -1104,7 +1103,7 @@ public function form_field_disp($print=true, $options=array())
 {
 
 $return = "<select name=\"$this->name\">";
-foreach ($this->structure_opt["select"] as $i=>$j)
+foreach ($this->structure_opt("select") as $i=>$j)
 	if ($this->value == $i)
 		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
 	else
@@ -1159,7 +1158,7 @@ function __tostring()
 {
 
 if (isset($this->structure_opt["select"][$this->value]))
-	return $this->structure_opt["select"][$this->value];
+	return "".$this->structure_opt["select"][$this->value];
 else
 	return "<i>undefined</i>";
 
@@ -1615,7 +1614,7 @@ protected $form_opt = array
 public function __tostring()
 {
 
-return implode(",",$this->value);
+return implode(", ", $this->value);
 
 }
 
@@ -1624,7 +1623,7 @@ public function form_field_disp($print=true, $options=array())
 
 $return = "<select name=\"".$this->name."[]\" multiple=\"true\">";
 foreach ($this->structure_opt["fromlist"] as $i=>$j)
-	if (in_array($i,$this->value))
+	if (in_array($i, $this->value))
 		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
 	else
 		$return .= "<option value=\"$i\">$j</option>";
@@ -1658,15 +1657,29 @@ else
 public function value_from_db($value)
 {
 
-$this->value = explode(",",$value);
+$e = explode(",", $value);
+$this->value = array();
+foreach ($e as $i)
+	if (isset($this->structure_opt["fromlist"][$i]))
+		$this->value[] = $i;
+
+}
+
+public function value_from_form($value)
+{
+
+$this->value = array();
+foreach ($value as $i)
+	if (isset($this->structure_opt["fromlist"][$i]))
+		$this->value[] = $i;
 
 }
 
 public function value_to_db()
 {
 
-if (is_array($this->value))
-	return implode(",",$this->value);
+if (is_array($this->value) && count($this->value)>0)
+	return implode(",", $this->value);
 else
 	return null;
 

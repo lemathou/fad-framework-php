@@ -263,7 +263,7 @@ if ($query->num_rows())
 	?></select></td>
 </tr>
 <tr>
-	<td>Valeur par défaut :</td>
+	<td>Valeur par défaut :<br />(JSON)</td>
 	<td><?php
 	if ($param["datatype"]=="dataobject" && isset($optlist["structure"]["databank"]) && is_a($databank=databank($optlist["structure"]["databank"]),"data_bank"))
 	{
@@ -347,7 +347,7 @@ echo mysql_error();
 	<td>Name</td>
 	<td>description</td>
 	<td>Datatype</td>
-	<td>Defaultvalue</td>
+	<td>Defaultvalue (JSON)</td>
 </tr>
 <?
 
@@ -384,7 +384,7 @@ while ($param = $query_params->fetch_assoc())
 	<td><a href="?id=<?php echo $id; ?>&param_edit=<?=$param["name"]?>"><?=$param["name"]?></a></td>
 	<td><?=$param["description"]?></td>
 	<td><?=data()->title($param["datatype"])?></td>
-	<td><input type="text" value="<?=$param["defaultvalue"]?>" readonly /></td>
+	<td><?=$param["defaultvalue"]?></td>
 </tr>
 <?php
 }

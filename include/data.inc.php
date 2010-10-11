@@ -1014,6 +1014,13 @@ return array( "type" => "string" );
 
 }
 
+public function __tostring()
+{
+
+return str_replace("\n", "\n<br />", $this->value);
+
+}
+
 }
 
 /**
@@ -1063,6 +1070,16 @@ public function db_field_create()
 {
 
 return array( "type" => "richtext" );
+
+}
+
+/**
+ * Must put the usual value.
+ */
+public function __tostring()
+{
+
+return $this->value;
 
 }
 
@@ -2309,9 +2326,18 @@ data_string::__construct($name, $value, $label, array("email"=>array("strict"=>f
 
 }
 
-function link()
+function link($protect=false)
 {
+
+if ($protect)
+{
+	$id = rand(1,10000);
+	list($nom, $domain) = explode("@", $this->value);
+	return "<div id=\"id_$id\" style=\"diaplay:inline;\"></div><script type=\"text/javascript\">email_replace('$id', '$domain', '$nom');</script>";
+}
+else
 	return "<a href=\"mailto:$this->value\">$this->value</a>";
+
 }
 
 }

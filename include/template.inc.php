@@ -226,7 +226,7 @@ $query = db()->query("SELECT t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultva
 while ($param = $query->fetch_row())
 {
 	$this->param_list[$param[0]] = $param[1];
-	$this->param_list_detail[$param[1]] = array("datatype"=>$param[2], "value"=>$param[3], "structure"=>array(), "label"=>$param[4]);
+	$this->param_list_detail[$param[1]] = array("datatype"=>$param[2], "value"=>json_decode($param[3], true), "structure"=>array(), "label"=>$param[4]);
 }
 $query_opt = db()->query("SELECT `name`, `opttype`, `optname`, `optvalue` FROM `_template_params_opt` WHERE `template_id`='".$this->id."'");
 while ($opt = $query_opt->fetch_row())
@@ -244,7 +244,7 @@ foreach ($this->param_list_detail as $name=>$param)
 		foreach ($param["structure"] as $i=>$j)
 			$this->param[$name]->structure_opt_set($i, $j);
 	}
-	$this->param[$name]->value_from_form($param["value"]);
+	$this->param[$name]->value = $param["value"];
 }
 
 // Script list
@@ -482,13 +482,7 @@ if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && 
 }
 else
 {
-		foreach ($this->param as $_name=>&$_value)
-			${$_name} = $_value;
-		ob_start();
-		include "template/".$this->name.".tpl.php";
-		$return = ob_get_contents();
-		ob_end_clean();
-		echo $return;
+	echo $this->execute();
 }
 
 }
@@ -519,13 +513,7 @@ if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && 
 }
 else
 {
-		foreach ($this->param as $_name=>&$_value)
-			${$_name} = $_value;
-		ob_start();
-		include "template/".$this->name.".tpl.php";
-		$return = ob_get_contents();
-		ob_end_clean();
-		return $return;
+	return $this->execute();
 }
 
 }
@@ -551,11 +539,129 @@ protected function params_check()
 
 if (file_exists("template/scripts/$this->name.inc.php"))
 {
-	foreach ($this->param as $_name=>&$_value)
+	// References !
+	//echo "<!-- Template Script : template/scripts/$this->name.inc.php -->\n";
+	foreach ($this->param as $_name=>$_value)
 		${$_name} = $_value;
 	include "template/scripts/$this->name.inc.php";
 }
 
+}
+
+/**
+ * Returns the list of subtemplates of a given template
+ */
+public static function subtemplates($tpl)
+{
+
+$return = array();
+
+if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
+{
+	foreach($matches as $match)
+	{
+		if ($id=template()->exists_name($match[1]))
+		{
+			if (isset($match[3]))
+			{
+				//echo $match[3]." : ";
+				//print_r(json_decode($match[3], true));
+				$return[] = array("id"=>$id, "params"=>json_decode($match[3], true));
+			}
+			else
+			{
+				$return[] = array("id"=>$id);
+			}
+		}
+	}
+}
+
+return $return;
+
+}
+
+/**
+ * Apply subtemplates to a executed template.
+ */
+protected function subtemplates_apply($tpl)
+{
+
+if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
+{
+	foreach($matches as $match)
+	{
+		if ($id=template()->exists_name($match[1]))
+		{
+			if (DEBUG_TEMPLATE)
+				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id</p>\n";
+			// TODO : VOIR SI PB DE RECURSION !!!!
+			template($id)->params_reset();
+			// Passage des paramètres
+			if (isset($match[3]))
+			{
+				$param_list = template($id)->param_list();
+				$params = json_decode($match[3], true);
+				if ($params === true) // On tente de passer tous les paramètres
+				{
+					foreach($param_list as $name=>$detail)
+					{
+						if (isset($this->param[$name]))
+						{
+							if (DEBUG_TEMPLATE)
+								echo "<p>--> Param : $name</p>\n";
+							template($id)->__set($name, $this->param[$name]->value_to_form());
+						}
+					}
+				}
+				elseif (is_array($params)) foreach ($params as $name=>$name_from)
+				{
+					if (DEBUG_TEMPLATE)
+						echo "<p>--> $name_from : $name</p>\n";
+					if (isset($this->param[$name_from]) && isset($param_list[$name]))
+					{
+						if (DEBUG_TEMPLATE)
+							echo "<p>--> $name_from : $name</p>\n";
+						template($id)->__set($name, $this->param[$name_from]->value_to_form());
+					}
+				}
+			}
+			$tpl = str_replace($match[0], template($id), $tpl);
+		}
+	}
+}
+
+if (preg_match_all("/\[\[INCLUDE_DATAMODEL:(.*),(.*),(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
+{
+	foreach($matches as $match)
+	{
+		if ($id=template()->exists_name("datamodel/$match[1]"))
+		{
+			if (DEBUG_TEMPLATE)
+				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id, for datamodel ID#$match[2], object ID#$match[3]</p>\n";
+			template($id)->params_reset();
+			template($id)->object_set(databank($match[2])->get($match[3], true));
+			$tpl = str_replace($match[0], template($id), $tpl);
+		}
+	}
+}
+
+return $tpl;
+
+}
+
+/**
+ * Execute a template
+ */
+protected function execute()
+{
+	echo "<!-- template($this->name):__tostring() -->";
+	foreach ($this->param as $_name=>$_value)
+		${$_name} = $_value;
+	ob_start();
+	include "template/".$this->name.".tpl.php";
+	$return = $this->subtemplates_apply(ob_get_contents());
+	ob_end_clean();
+	return $return;
 }
 
 /*
@@ -589,7 +695,7 @@ $this->cache_filename = "$this->cache_folder/$this->cache_id";
 protected function cache_generate()
 {
 
-foreach ($this->param as $_name=>&$_value)
+foreach ($this->param as $_name=>$_value)
 {
 	${$_name} = $_value;
 }
@@ -663,47 +769,6 @@ else
 }
 
 /**
- * Display cached template file
- */
-protected function cache_disp()
-{
-
-$tpl = $this->cache_return();
-
-echo $tpl;
-
-}
-
-public static function subtemplates($tpl)
-{
-
-$return = array();
-
-if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
-{
-	foreach($matches as $match)
-	{
-		if ($id=template()->exists_name($match[1]))
-		{
-			if (isset($match[3]))
-			{
-				//echo $match[3]." : ";
-				//print_r(json_decode($match[3], true));
-				$return[] = array("id"=>$id, "params"=>json_decode($match[3], true));
-			}
-			else
-			{
-				$return[] = array("id"=>$id);
-			}
-		}
-	}
-}
-
-return $return;
-
-}
-
-/**
  * Returns cached template file
  */
 protected function cache_return()
@@ -712,66 +777,17 @@ protected function cache_return()
 $filesize = filesize($this->cache_filename);
 $tpl = ($filesize>0) ? fread(fopen($this->cache_filename, "r"), $filesize) : "";
 
-if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
-{
-	foreach($matches as $match)
-	{
-		if ($id=template()->exists_name($match[1]))
-		{
-			if (DEBUG_TEMPLATE)
-				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id</p>\n";
-			// TODO : VOIR SI PB DE RECURSION !!!!
-			template($id)->params_reset();
-			// Passage des paramètres
-			if (isset($match[3]))
-			{
-				$param_list = template($id)->param_list();
-				$params = json_decode($match[3], true);
-				if ($params === true) // On tente de passer tous les paramètres
-				{
-					foreach($param_list as $name=>$detail)
-					{
-						if (isset($this->param[$name]))
-						{
-							if (DEBUG_TEMPLATE)
-								echo "<p>--> Param : $name</p>\n";
-							template($id)->__set($name, $this->param[$name]->value_to_form());
-						}
-					}
-				}
-				elseif (is_array($params)) foreach ($params as $name=>$name_from)
-				{
-					if (DEBUG_TEMPLATE)
-						echo "<p>--> $name_from : $name</p>\n";
-					if (isset($this->param[$name_from]) && isset($param_list[$name]))
-					{
-						if (DEBUG_TEMPLATE)
-							echo "<p>--> $name_from : $name</p>\n";
-						template($id)->__set($name, $this->param[$name_from]->value_to_form());
-					}
-				}
-			}
-			$tpl = str_replace($match[0], template($id), $tpl);
-		}
-	}
+return $this->subtemplates_apply($tpl);
+
 }
 
-if (preg_match_all("/\[\[INCLUDE_DATAMODEL:(.*),(.*),(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
+/**
+ * Display cached template file
+ */
+protected function cache_disp()
 {
-	foreach($matches as $match)
-	{
-		if ($id=template()->exists_name("datamodel/$match[1]"))
-		{
-			if (DEBUG_TEMPLATE)
-				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id, for datamodel ID#$match[2], object ID#$match[3]</p>\n";
-			template($id)->params_reset();
-			template($id)->object_set(databank($match[2])->get($match[3], true));
-			$tpl = str_replace($match[0], template($id), $tpl);
-		}
-	}
-}
 
-return $tpl;
+echo $this->cache_return();
 
 }
 

@@ -120,7 +120,7 @@ return $password;
 function exists($email)
 {
 
-return db()->query("SELECT `id` FROM `_account` WHERE `email` LIKE '".db()->string_escape($email)."'")->num_rows();
+return (db()->query("SELECT `id` FROM `_account` WHERE `email` LIKE '".db()->string_escape($email)."'")->num_rows()) ? true : false;
 
 }
 
@@ -144,7 +144,10 @@ public $page_count=0;
 */
 protected $disconnect_reason = 0;
 
-// paramètres navigateur
+// Message to be displayed at startup
+protected $login_message = "";
+
+// Browsing parameters
 protected $sid="";
 protected $os="???";
 
@@ -163,6 +166,7 @@ public function refresh()
 {
 
 $this->disconnect_reason = 0;
+$this->login_message = "";
 
 // Volontary session restart (and refresh the page)
 if (isset($_GET["_session_restart"]))
@@ -187,6 +191,11 @@ elseif (isset($_POST["_login"]["username"]) && isset($_POST["_login"]["password_
 	$this->connect($_POST["_login"]["username"], $_POST["_login"]["password_crypt"], (isset($_POST["_login"]["permanent"]))?array("permanent"):array());
 }
 // Volontary disconnection
+elseif (isset($_GET["_login_activate"]))
+{
+	$this->activate($_GET["_login_activate"]);
+}
+// Volontary disconnection
 elseif (isset($_POST["_login"]["disconnect"]))
 {
 	$this->disconnect();
@@ -194,6 +203,7 @@ elseif (isset($_POST["_login"]["disconnect"]))
 // Connexion by permanent cookie
 elseif (!$this->id && isset($_COOKIE["sid"]) && is_string($_COOKIE["sid"]) && strlen($_COOKIE["sid"]) == 32)
 {
+	//echo $_COOKIE["sid"];
 	$this->connect_sid($_COOKIE["sid"]);
 }
 
@@ -203,7 +213,7 @@ protected function connect($email, $password_crypt, $options=array())
 {
 
 //echo "SELECT id , actif , password , lang_id , email FROM _account WHERE email LIKE '".db()->string_escape($email)."'";
-$query = db()->query("SELECT id , actif , password , lang_id , email FROM _account WHERE email LIKE '".db()->string_escape($email)."' ");
+$query = db()->query("SELECT `id`, `actif`, `password`, `lang_id`, `email` FROM `_account` WHERE `email` LIKE '".db()->string_escape($email)."' ");
 
 if (!$query->num_rows() || !($account = $query->fetch_assoc()))
 {
@@ -237,7 +247,7 @@ else
 	// Memorize
 	if (in_array("permanent", $options))
 	{
-		db()->query("UPDATE _account SET `sid`='".($sid=md5(rand()))."' WHERE id='$this->id' ");
+		db()->query("UPDATE `_account` SET `sid`='".($sid=md5(rand()))."' WHERE id='$this->id' ");
 		setcookie("sid", $sid, time()+60*60*24*30); // Durée 30 jours
 	}
 	return true;
@@ -248,14 +258,9 @@ else
 protected function connect_sid($sid)
 {
 
-$query = db()->query("SELECT id , username , actif , password , lang_id , email FROM _account WHERE sid LIKE '".db()->string_escape($sid)."' ");
+$query = db()->query("SELECT `id`, `actif`, `password`, `lang_id`, `email` FROM `_account` WHERE `sid` LIKE '".db()->string_escape($sid)."' ");
 
-if (!$query->num_rows())
-{
-	$this->disconnect(1);
-	return false;
-}
-elseif (!($account = $query->fetch_assoc()))
+if (!$query->num_rows() || !($account = $query->fetch_assoc()))
 {
 	$this->disconnect(2);
 	return false;
@@ -268,11 +273,49 @@ elseif (!$account["actif"])
 else
 {
 	$this->id = $account["id"];
-	$this->username = $account["id"];
 	$this->lang_id = $account["lang_id"];
 	$this->email = $account["email"];
 	$this->perm_query();
 	return true;
+}
+
+}
+
+/**
+ * WARNING ! I HAVE TO 
+ */
+public function activate($hash)
+{
+
+$query = db()->query("SELECT `id`, `actif`, `password`, `lang_id`, `email` FROM `_account` WHERE `actif_hash`='".db()->string_escape($hash)."' && `actif`='0'");
+if ($query->num_rows())
+{
+	$account = $query->fetch_assoc();
+	db()->query("UPDATE `_account` SET `actif`='1', `actif_hash`='' WHERE `id`='".$account["id"]."'");
+	$this->id = $account["id"];
+	$this->lang_id = $account["lang_id"];
+	$this->email = $account["email"];
+	$this->perm_query();
+	$this->message = "Votre compte TOP GONES a bien été activé";
+	return true;
+}
+else
+	return false;
+
+}
+
+public function message_show()
+{
+
+if ($this->login_message)
+{
+?>
+<script type="text/javascript">
+$(document).ready(function(){
+	notify('<?=addslashes($this->login_message)?>');
+});
+</script>
+<?
 }
 
 }
@@ -288,8 +331,21 @@ protected function reconnect()
 
 }
 
-protected function disconnect($disconnect_reason=0)
+protected function disconnect($dr=0)
 {
+
+if ($dr==1)
+	$this->login_message="<div class=\"text\"><h3>Echec de la connexion.</h3><p>Ce compte ne figure pas dans nos bases.</p></div><p><img align=\"center\" src=\"/img/picto/login_3.png\" /></p>";
+elseif ($dr==2)
+	$this->login_message="<div class=\"text\"><h3>Echec de la connexion.</h3><p>Votre session a expiré, veuillez vous reconnecter.</p></div><p><img align=\"center\" src=\"/img/picto/login_3.png\" /></p>";
+elseif ($dr==4)
+	$this->login_message="<div class=\"text\"><h3>Echec de la connexion.</h3><p>Mot de passe invalide.</p></div><p><img align=\"center\" src=\"/img/picto/login_3.png\" /></p>";
+elseif ($dr==5)
+	$this->login_message="<div class=\"text\"><h3>Echec de la connexion.</h3><p>Compte temporairement désactivé, veuillez nous contacter pour plus d&rsquo;information.</p></div><p><img align=\"center\" src=\"/img/picto/login_3.png\" /></p>";
+/*
+else
+	$this->login_message="Erreur d'authentification.";
+*/
 
 // Destroy cookie references
 if ($this->id)
@@ -307,7 +363,7 @@ $this->email = "";
 
 $this->perm_query();
 
-$this->disconnect_reason = $disconnect_reason;
+$this->disconnect_reason = $dr;
 
 }
 

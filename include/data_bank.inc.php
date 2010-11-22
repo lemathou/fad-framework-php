@@ -181,6 +181,7 @@ protected $label="";
  * @var string
  */
 protected $perm="";
+protected $perm_type=array();
 
 /**
  * List of retrieved objects, kept only during the page display
@@ -188,7 +189,7 @@ protected $perm="";
  */
 protected $objects=array();
 
-private $serialize_list = array( "id", "name", "label", "perm" );
+private $serialize_list = array( "id", "name", "label", "perm", "perm_type" );
 public $serialize_save_list = array();
 
 public function __construct($id)
@@ -196,21 +197,7 @@ public function __construct($id)
 
 $this->id = $id;
 
-// Retrieving Perm
-/*
-$query = db()->query("SELECT `perm` FROM `_databank_perm_ref` WHERE `databank_id` = '$this->id'");
-if ($query->num_rows())
-{
-	list($this->perm) = $query->fetch_row();
-}
-$query = db()->query("SELECT `perm` FROM `_account_databank_perm` WHERE `account_id` = '".login()->id()."' AND `databank_id` = '$this->id'");
-if ($query->num_rows())
-{
-	list($this->perm) = $query->fetch_row();
-}
-*/
-
-$this->perm = "arwl";
+$this->perm_query();
 $this->library_load();
 
 }
@@ -268,6 +255,7 @@ return datamodel($this->id)->label();
 }
 /**
  * User permissions test
+ * Uses user account and perm list.
  *
  * @return boolean
  */
@@ -290,6 +278,26 @@ public function perm_list()
 {
 
 return $this->perm;
+
+}
+
+function perm_query()
+{
+
+$this->perm = "";
+$this->perm_type = array();
+
+// Retrieving Perm
+$query = db()->query("SELECT `perm` FROM `_databank_perm` WHERE `datamodel_id`='$this->id'");
+if ($query->num_rows())
+{
+	list($this->perm) = $query->fetch_row();
+}
+// Retrieving Perm
+$query = db()->query("SELECT `perm_id`, `perm` FROM `_databank_perm_ref` WHERE `databank_id`='$this->id'");
+if ($query->num_rows())
+	while(list($perm_id, $perm) = $query->fetch_row())
+		$this->perm_type[$perm_id] = $perm;
 
 }
 
@@ -427,11 +435,15 @@ return $this->insert($fields);
 public function delete($params)
 {
 
-if ($id=datamodel($this->id)->delete($params))
+if (is_array($list=datamodel($this->id)->db_delete($params)))
 {
-	// TODO : multiple objects !!
-	if (isset($this->objects[$id]))
-		unset($this->objects[$id]);
+	foreach($list as $id)
+	{
+		if (isset($this->objects[$id]))
+			unset($this->objects[$id]);
+		if (APC_CACHE)
+			apc_delete("dataobject_".$this->id."_".$id);
+	}
 	return true;
 }
 else

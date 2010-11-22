@@ -128,8 +128,8 @@ if (isset($_POST["_field_add"]))
 	// Gestion du repositionnement
 	if ($_POST["pos"] < $pos_max)
 	{
-		db()->query("UPDATE _datamodel_fields SET pos=pos+1 WHERE datamodel_id='".$_GET["id"]."' AND pos >= ".($_POST["pos"]));
-		db()->query("UPDATE _datamodel_fields SET pos=".($_POST["pos"])." WHERE datamodel_id='".$_GET["id"]."' AND name='".($_POST["name"])."'");
+		db()->query("UPDATE `_datamodel_fields` SET `pos` = pos+1 WHERE `datamodel_id` = '".$_GET["id"]."' AND `pos` >= '".($_POST["pos"])."'");
+		db()->query("UPDATE `_datamodel_fields` SET `pos` = '".($_POST["pos"])."' WHERE `datamodel_id` = '".$_GET["id"]."' AND `name` = '".($_POST["name"])."'");
 	}
 	// Insertion du champ dans la tables associée
 	if ($db_sync)
@@ -393,7 +393,7 @@ while ($field=$query->fetch_assoc())
 		<td><a href="?id=<?=$datamodel->id()?>&field_edit=<?=$field["name"]?>"><?=$field["name"]?></a></td>
 		<td><input readonly value="<?=$field["label"]?>" /></td>
 		<td><input readonly value="<?=$field_type_list[$field["type"]]?>" /></td>
-		<td><?php if ($field["defaultvalue"] === null) { ?><i>NULL</i><?php } else { ?><input readonly value="<?=$field["defaultvalue"]?>" /><?php } ?></td>
+		<td><?php if ($field["defaultvalue"] === null) { ?><i>NULL</i><?php } else { ?><textarea readonly rows="1"><?=$field["defaultvalue"]?></textarea><?php } ?></td>
 		<td><input readonly value="<?=$field["opt"]?>" size="10" /></td>
 		<td><input readonly value="<?php if ($field["lang"]) echo "OUI"; else echo "NON"; ?>" size="3" /></td>
 		<td><input readonly value="<?php if ($field["db_sync"]) echo "OUI"; else echo "NON"; ?>" size="3" /></td>

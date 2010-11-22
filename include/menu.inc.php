@@ -178,44 +178,42 @@ if (isset($this->list[$pos_from]) && isset($this->list[$pos_to]))
 
 }
 
-public function disp($method="")
+public function disp($method="", $options=array())
 {
 
+if (isset($options["popup"]))
+	$popup = true;
+else
+	$popup = false;
+
 if ($method == "table")
-{
-	$return = "<table class=\"menu menu_$this->id\"><tr>";
-	foreach ($this->list as $page_id)
-		if (page()->exists($page_id))
-			$return .= "<td>".page($page_id)->link()."</td>";
-	$return .= "</tr></table>";
-	return $return;
-}
+	$tagsep = "td";
 elseif ($method == "ul")
-{
-	$return = "<ul class=\"menu menu_$this->id\">";
-	foreach ($this->list as $page_id)
-		if (page()->exists($page_id))
-			$return .= "<li>".page($page_id)->link()."</li>";
-	$return .= "</ul>";
-	return $return;
-}
+	$tagsep = "li";
 elseif ($method == "div")
-{
-	$return = "<div class=\"menu menu_$this->id\">";
-	foreach ($this->list as $page_id)
-		if (page()->exists($page_id))
-			$return .= "<span>".page($page_id)->link()."</span>";
-	$return .= "</div>";
-	return $return;
-}
+	$tagsep = "span";
 else // $method == "span"
+	$tagsep = ""; // direct links
+
+$return = "";
+foreach ($this->list as $page_id) if (page()->exists($page_id))
 {
-	$return=array();
-	foreach ($this->list as $page_id)
-		if (page()->exists($page_id))
-			$return[] = page($page_id)->link();
-	return "<span class=\"menu menu_$this->id\">".implode(" , ",$return)."</span>";
+	if ($popup)
+		$link = "<a href=\"".page($page_id)->url()."\" onclick=\"info_show('".page($page_id)->url()."'); return false;\">".page($page_id)->label()."</a>";
+	else
+		$link = page($page_id)->link();
+	if ($tagsep)
+		$return .= "<$tagsep>$link</$tagsep>";
 }
+
+if ($method == "table")
+	return "<table class=\"menu menu_$this->id\"><tr>$return</tr></table>";
+elseif ($method == "ul")
+	return "<ul class=\"menu menu_$this->id\">$return</ul>";
+elseif ($method == "div")
+	return "<div class=\"menu menu_$this->id\">$return</div>";
+else // $method == "span"
+	return "<span class=\"menu menu_$this->id\">$return</span>";
 
 }
 
@@ -252,6 +250,8 @@ public function query($retrieve_all=false)
 {
 
 $this->list = array();
+$this->list_name = array();
+$this->list_detail = array();
 $query_string = " SELECT `_page`.`id` as id , `_page`.`name` as name , `_page`.`template_id` as template_id, `_page`.`redirect_url` as redirect_url, `_page`.`alias_page_id` as alias_page_id, `_page_lang`.`titre` as titre, `_page_lang`.`titre_court` as titre_court, `_page_lang`.`url` as url FROM `_page`, `_page_lang` WHERE `_page`.`id`=`_page_lang`.`id` AND `_page_lang`.`lang_id`='".SITE_LANG_ID."'";
 $query = db()->query($query_string);
 while ($page = $query->fetch_assoc())
@@ -300,11 +300,17 @@ else
 		}
 	}
 	if (!isset($this->list_detail[$i]))
+	{
 		define("PAGE_ID", 2);
+	}
 	elseif (!$this->get($i)->perm_login())
+	{
 		define("PAGE_ID", 3);
+	}
 	else
+	{
 		define("PAGE_ID", $i);
+	}
 }
 
 $this->page_id = PAGE_ID;
@@ -453,48 +459,54 @@ function add($name, $infos=array())
 
 $query_fields_1 = array();
 $query_values_1 = array();
-print_r($infos);
+//print_r($infos);
+
 // Base infos
 foreach (self::$infos as $name)
 {
-	$query_fields_1[] = "`$name`"; 
+	$query_fields_1[] = "`_page`.`$name`"; 
 	if (!isset($infos[$name]) || $infos[$name] === null)
-		$query_values_1[] = "`_page`.`$name`=null";
+		$query_values_1[] = "null";
 	else
-		$query_values_1[] = "`_page`.`$name`='".db()->string_escape($infos[$name])."'";
+		$query_values_1[] = "'".db()->string_escape($infos[$name])."'";
 }
 
-$query_fields_2 = array();
-$query_values_2 = array();
-// Language infos
-foreach (self::$infos_lang as $name)
-{
-	$query_fields_2[] = "`$name`"; 
-	if (!isset($infos[$name]) || $infos[$name] === null)
-		$query_values_2[] = "`_page_lang`.`$name`=null";
-	else
-		$query_values_2[] = "`_page_lang`.`$name`='".db()->string_escape($infos[$name])."'";
-}
+echo "INSERT INTO `_page` (".implode(", ",$query_fields_1).") VALUES (".implode(", ",$query_values_1).")";
 
 db()->query("INSERT INTO `_page` (".implode(", ",$query_fields_1).") VALUES (".implode(", ",$query_values_1).")");
 
 if ($id=db()->last_id())
 {
 	// Language infos
+	$query_fields_2 = array();
+	$query_values_2 = array();
 	$query_fields_2[] = "`id`";
 	$query_values_2[] = "'$id'";
 	$query_fields_2[] = "`lang_id`";
 	$query_values_2[] = "'".SITE_LANG_DEFAULT_ID."'";
+	foreach (self::$infos_lang as $name)
+	{
+		$query_fields_2[] = "`_page_lang`.`$name`"; 
+		if (!isset($infos[$name]) || $infos[$name] === null)
+			$query_values_2[] = "null";
+		else
+			$query_values_2[] = "'".db()->string_escape($infos[$name])."'";
+	}
 	db()->query("INSERT INTO `_page_lang` (".implode(", ",$query_fields_2).") VALUES (".implode(", ",$query_values_2).")");
 	// Permissions
 	$query_perm_list = array();
-	if (isset($infos["perm_list"])) foreach($infos["perm_list"] as $perm_id)
+	if (isset($infos["perm"]) && is_array($infos["perm"])) foreach($infos["perm"] as $perm_id)
 	{
 		$query_perm_list[] = "('$id', '$perm_id')";
 	}
 	if (count($query_perm_list)>0)
 	{
 		db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(" , ",$query_perm_list));
+	}
+	$this->query();
+	if (APC_CACHE)
+	{
+		apc_store("page_gestion", $this, APC_CACHE_GESTION_TTL);
 	}
 }
 
@@ -617,6 +629,11 @@ if (isset($infos["script"]))
 	}
 }
 
+if (APC_CACHE)
+{
+	apc_store("page_"+$this->id, $this, APC_CACHE_GESTION_TTL);
+}
+
 $this->db_update();
 
 }
@@ -653,7 +670,7 @@ foreach($this->perm_list as $perm_id)
 }
 if (count($query_perm_list)>0)
 {
-	db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(" , ",$query_perm_list));
+	db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(", ",$query_perm_list));
 }
 
 }
@@ -692,6 +709,12 @@ return $this->name;
 
 }
 public function label()
+{
+
+return $this->titre_court;
+
+}
+public function titre()
 {
 
 return $this->titre;
@@ -972,12 +995,15 @@ if (file_exists("page/scripts/$this->name.inc.php"))
 public function url($params=array(), $text="")
 {
 
+if (!$text)
+	$text = $this->url;
+
 if ($this->alias_page_id)
 {
 	if (count($params))
-		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->alias_page_id,".implode(",",$params).".html";
+		return SITE_BASEPATH.SITE_LANG."/$text,$this->alias_page_id,".implode(",",$params).".html";
 	else
-		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->alias_page_id.html";
+		return SITE_BASEPATH.SITE_LANG."/$text,$this->alias_page_id.html";
 }
 elseif ($this->redirect_url)
 {
@@ -986,40 +1012,17 @@ elseif ($this->redirect_url)
 else // template
 {
 	if (count($params))
-		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id,".implode(",",$params).".html";
+	{
+		// TODO : se retaper le passage de paramètre ..? Gros soucis car il va falloir le préciser pour toutes les pages concernées !
+		// Une fois chose faite, suffit de tester si c'est du dataobject et balancer la sauce ;-)
+		return SITE_BASEPATH.SITE_LANG."/$text,$this->id,".implode(",",$params).".html";
+	}
 	else
-		return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id.html";
+		return SITE_BASEPATH.SITE_LANG."/$text,$this->id.html";
 }
 
 }
-/**
- * Returns a rewritten url to the page
- * @param unknown_type $ref
- * @param unknown_type $params
- * @param unknown_type $concat
- */
-public function url_rewrite($ref, $params=array(), $concat=false)
-{
 
-if ($concat)
-	$ref = "$this->url-$ref";
-
-if (count($params))
-	return SITE_BASEPATH.SITE_LANG."/$ref,$this->id,".implode(",",$params).".html";
-else
-	return SITE_BASEPATH.SITE_LANG."/$ref,$this->id.html";
-
-}
-/**
- * Returns a rewritten url to the page
- * @param unknown_type $text
- */
-public function url_html($text="")
-{
-
-return SITE_BASEPATH.SITE_LANG."/$this->url,$this->id.html";
-
-}
 /**
  * Returns an HTML link to the page
  * @param unknown_type $params

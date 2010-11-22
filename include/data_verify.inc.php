@@ -364,11 +364,7 @@ public static function convert($value,$params=array())
 {
 
 if (!isset($params[$value]))
-{
-	// Y'aurait pas plus simple ..?
-	list($i,)=each($params);
-	return $i;
-}
+	return null;
 else
 	return $value;
 
@@ -502,7 +498,12 @@ else
 public static function convert($value,$params=array())
 {
 
-return "00/00/0000";
+if (self::verify($value))
+	return $value;
+elseif ($value)
+	return "00/00/0000";
+else
+	return null;
 
 }
 
@@ -649,10 +650,10 @@ class data_verify_datamodel implements data_verify_i
 public static function verify($value, $params=array())
 {
 
-if (!is_a($value, "agregat") || ($params && ($value->datamodel()->name() != $params)) || !$value->verify())
-	return false;
-else
+if (is_a($value, "agregat") && ($value->datamodel()->name() == $params))
 	return true;
+else
+	return false;
 
 }
 
@@ -660,21 +661,10 @@ public static function convert($value, $params=array())
 {
 
 // A COMPLETER
-if (is_a($value, "agregat"))
-	if ($params && ($value->datamodel()->name() != $params))
-		return new agregat(datamodel($params));
-	elseif (!$value->verify())
-	{
-		$value->convert();
-		return $value;
-	}
-	else
-		return $value();
+if (self::verify($value, $params))
+	return $value;
 else
-	if ($params)
-		return new agregat(datamodel($params));
-	else
-		return new agregat();
+	return null;
 
 }
 

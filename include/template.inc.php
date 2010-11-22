@@ -59,6 +59,28 @@ elseif ($this->exists($id))
 		apc_store("template_$id", $template, APC_CACHE_TEMPLATE_TTL);
 	return $this->list[$id] = $template;
 }
+elseif ($this->exists_name($id))
+{
+	return $this->get($this->list_name[$id]);
+}
+else
+{
+	return null;
+}
+
+}
+
+/**
+ * Retrieve a page using its (unique) name
+ * @param unknown_type $name
+ */
+public function __get($name)
+{
+
+if (isset($this->list_name[$name]))
+{
+	return $this->get($this->list_name[$name]);
+}
 else
 {
 	return null;
@@ -654,7 +676,7 @@ return $tpl;
  */
 protected function execute()
 {
-	echo "<!-- template($this->name):__tostring() -->";
+	//echo "<!-- template($this->name):__tostring() -->";
 	foreach ($this->param as $_name=>$_value)
 		${$_name} = $_value;
 	ob_start();
@@ -684,6 +706,7 @@ foreach($this->param_list as $name)
  * Set variables
  */
 $this->cache_id = md5($params_str);
+//echo "<p>$params_str : $this->cache_id</p>";
 $this->cache_folder = "cache/".substr($this->cache_id,0,1);
 $this->cache_filename = "$this->cache_folder/$this->cache_id";
 
@@ -691,8 +714,9 @@ $this->cache_filename = "$this->cache_folder/$this->cache_id";
 
 /**
  * Regenerate cache file
+ * @protected // TODO
  */
-protected function cache_generate()
+public function cache_generate()
 {
 
 foreach ($this->param as $_name=>$_value)
@@ -708,7 +732,7 @@ ob_end_clean();
 }
 
 /**
- * Vérifie l'obsolescence du fichier en cache
+ * Verify if cache file is up to date
  */
 protected function cache_check()
 {
@@ -808,7 +832,7 @@ else
 
 }
 
-protected function cache_id_set()
+public function cache_id_set()
 {
 
 $params_str = "$this->id,".PAGE_ID;
@@ -828,7 +852,7 @@ $this->cache_filename = "$this->cache_folder/$this->cache_id";
 
 }
 
-function params_reset()
+public function params_reset()
 {
 
 $this->param = array();
@@ -1070,7 +1094,7 @@ $this->cache_id = md5($params_str);
 /**
  * Regenerate cache file
  */
-protected function cache_generate()
+public function cache_generate()
 {
 
 foreach ($this->params as $_name=>$_value)

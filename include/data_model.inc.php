@@ -1022,16 +1022,17 @@ if (count($query_list)>0)
 {
 	foreach($query_list as $name=>$detail)
 	{
-		if ($this->fields[$name]->type == "dataobject_list" && is_array($fields[$name]->value))
+		//echo "<p>$name : ".implode(", ",$fields[$name]->value)."</p>";
+		if ($this->fields[$name]->type == "dataobject_list" && is_array($fields[$name]->value) && count($fields[$name]->value))
 		{
 			$details["query_values"] = array();
-			foreach ($fields[$name]->value as $object)
+			foreach ($fields[$name]->value as $object_id)
 			{
-				$details["query_values"][] = "('$id','$object->id')";
+				$details["query_values"][] = "('$object_id', '$id')";
 			}
 			if (count($details["query_values"])>0)
 			{
-				$query_str = "INSERT INTO `".$this->fields[$name]->db_opt["ref_table"]."` (`".$this->fields[$name]->db_opt["ref_field"]."` , `".$this->fields[$name]->db_opt["ref_id"]."`  ) VALUES ".implode(",",$details["query_values"]);
+				echo $query_str = "INSERT INTO `".$this->fields[$name]->db_opt["ref_table"]."` (`".$this->fields[$name]->db_opt["ref_field"]."`, `".$this->fields[$name]->db_opt["ref_id"]."`) VALUES ".implode(", ",$details["query_values"]);
 				$query = db()->query($query_str);
 			}
 		}
@@ -1051,15 +1052,21 @@ return $id;
 public function db_delete($params)
 {
 
-//return db()->delete("$this->name","");
-/*
- * Dans un premier temps on fait simple...
- */
-
-if (is_array($params) && count($params)==1 && isset($params["id"]) && is_numeric($params["id"]))
-	return db()->query("DELETE FROM `$this->name` WHERE id = '".db()->string_escape($params["id"])."'");
+if (($list=$this->db_select($params)) && is_array($list))
+{
+	// TODO : Delete other entries if needed, in cases of data_databank_list field !
+	$return = array();
+	foreach ($list as $id=>$fields)
+	{
+		db()->query("DELETE FROM `".$this->db_opt["table"]."` WHERE `id` = '".db()->string_escape($id)."'");
+		$return[] = $id;
+	}
+	return $return;
+}
 else
+{
 	return false;
+}
 
 }
 
@@ -1113,28 +1120,28 @@ if ($query_ok)
 		{
 			if (DEBUG_DATAMODEL)
 				trigger_error("Datamodel '$this->name' : Update error : Field '$name' not defined");
-			unset($field[$name]);
+			unset($fields[$name]);
 		}
 		// Bad field
 		elseif (!is_a($field, "data") || ($class=get_class($this->fields[$name])) != get_class($field))
 		{
 			if (DEBUG_DATAMODEL)
 				trigger_error("Datamodel '$this->name' : Update error : Field '$name' not an instance of '$class'");
-			unset($field[$name]);
+			unset($fields[$name]);
 		}
 		// Extra table update : dataobject_list
 		elseif ($this->fields[$name]->type == "dataobject_list" && $this->fields[$name]->db_opt["ref_table"])
 		{
-			foreach($field->value as $object)
+			foreach($field->value as $id)
 			{
-				$update_query[$name][] = "('".$insert_params["id"]."','".$object->id->value_to_db()."')";
+				$update_query[$name][] = "('".$insert_params["id"]."','$id')";
 			}
 		}
 		// Primary table update
 		elseif ($this->fields[$name]->type == "dataobject_select")
 		{
 			//print $field->value;
-			if (is_a($field->value,"data_bank_agregat"))
+			if ($field->nonempty())
 			{
 				$update_fields[$fieldname = $this->fields[$name]->db_opt["databank_field"]] = "`$fieldname` = '".db()->string_escape($field->value->datamodel()->name())."'";
 				$update_fields[$fieldname = $this->fields[$name]->db_opt["field"]] = "`$fieldname` = '".db()->string_escape($field->value->id)."'";
@@ -1574,53 +1581,82 @@ if (!is_array($params))
 else
 {
 	// Requete sur la table principale
-	$query_base = array ( "fields" => array(), "where" => array() );
+	if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
+		$tablename = $this->db_opt["table"];
+	$query_base = array ( "fields" => array(), "where" => array(), "from" => array("`".$tablename."`") );
 	// Autres requetes
 	$query_list = array();
 	// Fields to be retrieved with other queries : A MODIFIER, VERIFIER LA TABLE ! CAR TABLES COMPLEMENTAIRES AUSSI POSSIBLES
 	$type_special = array("list", "dataobject_list", "dataobject_select");
+	// Langue
+	$query_lang = false;
 	// Result
 	$return = array();
 	// Result params mapping
 	$return_params = array();
-	foreach($params as $name=>$value)
+	foreach($params as $param_nb=>$param)
 	{
-		if (isset($this->fields[$name]))
+		if (!isset($param["type"]))
+			$param["type"] = "";
+		if (isset($this->fields[$param["name"]]))
 		{
-			$field = $this->fields[$name];
-			if (!in_array($this->fields[$name]->type, $type_special))
+			$field = $this->fields[$param["name"]];
+			// Champ "standard"
+			if (!in_array($field->type, $type_special))
+
 			{
-				$query_base["where"][$name] = $this->fields[$name]->db_query_param($value);
+				if (isset($field->db_opt["lang"]))
+				{
+					$query_lang = true;
+					$query_base["where"][] = "`".$this->db_opt["table"]."_lang`.".$field->db_query_param($param["value"], $param["type"]);
+				}
+				else
+					$query_base["where"][] = "`".$this->db_opt["table"]."`.".$field->db_query_param($param["value"], $param["type"]);
 				// mapping for other queries
 				foreach($query_list as $i=>$j)
 				{
-					if ($this->fields[$i]->type == "dataobject_list" && ($ref_field=$this->fields[$i]->db_opt("ref_field")))
+					if ($this->fields[$i]->type == "dataobject_list")
 					{
-						$query_list[$i]["where"][$name] = "`$ref_field` = '".db()->string_escape($value)."'";
+						$query_list[$i]["where"][] = "`".$this->db_opt["table"]."`.".$field->db_query_param($param["value"], $param["type"]);
 					}
-					elseif ($this->fields[$i]->type == "dataobject_list")
+					else
 					{
-						$query_list[$i]["where"][$name] = "`".$this->fields[$i]->db_opt("ref_id")."` = '".db()->string_escape($value)."'";
+						//echo "<br />BUG";
 					}
 				}
 			}
-			elseif ($this->fields[$name]->type == "dataobject_select")
+			elseif ($field->type == "dataobject_select")
 			{
-				$query_base["where"][$name] = "`".$this->fields[$name]->db_opt["databank_field"]."` = '".db()->string_escape($value)."'";
+				$query_base["where"][] = "`".$field->db_opt["databank_field"]."` = '".db()->string_escape($param["value"])."'";
 			}
-			elseif ($this->fields[$name]->type == "dataobject_list")
+			elseif ($field->type == "dataobject_list")
 			{
+				$query_base["from"][] = "`".$field->db_opt["ref_table"]."`";
+				$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_field"]."` = '".db()->string_escape($param["value"])."'";
+				$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_id"]."` = `".$this->db_opt["table"]."`.`id`";
 				// FAIRE UN JOIN CAR CONDITIONS PARAMS AVEC AUTRES TABLES : genre entreprise qui embauche 
 			}
 		}
+		// PAS DEFINI
 		else
-			unset($params[$name]);
+		{
+			unset($params[$param_nb]);
+		}
 	}
 	// Primary query
+	// Lang
+	if ($query_lang)
+	{
+		if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
+			$tablename = $this->db_opt["table"];
+		$query_base["from"][] = "`".$tablename."_lang`";
+		$query_base["where"][] = "`".$this->name."`.`id` = `".$this->name."_lang`.`id`";
+		$query_base["where"][] = "`".$this->name."_lang`.`lang_id` = '".SITE_LANG_ID."'";
+	}
 	// This query is always performed to map keys with results, which is simpler for other queries
 	if (count($query_base["where"]) == 0)
 		$query_base["where"][] = "1";
-	$query_string = " SELECT count(*) FROM `".$this->db_opt["table"]."` WHERE ".implode(" AND ",$query_base["where"]);
+	$query_string = " SELECT count(*) FROM ".implode(", ", $query_base["from"])." WHERE ".implode(" AND ",$query_base["where"]);
 	return array_pop(db()->query($query_string)->fetch_row());
 }
 
@@ -1686,7 +1722,7 @@ foreach ($objects as $object)
  * Agrégats de données
  *
  */
-class agregat
+class agregat extends session_select
 {
 
 /**
@@ -1702,6 +1738,7 @@ protected $datamodel_id=0;
  * @var array
  */
 protected $fields = array();
+protected $field_values = array();
 
 /**
  * Form, display, etc. options
@@ -1709,6 +1746,8 @@ protected $fields = array();
  * @var array
  */
 protected $options = array();
+
+private $serialize_list = array("datamodel_id", "field_values");
 
 public function __construct($datamodel=null, $fields=array())
 {
@@ -1751,6 +1790,12 @@ public function __get($name)
 
 if (isset($this->fields[$name]))
 {
+	return $this->fields[$name];
+}
+elseif (isset($this->field_values[$name]))
+{
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name]->value = $this->field_values[$name];
 	return $this->fields[$name];
 }
 elseif (isset($this->datamodel()->{$name}))

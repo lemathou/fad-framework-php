@@ -116,10 +116,11 @@ page()->add($_POST["insert"]["name"], $_POST["insert"]);
 }
 
 // Update
-if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]) && page()->exists($_POST["update"]["id"]))
+if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]) && page()->exists($id=$_POST["update"]["id"]))
 {
 
-page($_POST["update"]["id"])->update($_POST["update"]);
+page($id)->update($_POST["update"]);
+echo "<p>Page mise à jour</p>";
 
 }
 

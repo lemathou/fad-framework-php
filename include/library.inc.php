@@ -45,7 +45,7 @@ while ($library = $query->fetch_assoc())
 	$this->list_detail[$library["id"]] = $library;
 	$this->list_name[$library["name"]] = $library["id"];
 	if (LIBRARY_AUTOLOADALL)
-		$this->list[$library["id"]] = new library($library["id"], false, $library); // Masq only if there is a lot of libraries
+		$this->list[$library["id"]] = new library($library["id"], false, $library); // Masq only if there is too much unused libraries in many pages
 }
 
 }
@@ -82,6 +82,60 @@ elseif (isset($this->list_detail[$id]))
 	if (APC_CACHE)
 		apc_store("library_$id", $this->list[$id], APC_CACHE_GESTION_TTL);
 	return $this->list[$id];
+}
+else
+{
+	return null;
+}
+
+}
+
+/**
+ * Add a library
+ * @param array $library
+ */
+public function add($library)
+{
+
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN ADD LIBRARY");
+
+$query_string = "INSERT INTO `_library` (`name`, `description`) VALUES ('".db()->string_escape($library["name"])."', '".db()->string_escape($library["description"])."')";
+$query = db()->query($query_string);
+
+if (($id=$query->last_id()))
+{
+	$query_string = "INSERT INTO `_library_lang` (`id`, `lang_id`, `title`) VALUES ('$id', '".SITE_LANG_ID."', '".db()->string_escape($library["title"])."')";
+	$query = db()->query($query_string);
+	if (isset($library["library_list"]) && is_array($library["library_list"]) && (count($library["library_list"]) > 0))
+	{
+		$query_perm_list = array();
+		foreach($library["library_list"] as $library_id) if ($this->exists($library_id))
+			$query_library_list[] = "('$library_id', '$id')";
+		if (count($query_library_list)>0)
+		{
+			$query_string = "INSERT INTO `_library_ref` (`parent_id`, `id`) VALUES ".implode(", ",$query_library_list);
+			db()->query($query_string);
+		}
+	}
+	if (isset($library["filecontent"]))
+	{
+		$filename = "library/$library[name].inc.php";
+		if (!$library["filecontent"])
+			$library["filecontent"] = "<?php\n\n\n?>";
+		fwrite(fopen($filename,"w"), htmlspecialchars_decode($library["filecontent"]));
+	}
+	$library = array( "id"=>$id, "name"=>$library["name"], "description"=>$library["description"], "title"=>$library["title"] );
+	$this->list_detail[$library["id"]] = $library;
+	$this->list_name[$library["name"]] = $library["id"];
+	if (LIBRARY_AUTOLOADALL)
+		$this->list[$library["id"]] = new library($library["id"], false, $library); // Masq only if there is too much unused libraries in many pages
+	if (APC_CACHE)
+	{
+		apc_store("library_gestion", $this, APC_CACHE_GESTION_TTL);
+		apc_store("library_$id", $this->list[$id], APC_CACHE_GESTION_TTL);
+	}
+	return $id;
 }
 else
 {
@@ -183,7 +237,7 @@ protected static $infos = array("name", "description");
 protected static $infos_lang = array("title");
 
 // Données à sauver en session
-private $serialize_list = array("id", "name", "title", "description", "list");
+private static $serialize_list = array("id", "name", "title", "description", "list");
 public $serialize_save_list = array();
 
 function __construct($id, $query=true, $infos=array())
@@ -326,7 +380,7 @@ return "$this->name : $this->description";
 function __sleep()
 {
 
-return session_select::__sleep($this->serialize_list);
+return session_select::__sleep(self::$serialize_list);
 
 }
 

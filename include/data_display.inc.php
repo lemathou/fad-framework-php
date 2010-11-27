@@ -112,8 +112,7 @@ class datamodel_insert_form extends datamodel_display
 public function disp($print=true)
 {
 
-$return = "<div class=\"datamodel_form datamodel_insert_form\">\n";
-$return .= "<form id=\"".$this->datamodel->name()."\" method=\"post\" onsubmit=\"return agregat_verify(this, new Array ('".implode("','",$this->datamodel->fields_required())."'))\">\n";
+$return = "<form class=\"datamodel_form datamodel_insert_form\" id=\"".$this->datamodel->name()."\" method=\"post\" onsubmit=\"return agregat_verify(this, new Array ('".implode("','",$this->datamodel->fields_required())."'))\">\n";
 $return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
 foreach ($this->datamodel->fields() as $name=>$field)
 	if (isset($this->fields[$name]))
@@ -126,12 +125,11 @@ foreach ($this->datamodel->fields() as $name=>$field)
 			$field_class = "field calculated_field";
 		else
 			$field_class = "field";
-		$return .= "<tr class=\"$field_class\"> <td class=\"label\">".$this->fields[$name]->disp_opt("label")." :</td> <td>".$this->fields[$name]->form_field_disp(false)."</td> </tr>\n";
+		$return .= "<tr class=\"$field_class\"> <td class=\"label\"><label for=\"$name\">".$this->fields[$name]->label."</label> :</td> <td>".$this->fields[$name]->form_field_disp(false)."</td> </tr>\n";
 	}
 $return .= "<tr> <td>&nbsp;</td> <td><input type=\"submit\" value=\"Ajouter\" /></td> </tr>\n";
 $return .= "</table>\n";
 $return .= "</form>\n";
-$return .= "</div>\n";
 
 if ($print)
 	echo $return;

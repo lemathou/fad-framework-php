@@ -177,6 +177,12 @@ protected $form_opt = array();
 public static $form_opt_list = array("type", "tabindex", "accesskey", "size", "cols", "rows", "width", "height");
 
 /**
+ * Data avalaible using __get()
+ * @var array
+ */
+protected static $get_list = array("name", "type", "label", "value", "structure_opt", "db_opt", "disp_opt", "form_opt", "datamodel_id");
+
+/**
  * Constructor
  *
  * @param string $name
@@ -213,7 +219,7 @@ $this->value_set($value, true);
 public function __get($name)
 {
 
-if (in_array($name, array("name", "type", "label", "value", "structure_opt", "db_opt", "disp_opt", "form_opt")))
+if (in_array($name, self::$get_list))
 	return $this->{$name};
 elseif ($name == "datamodel")
 	return datamodel($this->datamodel_id);
@@ -512,7 +518,7 @@ public function __set($name, $value)
 {
 
 if ($name == "value")
-	$this->value_set($value, true);
+	$this->value = $value;
 elseif ($name == "datamodel" && is_a($value, "datamodel"))
 	$this->datamodel_id = $value->id();
 	
@@ -750,7 +756,7 @@ if (count($attrib_class_list))
 else
 	$attrib_class = "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"".$this->__tostring()."\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
 
 if ($print)
 	print $return;
@@ -1514,7 +1520,7 @@ protected $type = "datetime";
 
 protected $structure_opt = array
 (
-	"datetime" => "%A %d %B %G", // Defined for strftime()
+	"datetime" => "%A %d %B %G à %H:%M:%S", // Defined for strftime()
 	"size" => 19,
 );
 
@@ -1531,17 +1537,22 @@ public function __tostring()
 if ($this->value)
 	return strftime($this->structure_opt["datetime"], $this->value);
 else
-	return "<i>undefined</i>";
+	return "";
 
 }
 
 public function value_from_db($value)
 {
 
-if ($value == null)
+if ($value == null || $value == "0000-00-00 00:00:00")
 	$this->value = null;
 else
-	$this->value = strtotime($value);
+{
+	$e = explode(" ", $value);
+	$d = explode("-", $e[0]);
+	$t = explode(":", $e[1]);
+	$this->value = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
+}
 
 }
 
@@ -2584,7 +2595,7 @@ else
 function value_to_db()
 {
 
-if (is_a($object=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat"))
+if ($this->value)
 	return $this->value;
 else
 	return null;
@@ -2595,16 +2606,9 @@ function value_from_form($value)
 {
 
 if (is_numeric($value) && is_a(($object=databank($this->structure_opt["databank"],$value)), "data_bank_agregat"))
-{
-	//trigger_error("TEST");
 	$this->value = $value;
-	//return $value; // TODO : correct the display bug
-}
 else
-{
 	$this->value = null;
-	//return null;
-}
 
 }
 
@@ -2640,7 +2644,7 @@ if (($databank=databank($this->structure_opt["databank"])) && (($nb=$databank->c
 // Beaucoup de valeurs : liste Ajax complexe
 else
 {
-	if (is_a(($object=databank($this->structure_opt["databank"],$this->value)), "data_bank_agregat"))
+	if ($this->value)
 	{
 		$return = "<input type=\"hidden\" id=\"$this->name\" value=\"$this->value\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"".$this->__tostring()."\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" /><!--<input type=\"button\" value=\"UPDATE\" onclick=\"update('$this->name')\" />-->";
 	}
@@ -3028,8 +3032,6 @@ function form_field_disp_light($print=true)
 public function db_query_param($value, $type="=")
 {
 
-//echo $this->db_opt["ref_id"];
-
 $type_list = array( "=", "LIKE", "<", ">", "<=", ">=", "NOT LIKE" );  
 if (!in_array($type, $type_list))
 	$type = "=";
@@ -3048,6 +3050,25 @@ else
 
 }
 
+/**
+ * Data to create the associated database 
+ */
+public function db_create()
+{
+
+return array
+(
+	"name" => $this->db_opt["ref_table"],
+	"options" => array(),
+	"fields" => array
+	(
+		$this->db_opt["ref_id"] => array ( "type" => "integer", "size" => 10, "signed"=>false, "null"=>false, "key"=>true ),
+		$this->db_opt["ref_field"] => array ( "type" => "integer", "size" => 10, "signed"=>false, "null"=>false, "key"=>true )
+	)
+);
+
+}
+
 }
 
 /**
@@ -3057,6 +3078,11 @@ else
  * - A l'ajout on créé un nouvel objet lié
  * - A la modification on mofidie l'objet lié
  * - A la suppression : on propose de supprimer l'objet lié, de le réaffecter (le lier à un autre) ou encore de laisser vide le champ de liaison s'il n'est pas requis.
+ * 
+ * On n'est pas obligé de définir ce type d'objet dans ce contexte, ils peuvent être totalement autonomes.
+ * Dans ce cas, il fauit envisager la possibilité que ce champ soit facultatif.
+ * TODO : Du coup, le mieux serait que ce champs soit défini intrinsèquement dés qu'on fait une telle référence
+ * dans la définition d'un autre modèle objet. Pas évident...
  * 
  */
 class data_dataobject_list_ref extends data_dataobject_list

@@ -1,11 +1,11 @@
-<?
+<?php
 
 /**
   * $Id: account.inc.php 76 2009-10-15 09:24:20Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 

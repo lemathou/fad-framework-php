@@ -269,16 +269,6 @@ foreach ($this->param_list_detail as $name=>$param)
 	$this->param[$name]->value = $param["value"];
 }
 
-// Script list
-/*
-$this->script_list = array();
-$query = db()->query("SELECT `name` FROM `_template_scripts` WHERE `template_id`='".$this->id."'");
-while (list($name) = $query->fetch_row())
-{
-	$this->script_list[] = $name;
-}
-*/
-
 }
 
 /**
@@ -334,7 +324,7 @@ if (isset($infos["filecontent"]))
 // Template optionnal script file
 if (isset($infos["script"]))
 {
-	echo $filename = "template/scripts/$this->name.inc.php";
+	$filename = "template/$this->name.inc.php";
 	if ($infos["script"])
 	{
 		fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["script"]));
@@ -554,18 +544,18 @@ foreach($this->param_list_detail as $_name=>$_param)
 }
 
 /**
- * Execute scripts on params
+ * Execute optionnal script with given params
  */
 protected function params_check()
 {
 
-if (file_exists("template/scripts/$this->name.inc.php"))
+if (file_exists("template/$this->name.inc.php"))
 {
-	// References !
-	//echo "<!-- Template Script : template/scripts/$this->name.inc.php -->\n";
+	// Including references !
 	foreach ($this->param as $_name=>$_value)
 		${$_name} = $_value;
-	include "template/scripts/$this->name.inc.php";
+	//echo "<!-- Template Script : template/$this->name.inc.php -->\n";
+	include "template/$this->name.inc.php";
 }
 
 }

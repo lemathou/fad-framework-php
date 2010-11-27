@@ -173,7 +173,7 @@ public function add($infos)
 {
 
 if (!login()->perm(6))
-	die();
+	die("ONLY ADMIN CAN ADD DATAMODEL");
 
 if (is_array($infos) && isset($infos["name"]) && isset($infos["library_id"]) && isset($infos["table"]) && isset($infos["label"]) && isset($infos["description"]))
 {
@@ -206,7 +206,7 @@ public function del($id)
 {
 
 if (!login()->perm(6)) // TODO : send email to admin
-	die();
+	die("ONLY ADMIN CAN DELETE DATAMODEL");
 
 if (isset($this->list_detail[$id]))
 {
@@ -508,7 +508,7 @@ public function field_add(data $field, $options="")
 {
 
 if (!login()->perm(6))
-	die();
+	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 if (!is_a($field, "data"))
 {
@@ -540,7 +540,7 @@ public function field_delete($name)
 {
 
 if (!login()->perm(6))
-	die();
+	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 if (isset($this->fields[$name]))
 {
@@ -856,29 +856,37 @@ elseif (DEBUG_DATAMODEL)
 public function db_create()
 {
 
-$fields = array();
 $options = array();
+$fields = array();
 $fields_lang = array();
+$fields_ref = array();
 foreach ($this->fields as $name=>$field)
 {
-	$f = $field->db_field_create();
-	if (in_array($name, $this->fields_key))
+	if ($field->type != "dataobject_list")
 	{
-		$f["null"] = false;
-		$f["key"] = true;
+		$f = $field->db_field_create();
+		if (in_array($name, $this->fields_key))
+		{
+			$f["null"] = false;
+			$f["key"] = true;
+		}
+		elseif (in_array($name, $this->fields_required))
+		{
+			$f["null"] = false;
+		}
+		elseif (!isset($f["null"]) || $f["null"])
+		{
+			$f["null"] = true;
+		}
+		if ($field->db_opt("lang"))
+			$fields_lang[$name] = $f;
+		else
+			$fields[$name] = $f;
 	}
-	elseif (in_array($name, $this->fields_required))
-	{
-		$f["null"] = false;
-	}
-	elseif (!isset($f["null"]))
-	{
-		$f["null"] = true;
-	}
-	if ($field->db_opt("lang"))
-		$fields_lang[$name] = $f;
 	else
-		$fields[$name] = $f;
+	{
+				$fields_ref[] = $field->db_create();
+	}
 }
 
 db()->table_create($this->db_opt["table"], $fields, $options);
@@ -894,6 +902,14 @@ if (count($fields_lang))
 		}
 	$fields_lang["lang_id"] = array ( "type"=>"integer" , "size"=>"3" , "key"=>true );
 	db()->table_create($this->db_opt["table"]."_lang", $fields_lang, $options);
+}
+
+if (count($fields_ref))
+{
+	foreach($fields_ref as $table)
+	{
+		db()->table_create($table["name"], $table["fields"], $table["options"]);
+	}
 }
 
 }
@@ -1032,7 +1048,7 @@ if (count($query_list)>0)
 			}
 			if (count($details["query_values"])>0)
 			{
-				echo $query_str = "INSERT INTO `".$this->fields[$name]->db_opt["ref_table"]."` (`".$this->fields[$name]->db_opt["ref_field"]."`, `".$this->fields[$name]->db_opt["ref_id"]."`) VALUES ".implode(", ",$details["query_values"]);
+				$query_str = "INSERT INTO `".$this->fields[$name]->db_opt["ref_table"]."` (`".$this->fields[$name]->db_opt["ref_field"]."`, `".$this->fields[$name]->db_opt["ref_id"]."`) VALUES ".implode(", ",$details["query_values"]);
 				$query = db()->query($query_str);
 			}
 		}
@@ -1686,8 +1702,8 @@ else
 function select_form($params=array(), $url="", $varname="id")
 {
 ?>
-<form method="get" action="" style="margin:0px;padding:0px;">
-<p>Formulaire de sélection&nbsp;:&nbsp;<select name="id" onchange="document.location.href = '<?php  echo SITE_BASEPATH."/$url?$varname="; ?>'+this.value;">
+<form method="get" action="" class="datamodel_form <?php echo $this->name; ?>_form">
+<p>Formulaire de sélection&nbsp;:&nbsp;<select name="id" onchange="document.location.href = '<?php echo SITE_BASEPATH."/$url?$varname="; ?>'+this.value;">
 <option value="">-- Choisir --</option>
 <?
 $objects = $this->db_get($params);
@@ -1748,6 +1764,31 @@ protected $field_values = array();
 protected $options = array();
 
 private $serialize_list = array("datamodel_id", "field_values");
+
+public function __sleep($list=array())
+{
+
+$this->field_values = array();
+foreach($this->fields as $name => $field)
+	$this->field_values[$name] = $field->value;
+
+return session_select::__sleep($this->serialize_list);
+
+}
+
+public function __wakeup()
+{
+
+session_select::__wakeup();
+
+$this->fields = array();
+foreach($this->field_values as $name => $value)
+{
+	$this->fields[$name] = clone datamodel($this->datamodel_id)->{$name};
+	$this->fields[$name]->value = $value;
+}
+
+}
 
 public function __construct($datamodel=null, $fields=array())
 {
@@ -1821,7 +1862,7 @@ return $this->datamodel()->label();
 
 }
 
-/*
+/**
  * Update a data field
  */
 public function __set($name, $value)
@@ -1838,6 +1879,17 @@ if (isset($this->datamodel()->{$name}))
 elseif (DEBUG_DATAMODEL)
 	trigger_error("Datamodel '$this->datamodel' agregat : Property '$name' not defined");
 	
+}
+
+/**
+ * Correct the problem of fields
+ */
+function __clone()
+{
+
+foreach ($this->fields as $name=>$field)
+	$this->fields[$name] = clone $field;
+
 }
 
 /**

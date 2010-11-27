@@ -3,13 +3,13 @@
 /**
   * $Id: modules.inc.php 59 2009-03-03 15:48:26Z mathieu $
   * 
-  * � Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr �
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 
-// Classe g�n�rale pour les modules
+// global module class
 
 class modules
 {
@@ -78,27 +78,26 @@ else
 
 }
 
-// Acc�s
+// Access
 
 function module($name="")
 {
 
-global $modules;
-
-if ($name)
-{
-	return $modules->get($name);
-}
-else
-{
-	return $modules;
-}
-
-}
 
 if (!isset($GLOBALS["modules"]))
 {
 	$GLOBALS["modules"] = new modules();
+}
+
+if ($name)
+{
+	return $GLOBALS["modules"]->get($name);
+}
+else
+{
+	return $GLOBALS["modules"];
+}
+
 }
 
 ?>

@@ -3,7 +3,7 @@
 /**
   * $Id: index.php 66 2009-03-03 15:51:14Z mathieu $
   * 
-  * « Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr »
+  * « Copyright 2008 Mathieu Moulin - lemathou@free.fr »
   * 
   * This file is part of PHP FAD FRAMEWORK
   * 
@@ -22,7 +22,7 @@
   * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   *
   * Package : PHP FAD FRAMEWORK
-  * Author : Mathieu Moulin, iProspective <lemathou@free.fr>
+  * Author : Mathieu Moulin <lemathou@free.fr>
   * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   *
   */

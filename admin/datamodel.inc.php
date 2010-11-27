@@ -1,4 +1,4 @@
-<?
+<?php
 
 /**
   * $Id: datamodel.inc.php 58 2009-03-03 15:47:37Z mathieu $
@@ -8,6 +8,7 @@
   * This file is part of PHP FAD Framework.
   * 
   */
+
 
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
@@ -24,19 +25,25 @@ if (isset($_POST["_datamodel_delete"]))
 
 ?>
 
-<form method="get">
-<select name="id" onchange="this.form.submit()"><?php
+<form method="get" class="page_form">
+<input type="submit" value="Editer le Datamodel" />
+<select name="id" onchange="this.form.submit()">
+	<option value=""></option>
+<?php
 foreach (datamodel()->list_name_get() as $name=>$id)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "<option value=\"$id\" selected>[$id] $name</option>";
+		echo "	<option value=\"$id\" selected>[$id] $name</option>\n";
 	else
-		echo "<option value=\"$id\">[$id] $name</option>";
+		echo "	<option value=\"$id\">[$id] $name</option>\n";
 }
-?></select>
-<input type="submit" value="Editer" />
+?>
+</select>
+<a href="?list">Liste</a>
+<a href="?add">Ajouter</a>
 </form>
 
+<div style="padding-top: 30px">
 <?php
 
 if (isset($_GET["id"]) && datamodel()->exists($id=$_GET["id"]))
@@ -200,15 +207,7 @@ if (isset($_POST["_db_create"]))
 // Position maximale
 list($pos_max)=db()->query("SELECT pos FROM _datamodel_fields WHERE datamodel_id='".$datamodel->id()."' ORDER BY pos DESC LIMIT 1")->fetch_row();
 
-?>
-
-<hr />
-
-<p><a href="?list">Retour à la liste</a></p>
-
-<h2>Edition du datamodel : <?=$datamodel->name()?></h2>
-
-<?php if (empty($_GET["field_edit"])) { ?>
+if (empty($_GET["field_edit"])) { ?>
 <form method="post"><table>
 <tr>
 	<td>ID :</td>
@@ -446,8 +445,6 @@ else
 {
 ?>
 
-<hr />
-
 <form method="post" action="?add">
 <p>Ajouter un datamodel</p>
 <table>
@@ -464,10 +461,9 @@ else
 	<td><select name="library_id"><?php
 	foreach (library()->list_get() as $library)
 	{
-		echo "<option value=\"$library->id\">$library->name</option>\n";
+		echo "<option value=\"$library->id\">$library->name</option>";
 	}
-	?>
-	</select></td>
+	?></select></td>
 </tr>
 <tr>
 	<td>Table :</td>
@@ -486,6 +482,7 @@ else
 <?php
 }
 ?>
+</div>
 
 <script type="text/javascript">
 function opt_add(type, name)

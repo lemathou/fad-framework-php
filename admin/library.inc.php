@@ -9,38 +9,17 @@
   * 
   */
 
+
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 
 $library_list = library()->list_detail();
 
 // Insert
-if (isset($_POST["insert"]) && is_array($_POST["insert"]))
+if (isset($_POST["insert"]))
 {
 
-$query_string = " INSERT INTO `_library` ( `name` , `description` ) VALUES ( '".$_POST["insert"]["name"]."' , '".$_POST["insert"]["description"]."' ) ";
-$query = db()->query($query_string);
-
-if (($id = $_GET["id"] = $query->last_id()))
-{
-	$query_string = " INSERT INTO `_library_lang` ( `id` , `lang_id` , `name` ) VALUES ( '$id' , '".SITE_LANG_ID."' , '".addslashes($_POST["insert"]["name_lang"])."' ) ";
-	$query = db()->query($query_string);
-	if (isset($_POST["insert"]["library_list"]) && is_array($_POST["insert"]["library_list"]) && (count($_POST["insert"]["library_list"]) > 0))
-	{
-		$query_perm_list = array();
-		foreach($_POST["insert"]["library_list"] as $library_id)
-			$query_library_list[] = "( '$library_id' , '$id' )";
-		if (count($query_library_list)>0)
-		{
-			$query_string = " INSERT INTO `_library_ref` ( `parent_id` , `id` ) VALUES ".implode(" , ",$query_library_list);
-			db()->query($query_string);
-		}
-	}
-}
-elseif ($error = db()->error())
-{
-	print "<p>Une erreur est survenue : DEBUG : $error</p>\n";
-}
+library()->add($_POST["insert"]);
 
 }
 
@@ -52,30 +31,27 @@ library($update["id"])->update($update);
 
 }
 ?>
-
-<style type="text/css">
-table td
+<form method="get" class="page_form">
+<input type="submit" value="Editer la librairie" />
+<select name="id" onchange="this.form.submit()">
+	<option value=""></option>
+<?php
+foreach (library()->list_detail() as $id=>$library)
 {
-	vertical-align: top;
+	if (isset($_GET["id"]) && ($id==$_GET["id"]))
+		echo "	<option value=\"$id\" selected>[$id] $library[name]</option>\n";
+	else
+		echo "	<option value=\"$id\">[$id] $library[name]</option>\n";
 }
-</style>
+?></select>
+<a href="?add">Ajouter</a>
+<a href="?list">Retour à la liste</a>
+</form>
 
-<script language="Javascript" type="text/javascript">
-	// initialisation
-	editAreaLoader.init({
-		id: "update[filecontent]"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: true
-		,word_wrap: true
-		,language: "fr"
-		,syntax: "php"	
-	});
-</script>
-
+<div style="padding-top: 30px">
 <?php
 
-if (isset($_GET["id"]) && isset($library_list[$id=$_GET["id"]]))
+if (isset($_GET["id"]) && library()->exists($id=$_GET["id"]))
 {
 
 $update = $library_list[$id];
@@ -85,7 +61,6 @@ while (list($library_id) = $query_library->fetch_row())
 	$update["library_list"][] = $library_id;
 	
 ?>
-<p><a href="?list">Retour à la liste</a></p>
 <form action="?id=<?=$id?>" method="POST">
 <table width="100%">
 <tr style="font-weight:bold;">
@@ -101,19 +76,19 @@ while (list($library_id) = $query_library->fetch_row())
 </tr>
 <tr>
 	<td>Name :</td>
-	<td><input name="update[name]" value="<?=$update["name"]?>" /></td>
+	<td><input name="update[name]" value="<?=$update["name"]?>" maxlength="64" style="width:100%;" /></td>
 </tr>
 <tr>
 	<td>Nom complet :</td>
-	<td><input name="update[title]" value="<?=$update["title"]?>" style="width:100%" /></td>
+	<td><input name="update[title]" value="<?=$update["title"]?>" maxlength="128" style="width:100%;" /></td>
 </tr>
 <tr>
 	<td>Description :</td>
-	<td><textarea name="update[description]" style="width:100%" rows="4"><?=$update["description"]?></textarea></td>
+	<td><textarea name="update[description]" style="width:100%;" rows="10"><?=$update["description"]?></textarea></td>
 </tr>
 <tr>
 	<td>Dependances :</td>
-	<td><select name="update[library_list][]" size="4" multiple>
+	<td><select name="update[library_list][]" size="10" multiple style="width:100%;">
 	<?
 	foreach($library_list as $i => $j)
 		if (in_array($i, $update["library_list"]))
@@ -129,7 +104,71 @@ while (list($library_id) = $query_library->fetch_row())
 </tr>
 </table>
 </form>
+
+<script language="Javascript" type="text/javascript">
+	// initialisation
+	editAreaLoader.init({
+		id: "update[filecontent]"	// id of the textarea to transform		
+		,start_highlight: true	// if start with highlight
+		,allow_resize: "both"
+		,allow_toggle: true
+		,word_wrap: true
+		,language: "fr"
+		,syntax: "php"	
+	});
+</script>
 <?php
+
+}
+
+elseif (isset($_GET["add"]))
+{
+
+?>
+<form action="?add" method="POST">
+<table width="100%">
+<tr style="font-weight:bold;">
+	<td class="label">Name (unique) :</td>
+	<td><input name="insert[name]" value="" maxlength="64" style="width:100%;" /></td>
+	<td rowspan="10" width="60%"><textarea id="insert[filecontent]" name="insert[filecontent]" style="width:100%;" rows="40"></textarea></td>
+</tr>
+<tr>
+	<td class="label">Nom complet :</td>
+	<td><input name="insert[title]" value="" maxlength="128" style="width:100%;" /></td>
+</tr>
+<tr>
+	<td class="label">Description :</td>
+	<td><textarea name="insert[description]" style="width:100%;height:100%;" rows="10"></textarea></td>
+</tr>
+<tr>
+	<td class="label">Dependances :</td>
+	<td><select name="insert[library_list][]" size="10" multiple style="width:100%;">
+	<?
+	foreach($library_list as $i => $j)
+		echo "<option value=\"$i\">$j[title]</option>";
+	?>
+	</select></td>
+</tr>
+<tr>
+	<td>&nbsp;</td>
+	<td><input type="submit" value="Ajouter" /></td>
+</tr>
+</table>
+</form>
+
+<script language="Javascript" type="text/javascript">
+	// initialisation
+	editAreaLoader.init({
+		id: "insert[filecontent]"	// id of the textarea to transform		
+		,start_highlight: true	// if start with highlight
+		,allow_resize: "both"
+		,allow_toggle: true
+		,word_wrap: true
+		,language: "fr"
+		,syntax: "php"	
+	});
+</script>
+<?
 
 }
 
@@ -137,33 +176,13 @@ else
 {
 
 ?>
+<h3>Liste des librairies :</h3>
 
-<p>Ajouter une librairie</p>
-<form action="" method="POST">
-<table>
-<tr style="font-weight:bold;">
-	<td>Name</td>
-	<td>Nom complet (langue)</td>
-	<td>Description</td>
-	<td>Dependances</td>
-</tr>
-<tr>
-	<td><input name="insert[name]" value="" /></td>
-	<td><input name="insert[name_lang]" value="" /></td>
-	<td><textarea name="insert[description]" cols="25" rows="4"></textarea></td>
-	<td><select name="insert[library_list][]" size="4" multiple>
-	<?
-	foreach($library_list as $i => $j)
-		print "<option value=\"$i\">$j</option>";
-	?>
-	</select></td>
-	<td><input type="submit" value="Ajouter" /></td>
-</tr>
-</table>
-</form>
+<p>Une librairie contient l'ensemble des méthode agissant sur une famille de dataobjects.</p>
+<p>Les principales méthodes seront __tostring() s'agissant de l'affichage par défaut (en général le nom de l'objet).</p>
+<p>On y trouvera parfois des méthodes de calcul faites sur plusieurs champs, des extractions de listes mises en forme, des variables statiques utiles pour l'ensemble des objets, etc.</p>
 
-<p>Liste des librairies :</p>
-<table>
+<table width="100%" cellpadding="2" cellspacing="2" border="1">
 <tr style="font-weight:bold;">
 	<td>&nbsp;</td>
 	<td>ID</td>
@@ -200,9 +219,9 @@ while (list($id) = $query_library->fetch_row())
 }
 ?>
 </table>
-
 <?php
 
 }
 
 ?>
+</div>

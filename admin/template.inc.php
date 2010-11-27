@@ -1,4 +1,4 @@
-<?
+<?php
 
 /**
   * $Id: template.inc.php 58 2009-03-03 15:47:37Z mathieu $
@@ -9,6 +9,7 @@
   * 
   */
 
+
 if (!defined("ADMIN_OK"))
 {
 	die("ACCES NON AUTORISE");
@@ -16,6 +17,27 @@ if (!defined("ADMIN_OK"))
 
 define("LANG_ID", 2);
 
+?>
+
+<form method="get" class="page_form">
+<input type="submit" value="Editer le template" />
+<select name="id" onchange="this.form.submit()">
+	<option value=""></option>
+<?php
+foreach (template()->list_detail() as $id=>$template)
+{
+	if (isset($_GET["id"]) && ($id==$_GET["id"]))
+		echo "	<option value=\"$id\" selected>[$id] $template[name]</option>\n";
+	else
+		echo "	<option value=\"$id\">[$id] $template[name]</option>\n";
+}
+?></select>
+<a href="?add">Ajouter</a>
+<a href="?list">Retour à la liste</a>
+</form>
+
+<div style="padding-top: 30px">
+<?php
 // Insert
 if (isset($_POST["insert"]))
 {
@@ -40,17 +62,6 @@ $template->update($_POST["update"]);
 
 }
 
-?>
-
-<style type="text/css">
-table td
-{
-	vertical-align: top;
-}
-</style>
-
-<?php
-
 // EDITION
 if (isset($_GET["id"]) && template()->exists($id=$_GET["id"]))
 {
@@ -58,11 +69,6 @@ if (isset($_GET["id"]) && template()->exists($id=$_GET["id"]))
 $template = template($id);
 
 ?>
-
-<p><a href="?list">Retour à la liste</a></p>
-
-<h2>Edition d'un template</h2>
-
 <script language="Javascript" type="text/javascript">
 	// initialisation
 	editAreaLoader.init({
@@ -85,7 +91,7 @@ $template = template($id);
 	});
 </script>
 
-<form action="?id=<?=$id?>" method="POST">
+<form action="?id=<?=$id?>" method="POST" style="margin-top: 5px;">
 <table width="100%" cellspacing="1" border="1" cellpadding="1">
 <tr>
 	<td class="label" width="200">ID</td>
@@ -105,7 +111,7 @@ $template = template($id);
 	?></textarea>
 	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle / Modification / Mise à jour (optionnel)</h3>
 	<textarea id="update[script]" name="update[script]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
-	$filename = "template/scripts/".$template->info("name").".inc.php";
+	$filename = "template/".$template->info("name").".inc.php";
 	if (file_exists($filename) && filesize($filename))
 	{
 		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
@@ -453,9 +459,6 @@ if (isset($_POST["insert"]))
 }
 
 ?>
-
-<p><a href="?list">Retour à la liste</a></p>
-
 <h2>Ajout d'un template</h2>
 
 <p>La gestion des paramètres se fera à la page suivante</p>
@@ -516,13 +519,10 @@ else
 {
 
 ?>
-
 <h2>Liste et paramétrage des templates disponibles</h2>
 
 <p>Un template est une maquette de page, généralement paramétrable.</p>
 <p>Lorsque vous créez une page, vous devez lui associer un template et paramétrer ce template au besoin.</p>
-
-<p><a href="?add">Ajouter un template</a></p>
 
 <form method="get">
 <?php
@@ -586,3 +586,4 @@ while ($template = $query->fetch_assoc())
 <?php
 }
 ?>
+</div>

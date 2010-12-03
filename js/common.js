@@ -16,6 +16,21 @@ function in_array(a, val)
     return false;
 }
 
+// Addslashes and Stripslashes
+function addslashes(str) {
+	str=str.replace(/\\/g,'\\\\');
+	str=str.replace(/\'/g,'\\\'');
+	str=str.replace(/\"/g,'\\"');
+	str=str.replace(/\0/g,'\\0');
+	return str;
+}
+function stripslashes(str) {
+	str=str.replace(/\\'/g,'\'');
+	str=str.replace(/\\"/g,'"');
+	str=str.replace(/\\0/g,'\0');
+	str=str.replace(/\\\\/g,'\\');
+	return str;
+}
 
 // Retrieve Cookies
 function getCookieVal(offset)
@@ -240,12 +255,29 @@ function login_connect(login_form)
 		return false;
 }
 
-// Bidouille Email
+/* Bidouille Email */
 
 function email_replace(id, domain, nom)
 {
 	document.getElementById('id_'+id).innerHTML = '<a href="mailto:'+nom+'@'+domain+'">'+nom+'@'+domain+'</a>';
 }
+
+/* Changer l'URL de la page appelante */
+
+function opener_url(url)
+{
+	if (window.opener)
+	{
+		window.opener.document.location.href = url;
+		window.opener.focus();
+	}
+	else
+	{
+		var w = window.open(url);
+		w.focus();
+	}
+	return false;
+};
 
 /* Gestion des banques de donnée (formulaires, etc.) */
 
@@ -330,6 +362,81 @@ function databank_lookup(name)
 	});
 }
 
+function rpc_query(databank, params, callback_func, fields, time)
+{
+	var d = new Date();
+	var t = ""+d.getTime();
+	if (!time)
+	{
+		query_lasttime = t;
+		setTimeout(function(){rpc_query(databank, params, callback_func, fields, t);}, '250');
+	}
+	else if (query_lasttime==time)
+	{
+		query_lasttime = 0;
+		if (!fields)
+			fields_str = "";
+		else if (fields == "1")
+			fields_str = "&fields=1";
+		else
+			fields_str = "&fields[]";
+		var query_string = "/_rpc.php?"+fields_str;
+		//alert('rpc_query : '+query_string);
+		$.post(query_string, {"databank":databank, "params":params}, function(data){
+			//alert(data);
+			callback_func(data);
+		}, "json");
+	}
+}
+
+var query_lasttime = 0;
+
+//Requête sur une databank et renvoi des résultats vers une fonction
+function object_list_query(databank, params, field)
+{
+	rpc_query(databank, params, function(data){object_list_aff(data, field)}, 1);
+}
+//Affiche la liste des objects à partir de la liste
+function object_list_aff(list, field)
+{
+	if (list.length)
+	{
+		$(".q_select", field).hide();
+		$(".q_select", field).html("");
+		$.each(list, function(key, object){
+			var element = document.createElement("p");
+			$(element).html(object.value);
+			$(element).click(function(){
+				object_select(object, field);
+			});
+			$(".q_select", field).append(element);
+		});
+		$(".q_select", field).show();
+	}
+	else
+	{
+		$(".q_select", field).hide();
+		$(".q_select", field).html('<p>Aucun résultat...</p>');
+		$(".q_select", field).show();
+	}
+}
+// Modifie l'objet choisi
+function object_select(object, field)
+{
+	if ($(".q_id", field).get(0).tagName == "SELECT")
+		$(".q_id", field).append($("<option selected></option>").attr("value",object.id).text(object.value));
+	else
+		$(".q_id", field).val(object.id);
+	$(".q_str", field).val(object.value);
+	object_list_hide(field);
+	$(".q_id", field).change();
+}
+// Cache la liste de résultats RPC
+function object_list_hide(field)
+{
+	setTimeout(function(){$(".q_select", field).hide();}, '250');
+}
+
 /* Gestion champs de formulaires (datamodel) avec controles */
 
 function field_control(field, type)
@@ -356,6 +463,52 @@ function field_control(field, type)
 		break;
 	default:
 		break;
+	}
+}
+
+/* Gestion formulaires */
+
+function datamodel_form_colorinit(element_id)
+{
+	var element = document.getElementById(element_id);
+	if (element)
+	{
+		$("input[type='text'], textarea", element).change(function(){
+			if ($(this).val())
+			{
+				$(this).css("background-color","white");
+				$(this).css("border-color","black");
+			}
+			else if($(this).hasClass("required"))
+			{
+				$(this).css("background-color","#fefebd");
+				$(this).css("border-color","red");
+			}
+			else
+			{
+				$(this).css("background-color","#fefebd");
+				$(this).css("border-color","black");
+			}
+		});
+		$("input[type='text'], textarea", element).change();
+		$("select", element).change(function(){
+			if ($(this).val())
+			{
+				$("option", this).css("background-color","white"); // TODO : A améliorer, logiquement seulement besoin pour [value='']
+				$(this).css("border-color","black");
+			}
+			else if($(this).hasClass("required"))
+			{
+				$("option:selected", this).css("background-color","#fefebd");
+				$(this).css("border-color","red");
+			}
+			else
+			{
+				$("option:selected", this).css("background-color","#fefebd");
+				$(this).css("border-color","black");
+			}
+		});
+		$("select", element).change();
 	}
 }
 
@@ -424,12 +577,137 @@ function field_captcha(field)
 		field.style.border='1px red solid';
 	}
 	$(field).focus(function(){
-		field.style.backgroundColor='white';
-		field.style.border='';
+		this.style.backgroundColor='white';
+		this.style.border='';
 	})
 	$(field).blur(function(){
-		field.style.backgroundColor='#ddd';
-		field.style.border='1px red solid';
+		this.style.backgroundColor='#ddd';
+		this.style.border='1px red solid';
 	})
 }
 
+/* Modal */
+
+// pseudo-POPUP
+function info_show(src, type, height)
+{
+	if (type == "930")
+	{
+		if (!height)
+			height = ($(window).height() - 100);
+		var text = '<div style="background: url(\'/img/fond/popup_fond_haut.png\') no-repeat;height:26px;"><p class="pseudopopup_close"><a href="javascript:;" onclick="$.modal.close();">Fermer</a></p></div><div style="padding:0px 10px;background: url(\'/img/fond/popup_fond_milieu.png\') repeat-y;"><iframe src="'+src+'" width="910" height="'+height+'" frameborder="0" style="margin: 0px;border: 0px;padding: 0px;height:'+height+'px;" allowTransparency="true"></iframe></div><div style="background: url(\'/img/fond/popup_fond_bas.png\') no-repeat;height:6px;"></div>';
+		//alert(text);
+		$.modal(text, {
+			closeHTML: "",
+			overlayClose: false,
+			containerCss: { background: 'none' },
+			opacity: 75,
+			zIndex: 10001
+		});
+	}
+	else
+	{
+		if (!height)
+			height = 400;
+		$.modal('<div style="background: url(\'/img/fond/popup_visuel_fond_haut.png\') no-repeat;height:27px;"><p class="pseudopopup_close"><a href="javascript:;" onclick="$.modal.close();">Fermer</a></p></div><div style="padding:0px 10px;background: url(\'/img/fond/popup_visuel_fond_milieu.png\') repeat-y;"><iframe src="'+src+'" width="690" height="'+height+'" frameborder="0" style="margin: 0px;border: 0px;padding: 0px;height:'+height+'px;" allowTransparency="true"></iframe></div><div style="background: url(\'/img/fond/popup_visuel_fond_bas.png\') no-repeat;height:6px;"></div>', {
+			closeHTML: "",
+			overlayClose: false,
+			opacity: 75,
+			containerCss: { background: 'none' },
+			zIndex: 10001
+		});
+	}
+}
+function pseudopopup(src)
+{
+	info_show(src);
+}
+
+function modal_size(newwidth, newheight)
+{
+	//javascript:modal_size(100,100);
+	$("#simplemodal-container").css("overflow","hidden");
+	var w = $("#simplemodal-container").css("width");
+	var h = $("#simplemodal-container").css("height");
+	w = w.substring(0, (w.length-2));
+	h = h.substring(0, (h.length-2));
+	//alert(w+','+h);
+	var a = false;
+	if (w > newwidth)
+	{
+		w2 = (w-1)+'px';
+		$("#simplemodal-container").css("width", w2)
+		a = true;
+	}
+	if (w < newwidth)
+	{
+		w2 = (w+1)+'px';
+		$("#simplemodal-container").css("width", w2)
+		a = true;
+	}
+	if (h > newheight)
+	{
+		h2 = (h-1)+'px';
+		$("#simplemodal-container").css("height", h2)
+		a = true;
+	}
+	if (h < newheight)
+	{
+		h2 = (h+1)+'px';
+		$("#simplemodal-container").css("height", h2)
+		a = true;
+	}
+	if (a)
+		setTimeout('modal_size('+newwidth+','+newheight+')', 5);
+	else
+		$.modal().close();
+}
+
+/* Notification */
+
+function notify(text, type)
+{
+	if (type == "miaou")
+	{
+		var permanent = true;
+	}
+	else
+	{
+		var permanent = false;
+	}
+	//alert(text.length);
+	var size = "1";
+	if (text.length < 25)
+		size = "1.5";
+	else if (text.length < 50)
+		size = "1.2";
+	else if (text.length > 100)
+		size = "0.8";
+	$('#page_notification').jnotifyAddMessage({
+		text: '<table width="100%" height="100%" cellspacing="0" cellpadding="0"><tr><td align="center" valign="middle" style="font-size:'+size+'em;">'+text+'</td></tr></table>',
+		permanent: permanent
+	});
+}
+
+/* Module Article : Edition */
+
+function article_edit(id)
+{
+	window.open('article_edit,65,'+id+'.html?mode=edit', '_blank', 'width=990, height=600, toolbar=no, menubar=no, scrollbars=yes, resizable=no, location=no, directories=no, status=no');
+	return false; // TODO : le n° de la page/popup d'edition des articles n'est pas censé être connu à l'avance ! ou bien utiliser une variable dans les pages editrices
+}
+
+/* MODIFICATIONS GÉNÉRIQUES */
+
+$(document).ready( function(){
+	$("select.data_dataobject_list").asmSelect({
+        sortable: true,
+        animate: true,
+        addItemTarget: 'bottom'
+    });
+	$("textarea.data_text").autoGrow();
+	$("textarea.data_richtext").ckeditor();
+	$("input.data_datetime").datetimepicker();
+	$("input.data_time").timepicker();
+	$("input.data_date").datepicker();
+});

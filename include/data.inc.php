@@ -746,7 +746,7 @@ $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_op
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
 	? " readonly"
 	: "";
-$attrib_class_list = array();
+$attrib_class_list = array(get_called_class());
 if (is_array($options) && isset($options["required"]))
 {
 	$attrib_class_list[] = "required";
@@ -777,8 +777,14 @@ $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_op
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
 	? " readonly"
 	: "";
+$attrib_class_list = array(get_called_class());
 
-$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
+if (count($attrib_class_list))
+	$attrib_class = " class=\"".implode(" ", $attrib_class_list)."\"";
+else
+	$attrib_class = "";
+
+$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
 
 if ($print)
 	print $return;
@@ -884,8 +890,13 @@ $attrib_maxlength = " maxlength=\"".($this->structure_opt["integer"]["size"]+1).
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
 	? " readonly"
 	: "";
+$attrib_class_list = array(get_called_class());
+if (count($attrib_class_list))
+	$attrib_class = " class=\"".implode(" ", $attrib_class_list)."\"";
+else
+	$attrib_class = "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
 
 if ($print)
 	print $return;
@@ -944,8 +955,14 @@ $attrib_maxlength = " maxlength=\"".($this->structure_opt["float"]["size"]+2)."\
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
 	? " readonly"
 	: "";
+$attrib_class_list = array(get_called_class());
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
+if (count($attrib_class_list))
+	$attrib_class = " class=\"".implode(" ", $attrib_class_list)."\"";
+else
+	$attrib_class = "";
+
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
 
 if ($print)
 	print $return;
@@ -1005,13 +1022,14 @@ public function form_field_disp($print=true, $options=array())
 $width = ( isset($this->form_opt["width"]) && $this->form_opt["width"] > 0 ) ? "width:".$this->form_opt["width"].";" : "";
 $height = ( isset($this->form_opt["height"]) && $this->form_opt["height"] > 0 ) ? "height:".$this->form_opt["height"].";" : "";
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
+$attrib_class = " class=\"".get_called_class()."\"";
 
 if ($width || $height)
 	$style = " style=\"$width$height\"";
 else
 	$style = "";
 
-$return = "<textarea name=\"$this->name\"$style$attrib_maxlength>$this->value</textarea>";
+$return = "<textarea name=\"$this->name\"$style$attrib_maxlength$attrib_class>$this->value</textarea>";
 
 if ($print)
 	print $return;
@@ -1026,13 +1044,14 @@ public function form_field_disp_update($print=true, $options=array())
 $width = ( isset($this->form_opt["width"]) && $this->form_opt["width"] > 0 ) ? "width:".$this->form_opt["width"].";" : "";
 $height = ( isset($this->form_opt["height"]) && $this->form_opt["height"] > 0 ) ? "height:".$this->form_opt["height"].";" : "";
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
+$attrib_class = " class=\"".get_called_class()."\"";
 
 if ($width || $height)
 	$style = " style=\"$width$height\"";
 else
 	$style = "";
 
-$return = "<textarea id=\"$this->name\" onchange=\"javascript:this.name = this.id;\"$style$attrib_maxlength>$this->value</textarea>";
+$return = "<textarea id=\"$this->name\" onchange=\"javascript:this.name = this.id;\"$style$attrib_maxlength$attrib_class>$this->value</textarea>";
 
 if ($print)
 	print $return;
@@ -1086,12 +1105,7 @@ protected $form_opt = array
 public function form_field_disp($print=true, $options=array())
 {
 
-$oFCKeditor = new FCKeditor("$this->name");
-$oFCKeditor->Value = "$this->value";
-$oFCKeditor->ToolbarSet = 'Basic';
-$oFCKeditor->Width = $this->form_opt["width"];
-$oFCKeditor->Height = $this->form_opt["height"];
-$return = $oFCKeditor->CreateHtml() ;
+$return = "<textarea name=\"$this->name\" class=\"".get_called_class()."\">$this->value</textarea>";
 
 if ($print)
 	print $return;
@@ -1153,7 +1167,7 @@ return new $form_field($this->name, $this->value, array_merge($this->form_opt,$t
 public function form_field_disp($print=true, $options=array())
 {
 
-$return = "<select name=\"$this->name\">";
+$return = "<select name=\"$this->name\" class=\"".get_called_class()."\">";
 $return .= "<option value=\"\"></option>";
 foreach ($this->structure_opt("select") as $i=>$j)
 	if ($this->value == $i)
@@ -1172,7 +1186,7 @@ else
 public function form_field_disp_update($print=true, $options=array())
 {
 
-$return = "<select id=\"$this->name\" onchange=\"javascript:this.name = this.id;\">";
+$return = "<select id=\"$this->name\" class=\"".get_called_class()."\" onchange=\"javascript:this.name = this.id;\">";
 foreach ($this->structure_opt["select"] as $i=>$j)
 	if ($this->value == $i)
 		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
@@ -1299,7 +1313,7 @@ $attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] > 0 )
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" class=\"date_input\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" class=\"".get_called_class()."\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
 
 if ($print)
 	print $return;
@@ -1315,7 +1329,7 @@ $attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] > 0 )
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" class=\"date_input\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
+$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" class=\"".get_called_class()."\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
 
 if ($print)
 	print $return;
@@ -1332,6 +1346,23 @@ if ($this->value)
 else
 	return null;
 
+}
+
+function value_from_form($value)
+{
+
+$this->value = $value;
+
+}
+
+function value_to_form()
+{
+
+if ($this->value && $this->value != "00/00/0000")
+	return $this->value;
+else
+	return "00/00/0000";
+	
 }
 
 function value_from_db($value)
@@ -1442,7 +1473,7 @@ public function form_field_disp($print=true, $options=array())
 
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\" size=\"4\" maxlength=\"4\"$attrib_readonly />";
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\" size=\"4\" maxlength=\"4\"$attrib_readonly class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -1456,7 +1487,7 @@ public function form_field_disp_update($print=true, $options=array())
 
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" value=\"$this->value\" size=\"4\" maxlength=\"4\"$attrib_readonly />";
+$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" value=\"$this->value\" size=\"4\" maxlength=\"4\"$attrib_readonly class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -1497,6 +1528,22 @@ protected $db_opt = array
 	"fieldname" => "",
 	"type" => "time",
 );
+
+public function form_field_disp($print=true, $options=array())
+{
+
+$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
+	? " readonly"
+	: "";
+
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"".$this->name."[time]\" value=\"$this->value\" size=\"8\" maxlength=\"8\"$attrib_readonly class=\"".get_called_class()."\" />";
+
+if ($print)
+	print $return;
+else
+	return $return;
+
+}
 
 public function db_field_create()
 {
@@ -1541,6 +1588,27 @@ else
 
 }
 
+public function form_field_disp($print=true, $options=array())
+{
+
+$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
+	? " readonly"
+	: "";
+
+if ($this->value)
+	$value = date("d/m/Y H:i:s", $this->value);
+else
+	$value = "";
+
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"".$this->name."\" value=\"$value\" size=\"19\" maxlength=\"19\"$attrib_readonly class=\"".get_called_class()."\" />";
+
+if ($print)
+	print $return;
+else
+	return $return;
+
+}
+
 public function value_from_db($value)
 {
 
@@ -1552,6 +1620,30 @@ else
 	$d = explode("-", $e[0]);
 	$t = explode(":", $e[1]);
 	$this->value = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
+}
+
+}
+
+public function value_from_form($value)
+{
+
+if (!is_string($value) || !$value)
+	$this->value = null;
+else
+{
+	$e = explode(" ", $value);
+	$d = explode("/", $e[0]);
+	if (isset($e[1]))
+		$t = explode(":", $e[1]);
+	else
+		$t = array(0, 0, 0);
+	for ($i=0;$i<=2;$i++)
+		if (!isset($d[$i]) || !is_numeric($d[$i]))
+			$d[$i] = 0;
+	for ($i=0;$i<=2;$i++)
+		if (!isset($t[$i]) || !is_numeric($t[$i]))
+			$t[$i] = 0;
+	$this->value = mktime($t[0], $t[1], $t[2], $d[1], $d[0], $d[2]);
 }
 
 }
@@ -1681,7 +1773,7 @@ return implode(", ", $this->value);
 public function form_field_disp($print=true, $options=array())
 {
 
-$return = "<select name=\"".$this->name."[]\" multiple=\"true\">";
+$return = "<select name=\"".$this->name."[]\" multiple class=\"".get_called_class()."\">";
 foreach ($this->structure_opt["fromlist"] as $i=>$j)
 	if (in_array($i, $this->value))
 		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
@@ -1699,7 +1791,7 @@ else
 public function form_field_disp_update($print=true, $options=array())
 {
 
-$return = "<select id=\"$this->name\" onchange=\"javascript:this.name = this.id+'[]';\" multiple=\"true\">";
+$return = "<select id=\"$this->name\" onchange=\"javascript:this.name = this.id+'[]';\" multipl class=\"".get_called_class()."\">";
 foreach ($this->structure_opt["fromlist"] as $i=>$j)
 	if (in_array($i,$this->value))
 		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
@@ -1717,11 +1809,7 @@ else
 public function value_from_db($value)
 {
 
-$e = explode(",", $value);
-$this->value = array();
-foreach ($e as $i)
-	if (isset($this->structure_opt["fromlist"][$i]))
-		$this->value[] = $i;
+$this->value = explode(",", $value);
 
 }
 
@@ -1729,7 +1817,7 @@ public function value_from_form($value)
 {
 
 $this->value = array();
-foreach ($value as $i)
+if (is_array($value)) foreach ($value as $i)
 	if (isset($this->structure_opt["fromlist"][$i]))
 		$this->value[] = $i;
 
@@ -1738,7 +1826,7 @@ foreach ($value as $i)
 public function value_to_db()
 {
 
-if (is_array($this->value) && count($this->value)>0)
+if (is_array($this->value))
 	return implode(",", $this->value);
 else
 	return null;
@@ -1748,7 +1836,7 @@ else
 public function db_field_create()
 {
 
-return array( "type" => "fromlist" , "value_list" => $this->structure_opt["fromlist"] );
+return array( "type" => "fromlist" , "value_list" => array_keys($this->structure_opt["fromlist"]) );
 
 }
 
@@ -2103,7 +2191,7 @@ $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["read
 	? " readonly"
 	: "";
 
-$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\"$attrib_readonly />";
+$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\"$attrib_readonly class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -2207,9 +2295,9 @@ public function form_field_disp($print=true, $options=array())
 {
 
 if ($this->value)
-	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" checked />&nbsp;".$this->structure_opt["boolean"][1];
+	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" checked class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
 else
-	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" checked />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" />&nbsp;".$this->structure_opt["boolean"][1];
+	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" checked />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
 
 if ($print)
 	print $return;
@@ -2319,7 +2407,7 @@ $attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] > 0 )
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -2622,12 +2710,8 @@ if (($databank=databank($this->structure_opt["databank"])) && (($nb=$databank->c
 		$query = $databank->query(array(), array(), $option["order"]);
 	else
 		$query = $databank->query();
-	if (isset($option["autosubmit"]))
-		$autosubmit = " onchange=\"this.form.submit()\"";
-	else
-		$autosubmit = "";
-	{
-	$return = "<select name=\"$this->name\"$autosubmit>\n";
+
+	$return = "<select name=\"$this->name\" title=\"$this->label\" class=\"".get_called_class()."\">\n";
 	$return .= "<option value=\"\"></option>";
 	foreach($query as $object)
 	{
@@ -2640,36 +2724,17 @@ if (($databank=databank($this->structure_opt["databank"])) && (($nb=$databank->c
 	}
 	$return .= "</select>\n";
 }
-}
 // Beaucoup de valeurs : liste Ajax complexe
 else
 {
+	$return = "<div style=\"display:inline;\"><input name=\"$this->name\" value=\"$this->value\" type=\"hidden\" class=\"q_id\" />";
 	if ($this->value)
-	{
-		$return = "<input type=\"hidden\" id=\"$this->name\" value=\"$this->value\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"".$this->__tostring()."\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" /><!--<input type=\"button\" value=\"UPDATE\" onclick=\"update('$this->name')\" />-->";
-	}
+		$value = (string)databank($this->structure_opt["databank"],$this->value);
 	else
-	{
-		$return = "<input type=\"hidden\" id=\"$this->name\" value=\"\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"Undefined\" class=\"undefined\" onkeyup=\"lookup('$this->name', this.value);\" onfocus=\"fill_empty('$this->name');\" onblur=\"fill_old('$this->name');\" />";
-	}
-	$return .= "<div class=\"suggestionsBox\" id=\"".$this->name."_suggestions\" style=\"display: none;\"><div class=\"suggestionList\" id=\"".$this->name."_autoSuggestionsList\">&nbsp;</div></div>";
-	$return .= "<script type=\"text/javascript\">";
-	$return .= "fields['$this->name'] = new Array;";
-	$return .= "fields['$this->name']['type'] = 'dataobject';";
-	$return .= "fields['$this->name']['name_current'] = '".$this->__tostring()."';";
-	$return .= "fields['$this->name']['id_current'] = '$id';";
-	$return .= "fields['$this->name']['filled'] = true;";
-	$return .= "fields['$this->name']['databank'] = '".$this->structure_opt["databank"]."';";
-	$k=array();
-	if (isset($this->db_opt["select_params"]))
-	{
-		foreach ($this->db_opt["select_params"] as $i=>$j)
-		{
-			$k[] = "'$i' : '$j'";
-		}
-	}
-	$return .= "fields['$this->name']['query_params'] = { ".implode(" , ",$k)." };";
-	$return .= "</script>\n";
+		$value = "";
+	$return .= "<input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
+	$return .= "<div class=\"q_select\"></div>";
+	$return .= "</div>";
 }
 
 if ($print)
@@ -2683,7 +2748,7 @@ function form_field_disp_all($print=true)
 {
 
 $return = "<div id=\"".$this->name."_list\">\n";
-$return .= "<select name=\"".$this->name."\">\n";
+$return .= "<select name=\"".$this->name."\" title=\"$this->label\" class=\"".get_called_class()."\">\n";
 
 $databank = $this->structure_opt("databank");
 $query = $databank()->query();
@@ -2870,6 +2935,10 @@ data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, 
 function __tostring()
 {
 
+if ($this->db_opt["order_field"])
+	$order = array($this->db_opt["order_field"]=>"asc");
+else
+	$order = array();
 
 if (!is_array($this->value) || !count($this->value))
 {
@@ -2877,21 +2946,17 @@ if (!is_array($this->value) || !count($this->value))
 }
 elseif ($this->disp_opt["ref_field_disp"])
 {
+	$query = databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array($this->disp_opt["ref_field_disp"]), $order);
 	$return = array();
-	foreach($this->value as $id)
+	foreach($query as $object)
 	{
-		$return[] = databank($this->structure_opt["databank"])->get($id)->{$this->disp_opt["ref_field_disp"]};
+		$return[] = $object->{$this->disp_opt["ref_field_disp"]};
 	}
 	return implode(", ", $return);
 }
 else
 {
-	$return = array();
-	foreach($this->value as $id)
-	{
-		$return[] = databank($this->structure_opt["databank"])->get($id);
-	}
-	return implode(", ", $return);
+	implode(", ", databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array(), $order));
 }
 
 }
@@ -2902,10 +2967,20 @@ else
 function object_list()
 {
 
+if ($this->db_opt["order_field"])
+	$order = array($this->db_opt["order_field"]=>"asc");
+else
+	$order = array();
+
 if (is_array($this->value) && count($this->value))
 {
-	$query_params = array( array("name"=>"id","value"=>$this->value) );
-	return databank($this->structure_opt["databank"])->query($query_params);
+	// Retrieve objects in databank
+	databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
+	// Sort by order
+	$return = array();
+	foreach ($this->value as $nb=>$id)
+		$return[] = databank($this->structure_opt["databank"])->get($id);
+	return $return;
 }
 else
 {
@@ -2920,11 +2995,11 @@ function value_from_form($value)
 $this->value = array();
 if (is_array($value))
 {
-	foreach($value as $nb=>$id)
+	foreach($value as $id)
 	{
 		if (databank($this->structure_opt["databank"])->exists($id))
 		{
-			$this->value[$nb] = $id;
+			$this->value[] = $id;
 		}
 	}
 }
@@ -2934,84 +3009,48 @@ if (is_array($value))
 function form_field_disp($print=true)
 {
 
-/*
- * Plusieurs possibilités :
- * 
- * Objets liés par une table tiers :
- * - A la création on choisit l'objet à lier et les paramètres de liaison éventuels
- * - A la modification on modifie les paramètres de liaison (pas de bouton si pas de paramètres)
- * - A la suppression on efface la ligne dans la table de liaison
- * 
- */
+if ($this->db_opt["order_field"])
+	$order = array($this->db_opt["order_field"]=>"asc");
+else
+	$order = array();
 
 // Pas beaucoup de valeurs : liste simple
 if (($nb=datamodel($this->structure_opt["databank"])->db_count()) < 20)
 {
 	$query = databank($this->structure_opt["databank"])->query();
+	if ($nb<10)
+		$size = $nb;
+	else
+		$size = 5;
+	$return = "<select name=\"".$this->name."[]\" title=\"$this->label\" multiple size=\"$size\" class=\"".get_called_class()."\">\n";
+	if ($this->db_opt["order_field"])
 	{
-		$values = array();
-		if (is_array($this->value))
-			foreach ($this->value as $value)
-			{
-				$values[] = "$value->id";
-			}
-		if ($nb<10)
-			$size = $nb;
-		else
-			$size = 5;
-		$return = "<select name=\"".$this->name."[]\" multiple size=\"$size\">\n";
-		foreach($query as $object)
-		{
-			if (in_array("$object->id", $values))
-			{
-				$return .= "<option value=\"$object->id\" selected=\"selected\">$object</option>";
-			}
-			else
-				$return .= "<option value=\"$object->id\">$object</option>";
-		}
-		$return .= "</select>\n";
+		foreach ($this->value as $id)
+			$return .= "<option value=\"$id\" selected>".databank($this->structure_opt["databank"])->get($id)."</option>";
 	}
+	foreach($query as $object)
+	{
+		if (!in_array($object->id->value, $this->value))
+			$return .= "<option value=\"$object->id\" selected>$object</option>";
+	}
+	$return .= "</select>\n";
 }
 // Beaucoup de valeurs : liste Ajax complexe
 else
 {
-	$return = "<div id=\"".$this->name."_list\"></div>\n";
-	$return .= "<div id=\"".$this->name."_add\">";
-	$return .= "<input type=\"hidden\" id=\"$this->name\" value=\"\" /><input type=\"text\" id=\"".$this->name."_input\" value=\"\" class=\"\" onkeyup=\"databank_lookup('$this->name');\" />\n";
-	$return .= "</div>\n";
-	$return .= "<div class=\"suggestionsBox\" id=\"".$this->name."_suggestions\" style=\"display: none;\"><div class=\"suggestionList\" id=\"".$this->name."_autoSuggestionsList\">&nbsp;</div></div>";
-	$return .= "<script type=\"text/javascript\">\n";
-	$return .= "if (!fields) var fields = new Array();\n";
-	$return .= "fields['$this->name'] = new Array();\n";
-	$return .= "fields['$this->name']['type'] = 'link';\n";
-	$return .= "fields['$this->name']['nb'] = 0;\n";
-	$return .= "fields['$this->name']['name_current'] = '';\n";
-	$return .= "fields['$this->name']['id_current'] = '';\n";
-	$return .= "fields['$this->name']['filled'] = true;\n";
-	$return .= "fields['$this->name']['databank'] = ".$this->structure_opt["databank"].";\n";
-	$k=array();
-	if (isset($this->db_opt["select_params"]) && is_array($this->db_opt["select_params"]))
+	$return = "<div style=\"display:inline;\">";
+	$return .= "<input name=\"$this->name\" type=\"hidden\" />";
+	$return .= "<div><select name=\"".$this->name."[]\" title=\"$this->label\" multiple class=\"".get_called_class()." q_id\">";
+	if (is_array($this->value) && count($this->value))
 	{
-		foreach ($this->db_opt["select_params"] as $i=>$j)
-		{
-			$k[] = "'$i' : '$j'";
-		}
+		databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
+		foreach ($this->value as $id)
+			$return .= "<option value=\"$id\" selected>".databank($this->structure_opt["databank"])->get($id)."</option>";
 	}
-	$return .= "fields['$this->name']['query_params'] = { ".implode(" , ",$k)." };\n";
-	$return .= "fields['$this->name']['value'] = new Array();\n";
-	$return .= "$(document).ready(function(){\n";
-	if ($this->value !== null && is_array($this->value))
-	{
-		foreach ($this->value as $nb=>$object)
-		{
-			if (is_a($object, "data_bank_agregat"))
-			{
-				$return .= "databank_list_add('$this->name', $object->id, \"$object\");\n";
-			}
-		}
-	}
-	$return .= "});\n";
-	$return .= "</script>\n";
+	$return .= "</select></div>";
+	$return .= "<input class=\"q_str\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
+	$return .= "<div class=\"q_select\"></div>";
+	$return .= "</div>";
 }
 
 // DISP
@@ -3039,12 +3078,7 @@ if (!in_array($type, $type_list))
 $fieldname = $this->db_opt["ref_id"];
 
 if (is_array($value))
-{
-	$q = array();
-	foreach($value as $i)
-		$q[] = "'".db()->string_escape($i)."'";
-	return "`".$fieldname."` IN (".implode(" , ",$q).")";
-}
+	return "`".$fieldname."` IN (".implode(", ",$this->value).")";
 else
 	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
 
@@ -3066,78 +3100,6 @@ return array
 		$this->db_opt["ref_field"] => array ( "type" => "integer", "size" => 10, "signed"=>false, "null"=>false, "key"=>true )
 	)
 );
-
-}
-
-}
-
-/**
- * Seconde possibilité
- * 
- * Objets liés intrinsèquement :
- * - A l'ajout on créé un nouvel objet lié
- * - A la modification on mofidie l'objet lié
- * - A la suppression : on propose de supprimer l'objet lié, de le réaffecter (le lier à un autre) ou encore de laisser vide le champ de liaison s'il n'est pas requis.
- * 
- * On n'est pas obligé de définir ce type d'objet dans ce contexte, ils peuvent être totalement autonomes.
- * Dans ce cas, il fauit envisager la possibilité que ce champ soit facultatif.
- * TODO : Du coup, le mieux serait que ce champs soit défini intrinsèquement dés qu'on fait une telle référence
- * dans la définition d'un autre modèle objet. Pas évident...
- * 
- */
-class data_dataobject_list_ref extends data_dataobject_list
-{
-
-protected $type = "dataobject_list";
-
-protected $value = array();
-
-function form_field_disp($print=true)
-{
-
-$return = "<div id=\"".$this->name."_list\">\n";
-$nb=0;
-if ($this->value !== null && is_array($this->value)) foreach ($this->value as $nb=>$id) if (is_a($object=databank($this->structure_opt["databank"], $id), "data_bank_agregat"))
-{
-	$return .= "<div id=\"".$this->name."_$nb\">";
-	$return .= "<input type=\"hidden\" id=\"$this->name[$nb]\" value=\"".$object->id."\" />";
-	if ($this->disp_opt["ref_field_disp"] && isset(datamodel($this->structure_opt["databank"])->{$this->disp_opt["ref_field_disp"]}))
-		$value = (string)$object->{$this->disp_opt["ref_field_disp"]};
-	else
-		$value = (string)$object;
-	$return .= "<input type=\"text\" value=\"$value\" readonly/>";
-	$return .= "<input type=\"button\" value=\"UPDATE\" onclick=\"update('$this->name','$nb')\" />";
-	$return .= "</div>\n";
-}
-$return .= "</div>\n";
-{
-	$return .= "<div id=\"".$this->name."_add\">";
-	$return .= "<input type=\"button\" value=\"ADD\" onclick=\"dataobject_add('$this->name')\" />";
-	$return .= "</div>\n";
-}
-$return .= "<script type=\"text/javascript\">";
-$return .= "fields['$this->name'] = new Array;";
-$return .= "fields['$this->name']['type'] = 'dataobject_list';";
-$return .= "fields['$this->name']['nb'] = '$nb';";
-$return .= "fields['$this->name']['name_current'] = '';";
-$return .= "fields['$this->name']['id_current'] = '';";
-$return .= "fields['$this->name']['filled'] = true;";
-$return .= "fields['$this->name']['databank'] = '".$this->structure_opt["databank"]."';";
-$k=array();
-if (isset($this->db_opt["select_params"]))
-{
-	foreach ($this->db_opt["select_params"] as $i=>$j)
-	{
-		$k[] = "'$i' : '$j'";
-	}
-}
-$return .= "fields['$this->name']['query_params'] = { ".implode(" , ",$k)." };";
-$return .= "</script>\n";
-
-if ($print)
-	echo $return;
-else
-	return $return;
 
 }
 
@@ -3174,6 +3136,20 @@ if (isset($this->list[$id]))
 }
 else
 	return null;
+
+}
+
+public function exists($id)
+{
+
+return isset($this->list[$id]);
+
+}
+
+public function __isset($name)
+{
+
+return isset($this->list_name[$name]);
 
 }
 

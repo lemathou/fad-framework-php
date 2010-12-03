@@ -34,24 +34,15 @@ if (DEBUG_GENTIME == true)
  * Datamodel global managing class
  * 
  */
-class datamodel_gestion
+class datamodel_gestion extends gestion
 {
 
-protected $list = array();
-protected $list_detail = array();
-protected $list_name = array();
-
-function __construct()
-{
-
-$this->query();
-
-}
+protected $type = "datamodel";
 
 /**
  * Retrieve informations from DB
  */
-function query()
+function query_info($retrieve_all=false)
 {
 
 $this->list = array();
@@ -63,105 +54,9 @@ while ($datamodel = $query->fetch_assoc())
 {
 	$this->list_detail[$datamodel["id"]] = $datamodel;
 	$this->list_name[$datamodel["name"]] = $datamodel["id"];
-	//$this->list[$datamodel["id"]] = new datamodel($datamodel["id"]);
+	if ($retrieve_all)
+		$this->list[$datamodel["id"]] = new datamodel($datamodel["id"], false, $this->list_detail[$id]);
 }
-
-}
-
-/**
- * Returns a datamodel using its ID
- * @param unknown_type $id
- */
-function get($id)
-{
-
-if (isset($this->list[$id]))
-{
-	return $this->list[$id];
-}
-elseif (APC_CACHE && ($datamodel=apc_fetch("datamodel_$id")))
-{
-	return $this->list[$id] = $datamodel;
-}
-elseif (isset($this->list_detail[$id]))
-{
-	$datamodel = new datamodel($id, false, $this->list_detail[$id]);
-	if (APC_CACHE)
-		apc_store("datamodel_$id", $datamodel, APC_CACHE_DATAMODEL_TTL);
-	return $this->list[$id] = $datamodel;
-}
-elseif (DEBUG_DATAMODEL)
-{
-	trigger_error("Cannot create datamodel ID#$id");
-}
-else
-{
-	return null;
-}
-
-}
-
-function __isset($name)
-{
-
-return isset($this->list_name[$name]);
-
-}
-
-/**
- * Retrieve a datamodel using its (unique) name
- * @param unknown_type $name
- */
-function __get($name)
-{
-
-if (isset($this->list_name[$name]))
-{
-	return $this->get($this->list_name[$name]);
-}
-else
-{
-	return null;
-}
-
-}
-function get_name($name)
-{
-
-return $this->__get($name);
-
-}
-
-/**
- * Returns if a datamodel exists
- * @param $id
- */
-function exists($id)
-{
-
-return isset($this->list_detail[$id]);
-
-}
-function exists_name($name)
-{
-
-return isset($this->list_name[$name]);
-
-}
-
-/**
- * Returns the list
- */
-public function list_get()
-{
-
-return $this->list;
-
-}
-public function list_name_get()
-{
-
-return $this->list_name;
 
 }
 
@@ -265,6 +160,7 @@ protected $fields = array();
 protected $fields_key = array();
 protected $fields_required = array();
 protected $fields_calculated = array();
+protected $fields_index = array();
 
 protected $db_opt = array(); // TODO : usefull only in case of datamodel with databank !
 protected $disp_opt = array();
@@ -275,7 +171,7 @@ protected static $infos = array("id", "name", "library_id", "table");
 protected static $infos_lang = array("label", "description");
 
 // Données à sauver en session
-private $serialize_list = array("id", "name", "library_id", "table", "label", "description", "fields", "fields_key", "fields_required", "fields_calculated", "db_opt", "disp_opt", "action_list");
+private $serialize_list = array("id", "name", "library_id", "table", "label", "description", "fields", "fields_key", "fields_required", "fields_calculated", "fields_index", "db_opt", "disp_opt", "action_list");
 public $serialize_save_list = array();
 
 public function __construct($id, $query=true, $infos=array())
@@ -331,13 +227,9 @@ $this->fields_key = array();
 $this->fields_required = array();
 $this->fields_calculated = array();
 // Création des champs du datamodel
-$query = db()->query("SELECT t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
+$query = db()->query("SELECT t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t1.`query` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
-	if ($field["defaultvalue"] === null)
-	{
-		$field["defaultvalue"] = "null";
-	}
 	$datatype = "data_$field[type]";
 	$this->fields[$field["name"]] = new $datatype($field["name"], $field["defaultvalue"], $field["label"]);
 	$this->fields[$field["name"]]->datamodel_set($this->id);
@@ -345,10 +237,10 @@ while ($field=$query->fetch_assoc())
 		$this->fields_key[] = $field["name"];
 	elseif ($field["opt"] == "required")
 		$this->fields_required[] = $field["name"];
+	if ($field["query"])
+		$this->fields_index[] = $field["name"];
 	if ($field["lang"])
-	{
 		$this->fields[$field["name"]]->db_opt_set("lang",true);
-	}
 }
 $query = db()->query("SELECT `fieldname`, `opt_type`, `opt_name`, `opt_value` FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
 while ($opt=$query->fetch_assoc())
@@ -369,7 +261,7 @@ public function update($infos)
 {
 
 if (!login()->perm(6))
-	die();
+	die("ONLY ADMIN CAN UDPATE A DATAMODEL");
 
 if (is_array($infos))
 {
@@ -498,40 +390,64 @@ public function __set($name, data $field)
 $this->field_add($field);
 
 }
-public function add(data $field, $options="")
-{
 
-return $this->field_add($field, $options);
-
-}
-public function field_add(data $field, $options="")
+public function field_add($field, $options="")
 {
 
 if (!login()->perm(6))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
+	// TODO : security : send an email with complete info about the one who tried to do this and blacklist him if possible ?
 
-if (!is_a($field, "data"))
-{
-	if (DEBUG_DATAMODEL)
-		trigger_error("Field $field->name is not a data field object");
-}
-elseif (isset($this->fields[$field->name]))
-{
-	if (DEBUG_DATAMODEL)
-		trigger_error("Field $field->name already exists");
-}
+if (!is_array($field))
+	die("datamodel(ID#$this->id)::field_add() : Invalid parameters");
+
+if (!isset($field["type"]) || !($field["type"]) || !isset(data()->{$field["type"]}))
+	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : type");
+
+if (!isset($field["name"]) || !preg_match("/([a-z])+/", $field["name"]))
+	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : name");
+
+if (!isset($field["opt"]) || !isset($field["query"]) || !isset($field["lang"]) || !isset($field["label"]))
+	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : opt, query, lang, label");
+
+if (!isset($field["pos"]) || !is_numeric($field["pos"]) || $field["pos"] < 0)
+	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : pos");
+
+if (isset($field["defaultvalue_null"]))
+	$defaultvalue = "NULL";
 else
+	$defaultvalue = "'".db()->string_escape($field["defaultvalue"])."'";
+$pos_max = count($this->fields) + 1;
+
+db()->query("INSERT INTO _datamodel_fields (datamodel_id, pos, name, type, defaultvalue, opt, `query`, lang) VALUES ('$this->id', '$pos_max', '".$field["name"]."', '".$field["type"]."', $defaultvalue, '".$field["opt"]."', '".$field["query"]."', '".$field["lang"]."')");
+db()->query("INSERT INTO _datamodel_fields_lang (datamodel_id, lang_id, fieldname, label) VALUES ('$this->id', '".SITE_LANG_ID."', '".$field["name"]."', '".db()->string_escape($_POST["label"])."')");
+
+// Gestion du repositionnement
+if ($field["pos"] < $pos_max)
 {
-	//echo "<p>$this->name : $field->name</p>\n";
-	$this->fields[$field->name] = $field;
-	$field->datamodel_set($this->id);
-	if ($options == "key")
-		$this->fields_key[] = $field->name;
-	elseif ($options == "required")
-		$this->fields_required[] = $field->name;
+	db()->query("UPDATE `_datamodel_fields` SET `pos` = pos+1 WHERE `datamodel_id` = '$this->id' AND `pos` >= '".(int)$field["pos"]."'");
+	db()->query("UPDATE `_datamodel_fields` SET `pos` = '".(int)$field["pos"]."' WHERE `datamodel_id` = '$this->id' AND `name` = '".$field["name"]."'");
+}
+
+$this->query_fields();
+
+if (APC_CACHE)
+{
+	apc_store("datamodel_$this->id", $this, APC_CACHE_GESTION_TTL);
+}
+
+// Insertion du champ dans la tables associée
+list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id=$this->id")->fetch_row();
+if ($db_sync)
+{
+	if (isset($_POST["lang"]) && $_POST["lang"])
+		db()->field_create($this->db_opt("table")."_lang", $field["name"], $this->fields[$field["name"]]->db_field_create());
+	else
+		db()->field_create($this->db_opt("table"), $field["name"], $this->fields[$field["name"]]->db_field_create());
 }
 
 }
+
 /**
  * Delete a field
  * @param string $name
@@ -540,62 +456,137 @@ public function field_delete($name)
 {
 
 if (!login()->perm(6))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
 
-if (isset($this->fields[$name]))
+if (!isset($this->fields[$name]))
+	die("datamodel(ID#$this->id)::field_delete() : Field $name does not exists");
+
+db()->query("DELETE FROM `_datamodel_fields` WHERE `name`='$name' AND `datamodel_id`='$this->id'");
+db()->query("DELETE FROM `_datamodel_fields_lang` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
+db()->query("DELETE FROM `_datamodel_fields_opt` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
+db()->field_delete($this->table, $name);
+
+$this->query_fields();
+
+if (APC_CACHE)
 {
-	db()->query("DELETE FROM `_datamodel_fields` WHERE `name`='$name' AND `datamodel_id`='$this->id'");
-	db()->query("DELETE FROM `_datamodel_fields_lang` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
-	db()->query("DELETE FROM `_datamodel_fields_opt` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
-	db()->field_delete($this->table, $name);
-	return true;
-}
-else
-{
-	return false;
+	apc_store("datamodel_$this->id", $this, APC_CACHE_GESTION_TTL);
 }
 
 }
 
 /**
- * Add a field to the required field list
- * @param unknown_type $name
+ * Update a field
+ * @param string $name
+ * @param array $field
  */
-public function field_required_add($name)
+function field_update($name, $field)
 {
 
-if ($name && isset($this->fields[$name]) && !in_array($name, $this->fields_required))
-	$this->fields_required[] = $name;
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
-}
-public function field_required_del($name)
+if (!isset($this->fields[$name]))
+	die("datamodel(ID#$this->id)::field_update() : Field $name does not exists");
+
+if (!is_array($field))
+	die("datamodel(ID#$this->id)::field_update() : Invalid parmeters updating field $name");
+
+if (!isset($field["type"]) || !($field["type"]) || !isset(data()->{$field["type"]}))
+	die("datamodel(ID#$this->id)::field_update() : Invalid parmeters updating field $name");
+
+if (!isset($field["name"]) || !preg_match("/([a-z])+/", $field["name"]))
+	die("datamodel(ID#$this->id)::field_update() : Invalid parmeters updating field $name");
+
+if (!isset($field["opt"]) || !isset($field["lang"]) || !isset($field["label"]))
+	die("datamodel(ID#$this->id)::field_update() : Invalid parmeters updating field $name");
+
+// Query infos
+$query_str = "SELECT `db_sync` FROM `_datamodel` WHERE `id`='$this->id'";
+list($db_sync) = db()->query($query_str)->fetch_row();
+$query_str = "SELECT `pos` FROM `_datamodel_fields` WHERE `datamodel_id`='$this->id' AND name='$name'";
+list($pos) = db()->query($query_str)->fetch_row();
+
+// Création objet (par défaut)
+$fieldtype = "data_$field[type]";
+$datafield = new $fieldtype("field", null, null);
+
+// Default value
+if (isset($field["defaultvalue_null"]))
+	$defaultvalue = "NULL";
+elseif (isset($field["defaultvalue"]))
+	$defaultvalue = "'".db()->string_escape($field["defaultvalue"])."'";
+else
+	$defaultvalue = "''";
+
+// Update old values
+$query_str = "UPDATE `_datamodel_fields` SET `name`='".$field["name"]."', `type`='".$field["type"]."', `defaultvalue`=$defaultvalue, `opt`='".db()->string_escape($field["opt"])."', `query`='".db()->string_escape($field["query"])."', `lang`='".db()->string_escape($field["lang"])."' WHERE `datamodel_id`='$this->id' AND name='$name'";
+db()->query($query_str);
+$query_str = "UPDATE `_datamodel_fields_lang` SET `fieldname`='".$field["name"]."', `label`='".db()->string_escape($field["label"])."' WHERE `datamodel_id`='$this->id' AND `fieldname`='$name'";
+db()->query($query_str);
+
+// Delete old option values
+$query_str = "DELETE FROM `_datamodel_fields_opt` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'";
+db()->query($query_str);
+// Options réellement à sauver (<> opt par défaut)
+if (isset($field["optlist"]))
 {
+	$query_opt_list = array();
+	foreach($field["optlist"] as $type=>$list)
+	{
+		$field_type = $datafield->{$type."_opt_list_get"}();
+		foreach ($list as $i=>$j)
+		{
+			if (!isset($field_type[$i]) || $field_type[$i] !== json_decode($j, true))
+			{
+				$datafield->{$type."_opt_set"}($i, json_decode($j, true));
+				//$finalvalue = json_encode($datafield->{$type."_opt"}[$i]);
+				$query_opt_list[] = "('$this->id' , '".$field["name"]."' , '$type' , '$i' , '".db()->string_escape($j)."' )";
+			}
+		}
+	}
+	if (count($query_opt_list))
+	{
+		$query_str = "INSERT INTO `_datamodel_fields_opt` (`datamodel_id`, `fieldname`, `opt_type`, `opt_name`, `opt_value`) VALUES ".implode(", ", $query_opt_list);
+		db()->query($query_str);
+	}
+}
 
-// TODO
+// Gestion du repositionnement
+if ($field["pos"] < $pos)
+{
+	db()->query("UPDATE _datamodel_fields SET pos=pos+1 WHERE datamodel_id='$this->id' AND pos >= ".($field["pos"])." AND pos < $pos");
+	db()->query("UPDATE _datamodel_fields SET pos=".($field["pos"])." WHERE datamodel_id='$this->id' AND name='".$field["name"]."'");
+}
+elseif ($pos < $field["pos"])
+{
+	db()->query("UPDATE _datamodel_fields SET pos=pos-1 WHERE datamodel_id='$this->id' AND pos > $pos AND pos <= ".($field["pos"]));
+	db()->query("UPDATE _datamodel_fields SET pos=".($field["pos"])." WHERE datamodel_id='$this->id' AND name='".$field["name"]."'");
+}
+
+$this->query_fields();
+
+if (APC_CACHE)
+{
+	apc_store("datamodel_$this->id", $this, APC_CACHE_GESTION_TTL);
+}
+
+// Mise à jour du champ dans la table associée
+if ($db_sync)
+{
+	$this->query_info();
+	if (isset($field["lang"]) && $field["lang"])
+		db()->field_update($this->db_opt("table")."_lang", $name, $field["name"], $datafield->db_field_create());
+	else
+		db()->field_update($this->db_opt("table"), $name, $field["name"], $datafield->db_field_create());
+}
 
 }
+
 public function fields_required()
 {
 
 return $this->fields_required;
-
-}
-
-/**
- * Add a field to the key field list
- * @param unknown_type $name
- */
-public function field_key_add($name)
-{
-
-if ($name && isset($this->fields[$name]) && !in_array($name, $this->fields_key))
-	$this->fields_key[] = $name;
-
-}
-public function field_key_del($name)
-{
-
-// TODO
 
 }
 public function fields_key()
@@ -604,31 +595,16 @@ public function fields_key()
 return $this->fields_key;
 
 }
-
-/**
- * Add a field to the calculated field list
- * @param unknown_type $name
- * @param unknown_type $list
- */
-public function field_calculated_add($name, $list)
-{
-
-if ($name && isset($this->fields[$name]) && !isset($this->fields_calculated[$name]))
-{
-	$this->fields_calculated[$name] = $list;
-}
-
-}
-public function field_calculated_del($name, $list)
-{
-
-// TODO
-
-}
 public function fields_calculated()
 {
 
 return $this->fields_calculated;
+
+}
+public function fields_index()
+{
+
+return $this->fields_index;
 
 }
 
@@ -666,8 +642,8 @@ function table_list($params=array(), $fields=array(), $sort=array())
 <script type="text/javascript">
 function databank_list_sort(form, field)
 {
-	document.zeform.sort.value = field;
-	document.zeform.submit();
+	document.zeform['sort[0]'].value = field;
+	databank_form_submit();
 }
 function databank_params_aff()
 {
@@ -677,9 +653,18 @@ function databank_params_aff()
 	else
 		element.style.display = 'none';
 }
+function databank_form_submit(form)
+{
+	$("[name^='params']").each(function(){
+		if (!$(this).val())
+			$(this).attr("name", "");
+	});
+	document.zeform.submit();
+}
 </script>
-<form name="zeform" action="" method="post">
-<input type="hidden" name="sort" value="id" />
+<form name="zeform" action="" method="post" onsubmit="databank_form_submit(this)">
+<input type="hidden" name="sort[0]" value="id" />
+<input type="hidden" name="sort[1]" value="ASC" />
 <div style="margin:5px 0px;border:1px black solid;padding: 4px;margin-right: 400px;">
 <p><a href="javascript:;" onclick="databank_params_aff()">Paramètres de sélection</a></p>
 <div id="databank_params" style="display:none;">
@@ -708,27 +693,21 @@ function databank_params_aff()
 </tr>
 <tr>
 	<td valign="top"><h3>Afficher les colonnes :</h3></td>
-	<td><select name="fields[]" multiple>
-<?php
-foreach ($this->fields as $name=>$field)
-	if (in_array($name, $this->fields_key))
-	{
-		echo "<option value=\"$name\" selected onclick=\"this.selected=true\" style=\"background-color:red;\">".$field->disp_opt("label")."</option>";
-	}
-	elseif (in_array($name, $this->fields_required))
-	{
-		echo "<option value=\"$name\" selected onclick=\"this.selected=true\" style=\"background-color:blue;\">".$field->disp_opt("label")."</option>";
-	}
-	elseif (in_array($name, $fields))
-	{
-		echo "<option value=\"$name\" selected>".$field->disp_opt("label")."</option>";
-	}
-	else
-	{
-		echo "<option value=\"$name\">".$field->disp_opt("label")."</option>";
-	}
-?>
-	</select></td>
+	<td><select name="fields[]" multiple><?php
+	foreach ($this->fields as $name=>$field)
+		if (in_array($name, $this->fields_key))
+		{
+			echo "<option value=\"$name\" readonly selected onclick=\"this.selected=true\" style=\"background-color:red;\">".$field->label."</option>";
+		}
+		elseif (in_array($name, $fields))
+		{
+			echo "<option value=\"$name\" selected>".$field->label."</option>";
+		}
+		else
+		{
+			echo "<option value=\"$name\">".$field->label."</option>";
+		}
+	?></select></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>
@@ -740,26 +719,43 @@ foreach ($this->fields as $name=>$field)
 <div><table cellspacing="0" cellpadding="2" border="1">
 <?php
 $nb=0;
-$list = $this->db_get($params, $fields, $sort);
+$nbmax = $this->db_count($params);
+$limit = 50;
+$start = 0;
+$list = $this->db_get($params, $fields, $sort, $limit, $start);
 foreach($list as $object)
 {
+	// First line
 	if (!$nb)
 	{
 		echo "<tr>\n";
-		foreach($object->field_list() as $field)
-			echo "<td><b><a href=\"javascript:;\" onclick=\"databank_list_sort('zeform','$field->name')\">".$field->disp_opt["label"]."</a></b></td>";
+		foreach($object->field_list() as $field) if (in_array($field->name, $this->fields_key) || in_array($field->name, $fields))
+		{
+			if ($field->name == "id")
+			{
+				echo "<td><b><a href=\"javascript:;\" onclick=\"databank_list_sort('zeform','$field->name')\">".$field->label."</a></b></td>";
+				echo "<td>Default display</td>";
+			}
+			else
+				echo "<td><b><a href=\"javascript:;\" onclick=\"databank_list_sort('zeform','$field->name')\">".$field->label."</a></b></td>";
+		}
 		echo "</tr>\n";
 	}
 	echo "<tr>\n";
-	foreach($object->field_list() as $field)
+	foreach($object->field_list() as $field) if (in_array($field->name, $this->fields_key) || in_array($field->name, $fields))
+	{
 		if ($field->name == "id")
-			echo "<td width=\"20\"><a href=\"".SITE_BASEPATH."/".$this->name."/$field/\">$field</a></td>";
+		{
+			echo "<td width=\"20\"><a href=\"?datamodel_id=$this->id&object_id=$object->id\">$field</a></td>";
+			echo "<td>$object</td>";
+		}
 		elseif ($field->type == "dataobject" && $field->value)
-			echo "<td><a href=\"/".$field->structure_opt("databank")."/".$field->value->id."/\">$field</a></td>";
+			echo "<td><a href=\"?datamodel_id=".$field->structure_opt("databank")."&object_id=$field->value\">$field</a></td>";
 		else
 			echo "<td>$field</td>";
-	echo "<td><a href=\"".SITE_BASEPATH."/".$this->name."/$object->id/\"><img src=\"".SITE_BASEPATH."/img/icon/icon-view.gif\" alt=\"View\" /></a></td>";
-	echo "<td><a href=\"".SITE_BASEPATH."/".$this->name."/$object->id/update\"><img src=\"".SITE_BASEPATH."/img/icon/icon-edit.gif\" alt=\"Update\" /></a></td>";
+	}
+	echo "<td><a href=\"?datamodel_id=$this->id&object_id=$object->id\"><img src=\"".SITE_BASEPATH."/img/icon/icon-view.gif\" alt=\"View\" /></a></td>";
+	echo "<td><a href=\"?datamodel_id=$this->id&object_id=$object->id\"><img src=\"".SITE_BASEPATH."/img/icon/icon-edit.gif\" alt=\"Update\" /></a></td>";
 	echo "<td><a href=\"javascript:;\" onclick=\"if (window.confirm('Etes-vous certain de supprimer ?')) location.href='".SITE_BASEPATH."/".$this->name."/$object->id/delete'\"><img src=\"".SITE_BASEPATH."/img/icon/icon-delete.gif\" alt=\"Delete\" /></a></td>";
 	echo "</tr>\n";
 	$nb++;
@@ -911,6 +907,9 @@ if (count($fields_ref))
 		db()->table_create($table["name"], $table["fields"], $table["options"]);
 	}
 }
+
+if (count($this->fields_index))
+	db()->query("ALTER TABLE `".$this->db_opt["table"]."` ADD FULLTEXT `FULLTEXT` (`".implode("`, `",$this->fields_index)."`)");
 
 }
 
@@ -1146,9 +1145,9 @@ if ($query_ok)
 			unset($fields[$name]);
 		}
 		// Extra table update : dataobject_list
-		elseif ($this->fields[$name]->type == "dataobject_list" && $this->fields[$name]->db_opt["ref_table"])
+		elseif ($this->fields[$name]->type == "dataobject_list")
 		{
-			foreach($field->value as $id)
+			if ($this->fields[$name]->db_opt["ref_table"]) foreach($field->value as $id)
 			{
 				$update_query[$name][] = "('".$insert_params["id"]."','$id')";
 			}
@@ -1221,7 +1220,7 @@ if ($query_ok)
 			{
 				$query_string = "DELETE FROM `$ref_table` WHERE `$ref_id` = '".$insert_params["id"]."'";
 				db()->query($query_string);
-				$query_string = "INSERT INTO `$ref_table` (`$ref_id`,`$ref_field`) VALUES ".implode(",",$insert_list);
+				$query_string = "INSERT INTO `$ref_table` (`$ref_id`, `$ref_field`) VALUES ".implode(", ",$insert_list);
 				db()->query($query_string);
 				$return = true;
 			}
@@ -1234,6 +1233,20 @@ else
 
 }
 
+public function create($fields_all_init=false)
+{
+
+$agregat_name = $this->name."_agregat";
+$object = new $agregat_name();
+if ($fields_all_init) foreach($this->fields as $name=>$field)
+{
+	if (!isset($object->{$name}))
+		$object->{$name} = null;
+}
+return $object;
+
+}
+
 /**
  * Retrieve a list of objects by giving query params and fields to be retrieved
  * The function adds the required fields
@@ -1243,7 +1256,6 @@ else
 public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
-$agregat_name = $this->name."_agregat";
 // Retrieve the resulting fields
 if (is_array($result = $this->db_select($params, $fields, $sort, $limit, $start)))
 {
@@ -1251,11 +1263,13 @@ if (is_array($result = $this->db_select($params, $fields, $sort, $limit, $start)
 	$objects = array();
 	foreach($result as $o)
 	{
-		$object = new $agregat_name();
+		$object = $this->create();
 		foreach($o as $name=>$value)
 		{
 			//echo "<p>$this->name : $name : $value</p>\n";
-			$object->{$name}->value_from_db($value);
+			// TODO : gérer de façon à dégager les champs inutiles en amont
+			if (isset($this->fields[$name]))
+				$object->{$name}->value_from_db($value);
 		}
 	$objects[] = $object;
 	}
@@ -1323,7 +1337,7 @@ else
 	// Requete sur la table principale
 	if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
 		$tablename = $this->db_opt["table"];
-	$query_base = array ( "fields" => array(), "where" => array(), "from" => array("`".$tablename."`") );
+	$query_base = array ( "fields" => array(), "having" => array(), "where" => array(), "from" => array("`".$tablename."`") );
 	$query_lang = false;
 	// Autres requetes
 	$query_list = array();
@@ -1336,14 +1350,6 @@ else
 	
 	$fields = array();
 	// Verify fields to be retrieved :
-	if (is_string($fields_input) && isset($this->fields[$fields_input]))
-	{
-		$fields_input = array($fields_input);
-	}
-	elseif ($fields_input === true)
-	{
-		
-	}
 	foreach($this->fields as $name=>$field)
 	{
 		// Add key & required fields if needed
@@ -1389,10 +1395,10 @@ else
 	// Verify query params
 	foreach($params as $param_nb=>$param)
 	{
-		if (!isset($param["type"]))
-			$param["type"] = "";
-		if (isset($this->fields[$param["name"]]))
+		if (isset($param["name"]) && isset($this->fields[$param["name"]]))
 		{
+			if (!isset($param["type"]))
+				$param["type"] = "";
 			$field = $this->fields[$param["name"]];
 			// Champ "standard"
 			if (!in_array($field->type, $type_special))
@@ -1429,6 +1435,22 @@ else
 				// FAIRE UN JOIN CAR CONDITIONS PARAMS AVEC AUTRES TABLES : genre entreprise qui embauche 
 			}
 		}
+		// Query using fulltext index
+		elseif (isset($param["type"]) && isset($param["value"]) && count($this->fields_index))
+		{
+			if ($param["type"] == "fulltext")
+			{
+				$query_base["fields"][] = "MATCH(`".implode("`, `", $this->fields_index)."`) AGAINST('".db()->string_escape($param["value"])."') as `relevance`";
+				$query_base["having"][] = "relevance > 0";
+			}
+			elseif ($param["type"] == "like")
+			{
+				$l = array();
+				foreach($this->fields_index as $i)
+					$l[] = "`$i` LIKE '%".db()->string_escape($param["value"])."%'";
+				$query_base["where"][] = "(".implode(" OR ", $l).")";
+			}
+		}
 		// PAS DEFINI
 		else
 		{
@@ -1457,7 +1479,12 @@ else
 	if (count($sort)>0)
 	{
 		foreach($sort as $i=>$j)
-			$query_sort[] = "`$i` $j";
+		{
+			if (strtolower($j) == "desc")
+				$query_sort[] = "`".db()->string_escape($i)."` DESC";
+			else
+				$query_sort[] = "`".db()->string_escape($i)."` ASC";
+		}
 	}
 	else
 	{
@@ -1473,10 +1500,16 @@ else
 		$query_limit = "";
 	}
 	
+	if (count($query_base["having"]))
+		$query_having = "HAVING ".implode(" AND ", $query_base["having"]);
+	else
+		$query_having = "";
+	
 	$query_string = "
 		SELECT DISTINCT ".implode(" , ",$query_base["fields"])."
 		FROM ".implode(" , ",$query_base["from"])."
 		WHERE ".implode(" AND ",$query_base["where"])."
+		$query_having
 		ORDER BY ".implode(",", $query_sort)."
 		$query_limit";
 	//echo "<p>$query_string</p>";
@@ -1822,7 +1855,7 @@ return datamodel($this->datamodel_id);
 public function __isset($name)
 {
 
-return isset($this->fields[$name]);
+return isset($this->datamodel()->{$name});
 
 }
 
@@ -1980,6 +2013,33 @@ if (file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
 else
 {
 	$view = new datamodel_update_form($this->datamodel(), $this->fields);
+}
+
+return $view;
+
+}
+/**
+ * Return the default form view
+ *
+ * @param unknown_type $name
+ * @return unknown
+ */
+public function insert_form($name="")
+{
+
+$this->db_retrieve_all();
+
+if (!$name)
+	$name = $this->datamodel()->name();
+
+if (file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
+{
+	$view = new datamodel_display_tpl_php($this->datamodel(), $this->fields);
+	$view->tplfile_set($name);
+}
+else
+{
+	$view = new datamodel_insert_form($this->datamodel(), $this->fields);
 }
 
 return $view;

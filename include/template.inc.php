@@ -13,17 +13,17 @@
 if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [begin]");
 
-class template_gestion
+class template_gestion extends gestion
 {
+
+protected $type = "template";
 
 protected $default_id = 0;
-protected $list = array();
-protected $list_name = array();
-protected $list_detail = array();
 
-public function __construct()
+public function query_info($retrieve_all=false)
 {
 
+$this->list = array();
 $query = db()->query("SELECT `_template`.`id`, `_template`.`name`, `_template`.`type`, `_template_lang`.`title` FROM `_template` LEFT JOIN `_template_lang` ON `_template`.`id`=`_template_lang`.`id` AND `_template_lang`.`lang_id`='".SITE_LANG_ID."'");
 while (list($id, $name, $type, $label)=$query->fetch_row())
 {
@@ -71,95 +71,53 @@ else
 }
 
 /**
- * Retrieve a page using its (unique) name
- * @param unknown_type $name
- */
-public function __get($name)
-{
-
-if (isset($this->list_name[$name]))
-{
-	return $this->get($this->list_name[$name]);
-}
-else
-{
-	return null;
-}
-
-}
-
-function exists($id)
-{
-
-return isset($this->list_detail[$id]);
-
-}
-function exists_name($name)
-{
-
-if (isset($this->list_name[$name]))
-	return $this->list_name[$name];
-else
-	return false;
-
-}
-
-/**
  * Add a template
  * @param array $template
  */
 public function add($template)
 {
 
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN CAN TEMPLATES");
+
 if (!(is_array($template) && isset($template["name"]) && isset($template["cache_mintime"]) && isset($template["cache_maxtime"]) && isset($template["title"]) && isset($template["description"]) && isset($template["details"])))
+	die("ERROR");
+
+$query_string = "INSERT INTO `_template` (`name`, `type`, `cache_mintime`, `cache_maxtime`) VALUES ('".$template["name"]."', 'page', '".$template["cache_mintime"]."', '".$template["cache_maxtime"]."')";
+$query = db()->query($query_string);
+if ($id = $query->last_id())
 {
-	return false;
+	$query_string = "INSERT INTO `_template_lang` (`id`, `lang_id`, `title`, `description`, `details`) VALUES ('$id', '".SITE_LANG_ID."', '".addslashes($template["title"])."', '".addslashes($template["description"])."', '".addslashes($template["details"])."')";
+	$query = db()->query($query_string);
+	if (isset($template["library"]) && is_array($template["library"]) && (count($template["library"]) > 0))
+	{
+		$query_library_list = array();
+		foreach($template["library"] as $library_id)
+		{
+			if (library()->get($library_id))
+			{
+				$query_library_list[] = "($id, $library_id)";
+			}
+		}
+		if (count($query_library_list)>0)
+		{
+			$query_string = " INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
+			db()->query($query_string);
+		}
+	}
+	$this->list_detail[$id] = array("name"=>$template["name"], "type"=>'page');
+	$this->list_name[$template["name"]] = $id;
+	if (APC_CACHE == true)
+	{
+		$this->list = array();
+		apc_store("template_gestion", $this, APC_CACHE_GESTION_TTL);
+	}
+	return $id;
 }
 else
 {
-	$query_string = "INSERT INTO `_template` (`name`, `type`, `cache_mintime`, `cache_maxtime`) VALUES ('".$template["name"]."', 'page', '".$template["cache_mintime"]."', '".$template["cache_maxtime"]."')";
-	$query = db()->query($query_string);
-	if ($id = $query->last_id())
-	{
-		$query_string = "INSERT INTO `_template_lang` (`id`, `lang_id`, `title`, `description`, `details`) VALUES ('$id', '".SITE_LANG_ID."', '".addslashes($template["title"])."', '".addslashes($template["description"])."', '".addslashes($template["details"])."')";
-		$query = db()->query($query_string);
-		if (isset($template["library"]) && is_array($template["library"]) && (count($template["library"]) > 0))
-		{
-			$query_library_list = array();
-			foreach($template["library"] as $library_id)
-			{
-				if (library()->get($library_id))
-				{
-					$query_library_list[] = "($id, $library_id)";
-				}
-			}
-			if (count($query_library_list)>0)
-			{
-				$query_string = " INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
-				db()->query($query_string);
-			}
-		}
-		$this->list_detail[$id] = array("name"=>$template["name"], "type"=>'page');
-		$this->list_name[$template["name"]] = $id;
-		if (APC_CACHE == true)
-		{
-			$this->list = array();
-			apc_store("template_gestion", $this, APC_CACHE_GESTION_TTL);
-		}
-		return $id;
-	}
-	else
-	{
-		return false;
-	}
+	return false;
 }
-
-}
-
-public function list_detail()
-{
-
-return $this->list_detail;
 
 }
 

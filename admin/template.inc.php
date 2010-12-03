@@ -15,8 +15,6 @@ if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 }
 
-define("LANG_ID", 2);
-
 ?>
 
 <form method="get" class="page_form">
@@ -24,7 +22,7 @@ define("LANG_ID", 2);
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach (template()->list_detail() as $id=>$template)
+foreach (template()->list_detail_get() as $id=>$template)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
 		echo "	<option value=\"$id\" selected>[$id] $template[name]</option>\n";
@@ -172,12 +170,12 @@ $template = template($id);
 	<td class="label">Libraries</td>
 	<td><select name="update[library][]" size="4" multiple>
 	<?
-	foreach(library()->list_get() as $i=>$library)
+	foreach(library()->list_detail_get() as $i=>$library)
 	{
 		if (in_array($i, $template->info("library_list")))
-			print "<option value=\"$i\" selected>$library->name</option>";
+			print "<option value=\"$i\" selected>$library[label]</option>";
 		else
-			print "<option value=\"$i\">$library->name</option>";
+			print "<option value=\"$i\">$library[label]</option>";
 	}
 	?>
 	</select></td>
@@ -493,12 +491,12 @@ if (isset($_POST["insert"]))
 	<td class="label">Libraries</td>
 	<td><select name="insert[library][]" size="4" multiple>
 	<?
-	foreach(library()->list_get() as $i => $j)
+	foreach(library()->list_detail_get() as $i => $j)
 	{
 		if (in_array($i, $template["library"]))
-			print "<option value=\"$i\" selected>$j->title</option>";
+			print "<option value=\"$i\" selected>$j[label]</option>";
 		else
-			print "<option value=\"$i\">$j->title</option>";
+			print "<option value=\"$i\">$j[label]</option>";
 	}
 	?>
 	</select></td>

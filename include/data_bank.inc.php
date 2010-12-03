@@ -16,25 +16,26 @@ if (DEBUG_GENTIME ==  true)
  * Databank global managing class
  *
  */
-class data_bank_gestion extends session_select
+class data_bank_gestion extends gestion
 {
 
-protected $list = array();
+protected $type = "data_bank";
 
-private $serialize_list = array("list");
-public $serialize_save_list = array();
-
-function __construct()
-{
-
-$this->query();
-
-}
-
-function query()
+function query_info($retrieve_all=false)
 {
 
 $this->list = array();
+$this->list_detail = array();
+$this->list_name = array();
+
+$query = db()->query("SELECT `_datamodel`.`id`, `_datamodel`.`name` FROM `_datamodel`");
+while ($datamodel = $query->fetch_assoc())
+{
+	$this->list_detail[$datamodel["id"]] = $datamodel;
+	$this->list_name[$datamodel["name"]] = $datamodel["id"];
+	if ($retrieve_all)
+		$this->list[$datamodel["id"]] = new datamodel($datamodel["id"], false, $this->list_detail[$id]);
+}
 
 $this->access_function_create();
 
@@ -46,65 +47,9 @@ $this->access_function_create();
 function access_function_create()
 {
 
-foreach(datamodel()->list_name_get() as $name=>$id)
+foreach($this->list_name as $name=>$id)
 {
 	eval("function $name(\$id=null, \$fields=array()) { return databank(\"$id\", \$id, \$fields); }");
-}
-
-}
-
-/**
- * Accéder à une banque de donnée
- * 
- * @param int $id
- */
-function get($id)
-{
-
-if (isset($this->list[$id]))
-{
-	// TODO : Vérifier permissions d'accès !!
-	return $this->list[$id];
-}
-elseif (APC_CACHE && ($databank=apc_fetch("databank_$id")))
-{
-	return $this->list[$id] = $databank;
-}
-elseif (in_array($id, datamodel()->list_name_get()))
-{
-	$databank = new data_bank($id);
-	if (APC_CACHE)
-		apc_store("databank_$id", $databank, APC_CACHE_DATAMODEL_TTL);
-	return $this->list[$id] = $databank;
-}
-else
-{
-	trigger_error("Databank id $id not found.");
-	return false;
-}
-
-}
-
-/**
- * 
- * @param string $name
- */
-function get_name($name)
-{
-
-$list_id = &datamodel()->list_name_get();
-if (isset($list_id[$name]) && ($id=$list_id[$name]) && isset($this->list[$id]))
-{
-	return $this->list[$id];
-}
-elseif (isset($id))
-{
-	return $this->get($id);
-}
-else
-{
-	trigger_error("Databank '$name' not found.");
-	return false;
 }
 
 }
@@ -112,20 +57,11 @@ else
 /*
  * Sauvegarde/Restauration de la session
  */
-function __sleep()
-{
-
-return session_select::__sleep($this->serialize_list);
-
-}
 function __wakeup()
 {
 
-session_select::__wakeup();
+gestion::__wakeup();
 $this->access_function_create();
-
-if (DEBUG_SESSION == true)
-	echo "<p>WAKEUP : data_bank_gestion</p>\n";
 
 }
 
@@ -253,6 +189,16 @@ public function label()
 return datamodel($this->id)->label();
 
 }
+public function __get($name)
+{
+
+$list = array("id", "name", "label");
+
+if (in_array($name, $list))
+	return $this->{$name};
+
+}
+
 /**
  * User permissions test
  * Uses user account and perm list.
@@ -544,14 +490,7 @@ else
 public function create($fields_all_init=false)
 {
 
-$classname = datamodel($this->id)->name()."_agregat";
-$object = new $classname;
-if ($fields_all_init) foreach(datamodel($this->id)->fields() as $name=>$field)
-{
-	if (!isset($object->{$name}))
-		$object->{$name} = "";
-}
-return $object;
+return datamodel($this->id)->create($fields_all_init);
 
 }
 
@@ -749,7 +688,7 @@ if (!isset($GLOBALS["databank_gestion"]))
 		if (!($GLOBALS["databank_gestion"]=apc_fetch("databank_gestion")))
 		{
 			$GLOBALS["databank_gestion"] = new data_bank_gestion();
-			apc_store("databank_gestion", $GLOBALS["databank_gestion"], APC_CACHE_GESTION_TTL);
+			apc_store("data_bank_gestion", $GLOBALS["databank_gestion"], APC_CACHE_GESTION_TTL);
 		}
 	}
 	// Session

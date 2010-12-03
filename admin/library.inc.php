@@ -13,7 +13,7 @@
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 
-$library_list = library()->list_detail();
+$library_list = library()->list_detail_get();
 
 // Insert
 if (isset($_POST["insert"]))
@@ -36,7 +36,7 @@ library($update["id"])->update($update);
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach (library()->list_detail() as $id=>$library)
+foreach ($library_list as $id=>$library)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
 		echo "	<option value=\"$id\" selected>[$id] $library[name]</option>\n";
@@ -66,7 +66,7 @@ while (list($library_id) = $query_library->fetch_row())
 <tr style="font-weight:bold;">
 	<td width="200">ID :</td>
 	<td><input name="update[id]" value="<?=$id?>" readonly /></td>
-	<td rowspan="10" width="60%"><textarea id="update[filecontent]" name="update[filecontent]" style="width:100%" rows="40"><?php 
+	<td rowspan="10" width="60%"><textarea id="filecontent" name="update[filecontent]" style="width:100%" rows="40"><?php 
 	$filename = "library/$update[name].inc.php";
 	if (file_exists($filename))
 	{
@@ -80,7 +80,7 @@ while (list($library_id) = $query_library->fetch_row())
 </tr>
 <tr>
 	<td>Nom complet :</td>
-	<td><input name="update[title]" value="<?=$update["title"]?>" maxlength="128" style="width:100%;" /></td>
+	<td><input name="update[label]" value="<?=$update["label"]?>" maxlength="128" style="width:100%;" /></td>
 </tr>
 <tr>
 	<td>Description :</td>
@@ -92,9 +92,9 @@ while (list($library_id) = $query_library->fetch_row())
 	<?
 	foreach($library_list as $i => $j)
 		if (in_array($i, $update["library_list"]))
-			echo "<option value=\"$i\" selected>$j[title]</option>";
+			echo "<option value=\"$i\" selected>$j[label]</option>";
 		elseif ($id != $i)
-			echo "<option value=\"$i\">$j[title]</option>";
+			echo "<option value=\"$i\">$j[label]</option>";
 	?>
 	</select></td>
 </tr>
@@ -106,9 +106,10 @@ while (list($library_id) = $query_library->fetch_row())
 </form>
 
 <script language="Javascript" type="text/javascript">
+$(document).ready(function(){
 	// initialisation
 	editAreaLoader.init({
-		id: "update[filecontent]"	// id of the textarea to transform		
+		id: "filecontent"	// id of the textarea to transform		
 		,start_highlight: true	// if start with highlight
 		,allow_resize: "both"
 		,allow_toggle: true
@@ -116,6 +117,7 @@ while (list($library_id) = $query_library->fetch_row())
 		,language: "fr"
 		,syntax: "php"	
 	});
+});
 </script>
 <?php
 
@@ -134,7 +136,7 @@ elseif (isset($_GET["add"]))
 </tr>
 <tr>
 	<td class="label">Nom complet :</td>
-	<td><input name="insert[title]" value="" maxlength="128" style="width:100%;" /></td>
+	<td><input name="insert[label]" value="" maxlength="128" style="width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Description :</td>
@@ -145,7 +147,7 @@ elseif (isset($_GET["add"]))
 	<td><select name="insert[library_list][]" size="10" multiple style="width:100%;">
 	<?
 	foreach($library_list as $i => $j)
-		echo "<option value=\"$i\">$j[title]</option>";
+		echo "<option value=\"$i\">$j[label]</option>";
 	?>
 	</select></td>
 </tr>
@@ -157,6 +159,7 @@ elseif (isset($_GET["add"]))
 </form>
 
 <script language="Javascript" type="text/javascript">
+$(document).ready(function(){
 	// initialisation
 	editAreaLoader.init({
 		id: "insert[filecontent]"	// id of the textarea to transform		
@@ -167,6 +170,7 @@ elseif (isset($_GET["add"]))
 		,language: "fr"
 		,syntax: "php"	
 	});
+});
 </script>
 <?
 
@@ -204,13 +208,13 @@ while (list($id) = $query_library->fetch_row())
 	<td><a href="" onclick="return(confirm('Êtes vous bien certain de vouloir supprimer cette librairie ?'))" style="color:red; border:1px red solid;">X</a></td>
 	<td><a href="?id=<?php echo $library["id"]; ?>"><?php echo $library["id"]; ?></a></td>
 	<td><a href="?id=<?php echo $library["id"]; ?>"><?php echo $library["name"]; ?></a></td>
-	<td><?php echo $library["title"]; ?></td>
+	<td><?php echo $library["label"]; ?></td>
 	<td><?php echo $library["description"]; ?></td>
 	<td><?php
 	$library_show = array();
 	foreach($library_list as $i => $j)
 		if (in_array($i, $library_library))
-			$library_show[] = $j["title"];
+			$library_show[] = $j["label"];
 	if (count($library_show))
 		echo implode(" , ", $library_show);
 	?></td>

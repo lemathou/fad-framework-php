@@ -84,6 +84,196 @@ $this->serialize_save_list = array();
 }
 
 /**
+ * 
+ * Database gestion
+ * @author mathieu
+ *
+ */
+abstract class gestion extends session_select
+{
+
+protected $type = "";
+
+protected $list = array();
+protected $list_detail = array();
+protected $list_name = array();
+
+protected $serialize_list = array("list_detail");
+public $serialize_save_list = array();
+
+/*
+ * Sauvegarde/Restauration de la session
+ */
+function __sleep()
+{
+
+return session_select::__sleep($this->serialize_list);
+
+}
+function __wakeup()
+{
+
+session_select::__wakeup();
+
+$this->list = array();
+$this->list_name = array();
+foreach($this->list_detail as $id=>$o)
+	$this->list_name[$o["name"]] = $id;
+
+}
+
+function __construct()
+{
+
+$this->query_info();
+
+}
+
+function query_info($retrieve_all=false)
+{
+
+// Need to by upgraded
+
+}
+
+function retrieve_all()
+{
+
+foreach($this->list_detail as $id=>$info)
+{
+	if (!isset($this->list[$id]))
+		$this->id = new $this->type($id, false, $detail);
+}
+
+}
+
+/**
+ * Returns an object using its ID
+ * @param int $id
+ */
+function get($id)
+{
+
+if (isset($this->list[$id]))
+{
+	return $this->list[$id];
+}
+elseif (APC_CACHE && ($object=apc_fetch($this->type."_$id")))
+{
+	return $this->list[$id] = $object;
+}
+elseif (isset($this->list_detail[$id]))
+{
+	$object = new $this->type($id, false, $this->list_detail[$id]);
+	if (APC_CACHE)
+		apc_store($this->type."_$id", $object, APC_CACHE_GESTION_TTL);
+	return $this->list[$id] = $object;
+}
+elseif (DEBUG_PERMISSION)
+{
+	trigger_error("Cannot create $this->type ID#$id");
+}
+else
+{
+	return null;
+}
+
+}
+/**
+ * Retrieve an object using its unique name
+ * @param unknown_type $name
+ */
+function __get($name)
+{
+
+if (isset($this->list_name[$name]))
+{
+	return $this->get($this->list_name[$name]);
+}
+else
+{
+	return null;
+}
+
+}
+function get_name($name)
+{
+
+return $this->__get($name);
+
+}
+
+/**
+ * Returns if an object exists
+ * @param int $id
+ */
+function exists($id)
+{
+
+return isset($this->list_detail[$id]);
+
+}
+/**
+ * 
+ * Returns if an object exists using its unique name
+ * @param string $name
+ */
+function __isset($name)
+{
+
+return isset($this->list_name[$name]);
+
+}
+function exists_name($name)
+{
+
+return isset($this->list_name[$name]);
+
+}
+
+
+
+/**
+ * Returns the list
+ */
+public function list_get()
+{
+
+return $this->list;
+
+}
+public function list_name_get()
+{
+
+return $this->list_name;
+
+}
+public function list_detail_get()
+{
+
+return $this->list_detail;
+
+}
+
+/**
+ * Delete an object
+ * @param int $id
+ */
+public function del($id)
+{
+}
+
+/**
+ * Add an object
+ * @param array $infos
+ */
+public function add($infos)
+{
+}
+
+}
+
+/**
  * Page listing
  *
  * @author mathieu

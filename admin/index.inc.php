@@ -9,22 +9,22 @@
   * 
   */
 
-
 // Page list
 $admin_menu = array
 (
 	"account" => "Comptes utilisateur",
 	"globals" => "Parametres généraux",
 	"lang" => "Langues",
-	"module" => "Modules",
+	"perm" => "Permissions",
+	//"module" => "Modules",
 	"library" => "Librairies",
 	"datamodel" => "Datamodel",
+	"data" => "Données",
 	//"databank" => "Databank",
 	"template" => "Templates",
 	"page" => "Pages",
 	"menu" => "Menus",
-	"widget" => "Widgets",
-	"data" => "Données",
+	//"widget" => "Widgets",
 );
 
 // Default page
@@ -67,74 +67,31 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 
 <title><?php echo $admin_menu[$admin_page]; ?> - ADMINISTRATION</title>
 
-<link rel="stylesheet" type="text/css" href="/css/jquery.asmselect.css" media="print, projection, screen, tv" />
+<link rel="stylesheet" type="text/css" href="/css/jquery-ui-1.8.6.custom.css" />
+<link rel="stylesheet" type="text/css" href="/css/jquery.ui.timepicker.css" />
+<link rel="stylesheet" type="text/css" href="/css/jquery.asmselect.css" />
+<link rel="stylesheet" type="text/css" href="/css/common.css" />
+<link rel="stylesheet" type="text/css" href="/css/admin.css" />
 
-<script language="Javascript" type="text/javascript" src="/edit_area/edit_area_full.js"></script>
-<script language="Javascript" type="text/javascript" src="/js/jquery.js"></script>
-<script language="Javascript" type="text/javascript" src="/js/jquery.asmselect.js"></script>
+<script type="text/javascript" language="Javascript" src="/js/jquery-1.4.2.min.js"></script>
+<script type="text/javascript" language="javascript" src="/js/jquery-ui-1.8.6.custom.min.js"></script>
+<script type="text/javascript" language="javascript" src="/js/jquery-ui-timepicker-addon.js"></script>
+<script type="text/javascript" language="javascript" src="/js/jquery.uidatepicker-fr.js"></script>
+<script type="text/javascript" language="Javascript" src="/js/jquery.asmselect.js"></script>
+<script type="text/javascript" language="javascript" src="/js/jquery.autogrowtextarea.js"></script>
 
-<style type="text/css">
-body
-{
-	margin: 0px;
-	border: 0px;
-	padding: 0px;
-}
+<script type="text/javascript" language="javascript" src="/js/json2.js"></script>
 
-.menu
-{
-	position: fixed;
-	top: 0px;
-	width: 100%;
-	background-color: white;
-	padding-bottom: 4px;
-}
-.menu ul
-{
-	height: 45px;
-	margin: 0px;
-	border-bottom: 1px blue solid;
-}
-.menu li
-{
-	float: left;
-	margin: 0px;
-	margin-right: 10px;
-	list-style-type: none;
-}
-.menu li a
-{
-	text-decoration: none;
-	color: blue;
-	font-weight: bold;
-}
-.menu li a:hover, .menu li.selected a
-{
-	color: orange;
-}
+<script type="text/javascript" language="Javascript" src="/edit_area/edit_area_full.js"></script>
+<script type="text/javascript" language="javascript" src="/js/ckeditor/ckeditor.js"></script>
+<script type="text/javascript" language="javascript" src="/js/ckeditor/adapters/jquery.js"></script>
 
-.page_content
-{
-	padding: 50px 5px 5px 5px;
-}
+<script type="text/javascript" language="javascript" src="/js/common.js"></script>
+<script type="text/javascript" language="javascript" src="/js/admin.js"></script>
 
-.page_form
-{
-	position: fixed;
-	top: 50px;
-	left: 0px;
-	width: 100%;
-	height: 30px;
-	border-bottom: 1px blue solid;
-	padding: 0px 5px;
-	background-color: white;
-}
-
-table td
-{
-	vertical-align: top;
-}
-</style>
+<!--[if lt IE 7.]>
+<script defer type="text/javascript" language="javascript" src="/js/pngfix.js"></script>
+<![endif]-->
 
 </head>
 

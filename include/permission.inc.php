@@ -13,15 +13,24 @@
  * Global managing object for permissions
  * 
  * @author mathieu
- *
+ * 
  */
-class permission_gestion
+
+class permission_gestion extends gestion
 {
 
-protected $list = array();
+protected $type = "permission";
 
-function __construct()
+function query_info($retrieve_all=false)
 {
+
+$query = db()->query("SELECT t1.id, t1.name, t2.label FROM _perm as t1 LEFT JOIN _perm_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID);
+while($perm = $query->fetch_assoc())
+{
+	$list_detail[$perm["id"]] = $perm;
+	$list_name[$perm["name"]] = $perm["id"];
+}
+
 }
 
 }
@@ -36,7 +45,14 @@ protected $id = null;
 protected $name = "";
 protected $label = "";
 
-protected $list = array();
+//protected $list = array();
+protected $library_perm = array();
+protected $datamodel_perm = array();
+protected $databank_perm = array();
+protected $dataobject_perm = array();
+protected $template_perm = array();
+protected $page_perm = array();
+protected $menu_perm = array();
 
 /**
  * 
@@ -61,6 +77,14 @@ function query_infos()
 
 $query = db()->query("SELECT t1.name, t2.label FROM _perm as t1 LEFT JOIN _perm_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." WHERE t1.id = '$this->id'");
 list($this->name , $this->label) = $query->fetch_row();
+
+$this->databank_perm = array();
+$query = db()->query("SELECT databank_id, perm from databank_perm_ref WHERE perm_id = '$this->id'");
+if ($query->num_rows())
+{
+	while(list($databank_id, $perm) = $query->fetch_row())
+		$this->databank_perm[$databank_id] = $perm;
+}
 
 }
 

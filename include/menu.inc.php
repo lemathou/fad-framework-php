@@ -15,56 +15,26 @@ if (DEBUG_GENTIME ==  true)
 /**
  * Gestion des menus
  */
-class menu_gestion
+class menu_gestion extends gestion
 {
 
-protected $list = array();
-protected $list_detail = array();
-protected $list_id = array();
+protected $type = "menu";
 
-public function __construct()
-{
-
-$this->query();
-
-}
-
-public function query()
+public function query_info()
 {
 
 $this->list = array();
-$this->list_id = array();
+$this->list_detail = array();
+$this->list_name = array();
 $query = db()->query("SELECT `_menu`.`id`, `_menu`.`name`, `_menu_lang`.`title` FROM `_menu` LEFT JOIN `_menu_lang` ON `_menu`.`id`=`_menu_lang`.`id` AND `_menu_lang`.`lang_id`='".SITE_LANG_ID."'");
 while (list($id, $name, $title)=$query->fetch_row())
 {
-	$this->list_id[$id] = $name;
-	$this->list_detail[$id] = array("name"=>$name, "title"=>$title);
+	$this->list_name[$name] = $id;
+	$this->list_detail[$id] = array("name"=>$name, "label"=>$title);
 }
 
 }
 
-function get($id)
-{
-
-if (isset($this->list[$id]))
-{
-	return $this->list[$id];
-}
-elseif (APC_CACHE && isset($this->list_detail[$id]) && ($menu=apc_fetch("menu_$id")))
-{
-	return $this->list[$id] = $menu;
-}
-elseif (isset($this->list_detail[$id]))
-{
-	$this->list[$id] = new menu($id, false, $this->list_detail[$id]);
-	if (APC_CACHE)
-		apc_store("menu_$id", $this->list[$id], APC_CACHE_MENU_TTL);
-	return $this->list[$id];
-}
-else
-	return null;
-
-}
 
 function del($id)
 {
@@ -78,15 +48,9 @@ db()->query("INSERT INTO `_menu` (`name`) VALUES ('".db()->string_escape($name).
 if ($id=db()->last_id())
 {
 	db()->query("INSERT INTO `_menu_lang` (`id`, `lang_id`, `title`) VALUES ('$id', '".SITE_LANG_DEFAULT_ID."', '".db()->string_escape($title)."')");
-	$this->list_id[$id] = $name;
 }
 
-}
-
-function list_get()
-{
-
-return $this->list_id;
+$this->query_info();
 
 }
 
@@ -98,7 +62,7 @@ return $this->list_id;
 class menu
 {
 
-protected $id = "0";
+protected $id = 0;
 protected $name = "";
 protected $title = "";
 
@@ -225,28 +189,20 @@ else // $method == "span"
  * Requiert l'objet $login pour connaître les permissions.
  *
  */
-class page_gestion
+class page_gestion extends gestion
 {
 
+protected $type = "page";
+
 protected $page_id = 0;
-protected $list = array();
-protected $list_detail = array();
-protected $list_name = array();
 
 protected static $infos = array("type", "name", "description", "template_id", "redirect_url", "alias_page_id");
 protected static $infos_lang = array("url", "titre", "titre_court");
 
-function __construct()
-{
-
-$this->query();
-
-}
-
 /**
  * Retrieve basic infos on all pages
  */
-public function query($retrieve_all=false)
+public function query_info($retrieve_all=false)
 {
 
 $this->list = array();
@@ -319,63 +275,6 @@ $this->get(PAGE_ID)->set($url_params);
 }
 
 /**
- * Retrieve a page using its ID
- * @param unknown_type $id
- */
-public function get($id=0)
-{
-
-if (isset($this->list[$id]))
-{
-	return $this->list[$id];
-}
-elseif (APC_CACHE && isset($this->list_detail[$id]) && ($page=apc_fetch("page_$id")))
-{
-	return $this->list[$id] = $page;
-}
-elseif (isset($this->list_detail[$id]))
-{
-	$this->list[$id] = new page($id, false , $this->list_detail[$id]);
-	if (APC_CACHE)
-		apc_store("page_$id", $this->list[$id], APC_CACHE_PAGE_TTL);
-	return $this->list[$id];
-}
-elseif (!$id && $this->page_id)
-{
-	return $this->get($this->page_id);
-}
-else // Bad ID given
-{
-	return null;
-}
-
-}
-
-/**
- * Retrieve a page using its (unique) name
- * @param unknown_type $name
- */
-public function __get($name)
-{
-
-if (isset($this->list_name[$name]))
-{
-	return $this->get($this->list_name[$name]);
-}
-else
-{
-	return null;
-}
-
-}
-public function list_get()
-{
-
-return $this->list;
-
-}
-
-/**
  * Get the current page
  * @param unknown_type $id
  */
@@ -386,21 +285,6 @@ if ($this->page_id)
 	return $this->get($this->page_id);
 else
 	return null;
-
-}
-
-/**
- * returns if the page exists
- * 
- * @param int $id
- */
-public function exists($id)
-{
-
-if (isset($this->list_detail[$id]))
-	return true;
-else
-	return false;
 
 }
 

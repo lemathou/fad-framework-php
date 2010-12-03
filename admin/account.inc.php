@@ -219,7 +219,7 @@ else
 	<td>Permissions globales</td>
 </tr>
 <?
-$query = db()->query(" SELECT id , `create_datetime` , `update_datetime` , `actif` , `username` , `password` , `lang_id` , `email` , `sid` FROM _account ORDER BY username ");
+$query = db()->query(" SELECT id , `create_datetime` , `update_datetime` , `actif` , `password` , `lang_id` , `email` , `sid` FROM _account ORDER BY email ");
 while ($account = $query->fetch_assoc())
 {
 

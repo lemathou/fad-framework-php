@@ -125,9 +125,15 @@ foreach ($this->datamodel->fields() as $name=>$field)
 			$field_class = "field calculated_field";
 		else
 			$field_class = "field";
-		$return .= "<tr class=\"$field_class\"> <td class=\"label\"><label for=\"$name\">".$this->fields[$name]->label."</label> :</td> <td>".$this->fields[$name]->form_field_disp(false)."</td> </tr>\n";
+		$return .= "<tr class=\"$field_class\">\n";
+		$return .= "	<td class=\"label\"><label for=\"$name\">".$this->fields[$name]->label."</label> :</td>\n";
+		$return .= "	<td>".$this->fields[$name]->form_field_disp(false)."</td>\n";
+		$return .= "</tr>\n";
 	}
-$return .= "<tr> <td>&nbsp;</td> <td><input type=\"submit\" value=\"Ajouter\" /></td> </tr>\n";
+$return .= "<tr>\n";
+$return .= "	<td>&nbsp;</td>\n";
+$return .= "	<td><input type=\"submit\" value=\"Ajouter\" /></td>\n";
+$return .= "</tr>\n";
 $return .= "</table>\n";
 $return .= "</form>\n";
 
@@ -150,8 +156,7 @@ class datamodel_update_form extends datamodel_display
 public function disp($print=true)
 {
 
-$return = "<div class=\"datamodel_form datamodel_update_form\">\n";
-$return .= "<form id=\"".$this->datamodel->name()."\" method=\"post\" onsubmit=\"return agregat_verify(this, new Array ('".implode("','",$this->datamodel->fields_required())."'))\">\n";
+$return = "<form id=\"".$this->datamodel->name()."\" class=\"datamodel_form datamodel_update_form\" method=\"post\" onsubmit=\"return agregat_verify(this, new Array ('".implode("','",$this->datamodel->fields_required())."'))\">\n";
 $return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
 foreach ($this->datamodel->fields() as $name=>$field)
 	if (isset($this->fields[$name]))
@@ -160,16 +165,21 @@ foreach ($this->datamodel->fields() as $name=>$field)
 			$field_class = "field key_field";
 		elseif (in_array($name, $this->datamodel->fields_required()))
 			$field_class = "field required_field";
-		elseif (array_key_exists($name, $this->datamodel->fields_calculated()))
+		elseif (in_array($name, $this->datamodel->fields_calculated()))
 			$field_class = "field calculated_field";
 		else
 			$field_class = "field";
-		$return .= "<tr class=\"$field_class\"> <td class=\"label\">".$this->fields[$name]->label." :</td> <td>".$this->fields[$name]->form_field_disp(false)."</td> </tr>\n";
+		$return .= "<tr class=\"$field_class\">\n";
+		$return .= "	<td class=\"label\"><label for=\"$name\">".$this->fields[$name]->label."</label> :</td>\n";
+		$return .= "	<td>".$this->fields[$name]->form_field_disp(false)."</td>\n";
+		$return .= "</tr>\n";
 	}
-$return .= "<tr> <td>&nbsp;</td> <td><input type=\"submit\" name=\"_update\" value=\"Mettre à jour\" /></td> </tr>\n";
+$return .= "<tr>\n";
+$return .= "	<td>&nbsp;</td>\n";
+$return .= "	<td><input type=\"submit\" value=\"Mettre à jour\" /></td>\n";
+$return .= "</tr>\n";
 $return .= "</table>\n";
 $return .= "</form>\n";
-$return .= "</div>\n";
 
 if ($print)
 	echo $return;

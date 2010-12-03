@@ -1,0 +1,121 @@
+@CHARSET "UTF-8";
+
+body
+{
+	margin: 0;
+	border: 0;
+	padding: 0;
+	font-size: 11pt;
+	background: transparent;
+}
+
+/* General font-family */
+body, h1, h2, h3, h4, p, li, td, input, textarea
+{
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+/* Forms */
+form
+{
+	margin: 0;
+}
+input, select, textarea
+{
+	font-size: 0.9em;
+}
+
+/* Frames */
+iframe
+{
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+
+/* Links */
+a
+{
+	font-weight: bold;
+	font-style: normal;
+	text-decoration: none;
+	color: #47a5ff;
+}
+a:hover
+{
+	color: orange;
+}
+a img
+{
+	border: 0;
+}
+
+/* Cleaner */
+p.cleaner
+{
+	clear: both;
+	margin: 0;
+	height: 0;
+	line-height: 0;
+}
+
+/* Tables */
+td.label
+{
+	vertical-align: top;
+}
+
+/* AutoGrow */
+.autogrow
+{
+	overflow: hidden;
+	height: auto;
+}
+
+/* Ajax queries */
+.q_select
+{
+	display: none;
+	position: absolute;
+	border: 1px gray solid;
+	background-color: #ffd;
+	padding: 4px;
+	z-index: 100;
+}
+.q_select p
+{
+	font-size: 0.8em;
+	margin: 0;
+}
+.q_select p:hover
+{
+	background-color: black;
+	color: orange;
+	cursor: pointer;
+}
+
+/* Menus */
+.menu
+{
+	background-color: #d00128;
+	height: 14px;
+	padding: 0;
+	margin: 0;
+	text-align: center;
+}
+.menu a
+{
+	padding: 0 10px;
+}
+.menu a:hover, .menu .selected a
+{
+	color: orange;
+}
+
+/* Page */
+.page
+{
+	width: 990px;
+	text-align: left;
+	height: 100%;
+}

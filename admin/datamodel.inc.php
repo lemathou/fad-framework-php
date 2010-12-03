@@ -59,149 +59,29 @@ if (isset($_POST["_datamodel_update"]))
 	$datamodel->update($_POST);
 }
 
-// Datamodel field update
-if (isset($_POST["_field_update"]))
-{
-	if (isset($_POST["defaultvalue_null"]))
-		$defaultvalue = "NULL";
-	elseif (isset($_POST["defaultvalue"]))
-		$defaultvalue = "'".db()->string_escape($_POST["defaultvalue"])."'";
-	else
-		$defaultvalue = "''";
-	if (!isset($_POST["defaultvalue"]))
-		$_POST["defaultvalue"] = "";
-	$query_str = "UPDATE _datamodel_fields SET name='".db()->string_escape($_POST["name"])."', type='".db()->string_escape($_POST["type"])."', defaultvalue=$defaultvalue, opt='".db()->string_escape($_POST["opt"])."', lang='".db()->string_escape($_POST["lang"])."' WHERE datamodel_id='".$_GET["id"]."' AND name='".$_POST["name_orig"]."'";
-	//echo "<br />$query_str";
-	db()->query($query_str);
-	$query_str = "UPDATE _datamodel_fields_lang SET fieldname='".db()->string_escape($_POST["name"])."', label='".db()->string_escape($_POST["label"])."' WHERE datamodel_id='".$_GET["id"]."' AND lang_id='".SITE_LANG_ID."' AND fieldname='".$_POST["name_orig"]."'";
-	//echo "<br />$query_str";
-	db()->query($query_str);
-	$query_str = "DELETE FROM _datamodel_fields_opt WHERE fieldname='".db()->string_escape($_POST["name"])."' AND datamodel_id='".$_GET["id"]."'";
-	//echo "<br />$query_str";
-	db()->query($query_str);
-	// Création objet par défaut, pour voir quelles options sont réellement à sauver (<> opt par défaut)
-	$fieldtype = "data_$_POST[type]";
-	$datafield = new $fieldtype("test", null, null);
-	if (isset($_POST["optlist"]))
-	{
-		foreach($_POST["optlist"] as $type=>$list)
-		{
-			$field_type = $datafield->{$type."_opt_list_get"}();
-			foreach ($list as $i=>$j)
-			{
-				if (!isset($field_type[$i]) || $field_type[$i] !== json_decode($j))
-				{
-					$datafield->{$type."_opt_set"}($i, json_decode($j));
-					$finalvalue = json_encode($datafield->{$type."_opt"}[$i]);
-					$query_str = "INSERT INTO _datamodel_fields_opt ( datamodel_id ,  fieldname , opt_type , opt_name , opt_value ) VALUES ( '".$_GET["id"]."' , '".db()->string_escape($_POST["name"])."' , '$type' , '$i' , '".db()->string_escape($j)."' )";
-					db()->query($query_str);
-				}
-			}
-		}
-	}
-	// Gestion du repositionnement
-	if ($_POST["pos"] < $_POST["pos_orig"])
-	{
-		db()->query("UPDATE _datamodel_fields SET pos=pos+1 WHERE datamodel_id='".$_GET["id"]."' AND pos >= ".($_POST["pos"])." AND pos < ".($_POST["pos_orig"]));
-		db()->query("UPDATE _datamodel_fields SET pos=".($_POST["pos"])." WHERE datamodel_id='".$_GET["id"]."' AND name='".($_POST["name"])."'");
-	}
-	elseif ($_POST["pos_orig"] < $_POST["pos"])
-	{
-		db()->query("UPDATE _datamodel_fields SET pos=pos-1 WHERE datamodel_id='".$_GET["id"]."' AND pos > ".($_POST["pos_orig"])." AND pos <= ".($_POST["pos"]));
-		db()->query("UPDATE _datamodel_fields SET pos=".($_POST["pos"])." WHERE datamodel_id='".$_GET["id"]."' AND name='".($_POST["name"])."'");
-	}
-	// Mise à jour du champ dans la table associée
-	if ($db_sync)
-	{
-		$datamodel->query_info();
-		if (isset($_POST["lang"]) && $_POST["lang"])
-			db()->field_update($datamodel->db_opt("table")."_lang", $_POST["name_orig"], $_POST["name"], $datafield->db_field_create());
-		else
-			db()->field_update($datamodel->db_opt("table"), $_POST["name_orig"], $_POST["name"], $datafield->db_field_create());
-	}
-}
 // Datamodel field add
 if (isset($_POST["_field_add"]))
 {
-	if (isset($_POST["defaultvalue_null"]))
-		$defaultvalue = "NULL";
-	else
-		$defaultvalue = "'".db()->string_escape($_POST["defaultvalue"])."'";
-	list($pos_max)=db()->query("SELECT MAX(pos)+1 FROM _datamodel_fields WHERE datamodel_id='".$datamodel->id()."'")->fetch_row();
-	if (!$pos_max)
-		$pos_max = 1;
-	db()->query("INSERT INTO _datamodel_fields ( datamodel_id , pos, name , type , defaultvalue , opt , lang ) VALUES ( '".$_POST["id"]."' ,'".($pos_max)."' ,  '".db()->string_escape($_POST["name"])."' , '".db()->string_escape($_POST["type"])."' , $defaultvalue , '".db()->string_escape($_POST["opt"])."' , '".db()->string_escape($_POST["lang"])."' )");
-	db()->query("INSERT INTO _datamodel_fields_lang ( datamodel_id , lang_id , fieldname , label ) VALUES ( '".$_POST["id"]."' , '".SITE_LANG_ID."' , '".db()->string_escape($_POST["name"])."' , '".db()->string_escape($_POST["label"])."' )");
-	// Gestion du repositionnement
-	if ($_POST["pos"] < $pos_max)
-	{
-		db()->query("UPDATE `_datamodel_fields` SET `pos` = pos+1 WHERE `datamodel_id` = '".$_GET["id"]."' AND `pos` >= '".($_POST["pos"])."'");
-		db()->query("UPDATE `_datamodel_fields` SET `pos` = '".($_POST["pos"])."' WHERE `datamodel_id` = '".$_GET["id"]."' AND `name` = '".($_POST["name"])."'");
-	}
-	// Insertion du champ dans la tables associée
-	if ($db_sync)
-	{
-		$datamodel->query_info();
-		if (isset($_POST["lang"]) && $_POST["lang"])
-			db()->field_create($datamodel->db_opt("table")."_lang", $_POST["name"], $datamodel->{$_POST["name"]}->db_field_create());
-		else
-			db()->field_create($datamodel->db_opt("table"), $_POST["name"], $datamodel->{$_POST["name"]}->db_field_create());
-	}
-}
-// Datamodel field move UP
-if (isset($_GET["field_move_up"]))
-{
-	$query = db()->query("SELECT t1.`name`, t1.`type`, t1.`opt`, t1.`lang` FROM `_datamodel_fields` as t1 WHERE t1.`datamodel_id`='".$_GET["id"]."' AND t1.`pos`='".($_GET["field_move_up"])."'");
-	if ($field=$query->fetch_assoc())
-	{
-		db()->query("UPDATE _datamodel_fields SET pos='0' WHERE datamodel_id='".$_GET["id"]."' AND pos='".($_GET["field_move_up"]-1)."'");
-		db()->query("UPDATE _datamodel_fields SET pos=pos-1 WHERE datamodel_id='".$_GET["id"]."' AND pos='".$_GET["field_move_up"]."'");
-		db()->query("UPDATE _datamodel_fields SET pos='".($_GET["field_move_up"])."' WHERE datamodel_id='".$_GET["id"]."' AND pos='0'");
-		// Gérer mieux les positionnements dans les tables surtout avec les langues !
-		if ($db_sync)
-		{
-			$datamodel->query_info();
-			if ($field["lang"])
-			{
-				$position = "";
-				db()->field_update($datamodel->db_opt("table")."_lang", $field["name"], $datamodel->{$field["name"]}->db_field_create(), $position);
-			}
-			else
-			{
-				if (($_GET["field_move_up"]-1) == 1)
-				{
-					$position = "FIRST";
-				}
-				else
-				{
-					list($position_after)=db()->query("SELECT `name` FROM `_datamodel_fields` WHERE `datamodel_id`='".$_GET["id"]."' AND `pos`='".($_GET["field_move_up"]-2)."'")->fetch_row();
-					$position = "AFTER `$position_after`";
-				}
-				db()->field_update($datamodel->db_opt("table"), $field["name"], $field["name"], $datamodel->{$field["name"]}->db_field_create(), $position);
-			}
-		}
-	}
+	$datamodel->field_add($_POST);
 }
 
+// Datamodel field update
+if (isset($_POST["_field_update"]))
+{
+	$datamodel->field_update($_POST["name_orig"], $_POST);
+}
+
+// Datamodel field delete
 if (isset($_GET["field_delete"]))
 {
-	db()->query("DELETE FROM _datamodel_fields WHERE name='".db()->string_escape($_GET["field_delete"])."' AND datamodel_id='".$datamodel->id()."'");
-	db()->query("DELETE FROM _datamodel_fields_lang WHERE fieldname='".db()->string_escape($_GET["field_delete"])."' AND datamodel_id='".$datamodel->id()."'");
-	db()->query("DELETE FROM _datamodel_fields_opt WHERE fieldname='".db()->string_escape($_GET["field_delete"])."' AND datamodel_id='".$datamodel->id()."'");
-	if ($db_sync)
-	{
-		$datamodel->query_info();
-		db()->field_delete($datamodel->db_opt("table"), $_GET["field_delete"]);
-	}
+	$datamodel->field_delete($_GET["field_delete"]);
 }
 
+// Datamodel db create
 if (isset($_POST["_db_create"]))
 {
 	echo "<p>Création de la structure de base de données pour le datamodel \"<b>".$datamodel->name()."</b>\"</p>\n";
-	$datamodel->query_info();
 	$datamodel->db_create();
-	db()->query("UPDATE _datamodel SET db_sync='1' WHERE id='".$datamodel->id()."'");
-	db()->query("UPDATE _datamodel_fields SET db_sync='1' WHERE datamodel_id='".$datamodel->id()."'");
 }
 
 // Position maximale
@@ -217,12 +97,12 @@ if (empty($_GET["field_edit"])) { ?>
 	<td>Librairie :</td>
 	<td><select name="library_id">
 	<?php
-	foreach (library()->list_get() as $library)
+	foreach (library()->list_detail_get() as $library)
 	{
-		if(is_a($datamodel->library(), "library") && $library->id == $datamodel->library()->id)
-			echo "<option value=\"$library->id\" selected>$library->name</option>\n";
+		if(is_a($datamodel->library(), "library") && $library["id"] == $datamodel->library()->id)
+			echo "<option value=\"$library[id]\" selected>$library[name]</option>\n";
 		else
-			echo "<option value=\"$library->id\">$library->name</option>\n";
+			echo "<option value=\"$library[id]\">$library[name]</option>\n";
 	}
 	?>
 	</select></td>
@@ -261,8 +141,8 @@ if (empty($_GET["field_edit"])) { ?>
 		<td>Type</td>
 		<td>Defaultvalue / null</td>
 		<td>Option</td>
-		<td>Alt langue</td>
-		<td>DB Sync</td>
+		<td>Index</td>
+		<td>langue</td>
 	</tr>
 <?php
 $field_opt_list = array("" , "key" , "required" , "calculated");
@@ -273,9 +153,10 @@ while (list($i,$j) = $query_type->fetch_row())
 }
 
 list($pos_max) = db()->query("SELECT MAX(t1.`pos`) FROM `_datamodel_fields` as t1 WHERE t1.`datamodel_id`='".$datamodel->id()."'")->fetch_row();
-$query = db()->query("SELECT t1.`pos` , t1.`name` , t2.`label` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t1.`db_sync` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` AND t2.`lang_id`=".SITE_LANG_ID." WHERE t1.`datamodel_id`='".$datamodel->id()."' ORDER BY t1.`pos`");
+$query = db()->query("SELECT t1.`pos` , t1.`name` , t2.`label` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`query` , t1.`lang` , t1.`db_sync` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` AND t2.`lang_id`=".SITE_LANG_ID." WHERE t1.`datamodel_id`='".$datamodel->id()."' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
+	//print_r($field);
 	if (isset($_GET["field_edit"]) && $field["name"]==$_GET["field_edit"])
 	{
 		$datatype = "data_$field[type]";
@@ -323,6 +204,10 @@ while ($field=$query->fetch_assoc())
 				echo "<option value=\"$opt\">$opt</option>\n";
 		}
 		?></select></td>
+		<td><select name="query">
+			<option value="0"<?php if (!$field["query"]) echo " selected"; ?>>NON</option>
+			<option value="1"<?php if ($field["query"]) echo " selected"; ?>>OUI</option>
+		</select></td>
 		<td><select name="lang">
 			<option value="0"<?php if (!$field["lang"]) echo " selected"; ?>>NON</option>
 			<option value="1"<?php if ($field["lang"]) echo " selected"; ?>>OUI</option>
@@ -394,8 +279,8 @@ while ($field=$query->fetch_assoc())
 		<td><input readonly value="<?=$field_type_list[$field["type"]]?>" /></td>
 		<td><?php if ($field["defaultvalue"] === null) { ?><i>NULL</i><?php } else { ?><textarea readonly rows="1"><?=$field["defaultvalue"]?></textarea><?php } ?></td>
 		<td><input readonly value="<?=$field["opt"]?>" size="10" /></td>
+		<td><input readonly value="<?php if ($field["query"]) echo "OUI"; else echo "NON"; ?>"<?php if ($field["query"]) echo " style=\"color:blue;\""; ?> size="3" /></td>
 		<td><input readonly value="<?php if ($field["lang"]) echo "OUI"; else echo "NON"; ?>" size="3" /></td>
-		<td><input readonly value="<?php if ($field["db_sync"]) echo "OUI"; else echo "NON"; ?>" size="3" /></td>
 	</tr>
 	<?php
 	}
@@ -426,6 +311,10 @@ if (!isset($_GET["field_edit"])) {
 			echo "<option value=\"$opt\">$opt</option>\n";
 		}
 		?></select></td>
+		<td><select name="query">
+			<option value="0">NON</option>
+			<option value="1">OUI</option>
+		</select></td>
 		<td><select name="lang">
 			<option value="0">NON</option>
 			<option value="1">OUI</option>
@@ -459,9 +348,9 @@ else
 <tr>
 	<td>Librairie :</td>
 	<td><select name="library_id"><?php
-	foreach (library()->list_get() as $library)
+	foreach (library()->list_detail_get() as $id=>$library)
 	{
-		echo "<option value=\"$library->id\">$library->name</option>";
+		echo "<option value=\"$id\">$library[name]</option>";
 	}
 	?></select></td>
 </tr>

@@ -84,12 +84,11 @@ $this->serialize_save_list = array();
 }
 
 /**
- * 
  * Database gestion
+ * Default object data bank
  * @author mathieu
- *
  */
-abstract class gestion extends session_select
+abstract class gestion
 {
 
 protected $type = "";
@@ -98,8 +97,24 @@ protected $list = array();
 protected $list_detail = array();
 protected $list_name = array();
 
-protected $serialize_list = array("list_detail");
-public $serialize_save_list = array();
+protected $info_list = array("name"); // Keep at least name !
+protected $info_lang_list = array("label", "description"); // Keep at least label !
+protected $info_save_list = array("name", "label");
+
+protected $retrieve_all = false;
+
+public function info_list()
+{
+
+return $this->info_list;
+
+}
+public function info_lang_list()
+{
+
+return $this->info_lang_list;
+
+}
 
 /*
  * Sauvegarde/Restauration de la session
@@ -107,18 +122,19 @@ public $serialize_save_list = array();
 function __sleep()
 {
 
-return session_select::__sleep($this->serialize_list);
-
+if ($this->retrieve_all)
+	return array("list_detail", "list");
+else
+	return array("list_detail");
 }
 function __wakeup()
 {
 
-session_select::__wakeup();
-
-$this->list = array();
-$this->list_name = array();
-foreach($this->list_detail as $id=>$o)
-	$this->list_name[$o["name"]] = $id;
+foreach($this->list_detail as $id=>$info)
+{
+	if (isset($info["name"]))
+		$this->list_name[$info["name"]] = $id;
+}
 
 }
 
@@ -126,23 +142,63 @@ function __construct()
 {
 
 $this->query_info();
+$this->construct_more();
+
+}
+protected function construct_more()
+{
+
+// To be extended if needed !
 
 }
 
+/**
+ * Query required info
+ */
 function query_info($retrieve_all=false)
 {
 
-// Need to by upgraded
+$this->list = array();
+$this->list_name = array();
+$this->list_detail = array();
+
+$query_fields = array("`t1`.`id`");
+foreach($this->info_list as $field)
+	$query_fields[] = "`t1`.`$field`";
+foreach($this->info_lang_list as $field)
+	$query_fields[] = "`t2`.`$field`";
+
+$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$this->type` as t1 LEFT JOIN `_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`=".SITE_LANG_ID;
+$query = db()->query($query_string);
+while($info = $query->fetch_assoc())
+{
+	$this->list_detail[$info["id"]] = $info;
+	$this->list_name[$info["name"]] = $info["id"];
+}
+
+$this->query_info_more();
+
+if ($retrieve_all || $this->retrieve_all)
+	$this->retrieve_all();
+
+apc_store($this->type."_gestion", $this, APC_CACHE_GESTION_TTL);
+
+}
+protected function query_info_more()
+{
+
+// To be extended if needed !
 
 }
 
 function retrieve_all()
 {
 
-foreach($this->list_detail as $id=>$info)
+$type = $this->type;
+$this->list = array();
+foreach ($this->list_detail as $id=>$info)
 {
-	if (!isset($this->list[$id]))
-		$this->id = new $this->type($id, false, $detail);
+	$this->list[$id] = new $type($id, false, $info);
 }
 
 }
@@ -158,14 +214,14 @@ if (isset($this->list[$id]))
 {
 	return $this->list[$id];
 }
-elseif (APC_CACHE && ($object=apc_fetch($this->type."_$id")))
+elseif (APC_CACHE && !$this->retrieve_all && ($object=apc_fetch($this->type."_$id")))
 {
 	return $this->list[$id] = $object;
 }
 elseif (isset($this->list_detail[$id]))
 {
 	$object = new $this->type($id, false, $this->list_detail[$id]);
-	if (APC_CACHE)
+	if (APC_CACHE && !$this->retrieve_all)
 		apc_store($this->type."_$id", $object, APC_CACHE_GESTION_TTL);
 	return $this->list[$id] = $object;
 }
@@ -231,8 +287,6 @@ return isset($this->list_name[$name]);
 
 }
 
-
-
 /**
  * Returns the list
  */
@@ -242,16 +296,22 @@ public function list_get()
 return $this->list;
 
 }
-public function list_name_get()
+public function list_name_get($name=null)
 {
 
-return $this->list_name;
+if ($name)
+	return $this->list_name[$name];
+else
+	return $this->list_name;
 
 }
-public function list_detail_get()
+public function list_detail_get($id=null)
 {
 
-return $this->list_detail;
+if ($id)
+	return $this->list_detail[$id];
+else
+	return $this->list_detail;
 
 }
 
@@ -261,6 +321,29 @@ return $this->list_detail;
  */
 public function del($id)
 {
+
+if (!login()->perm(6)) // TODO : send email to admin
+	die("ONLY ADMIN CAN DELETE DATAMODEL");
+
+if (isset($this->list_detail[$id]))
+{
+	db()->query("DELETE FROM `_$this->type` WHERE `id`='$id'");
+	db()->query("DELETE FROM `_".$this->type."_lang` WHERE `id`='$id'");
+	$this->del_more($id);
+	$this->query_info();
+	return true;
+}
+else
+{
+	return false;
+}
+
+}
+protected function del_more($id)
+{
+
+// To be extended if needed !
+
 }
 
 /**
@@ -269,6 +352,211 @@ public function del($id)
  */
 public function add($infos)
 {
+
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN ADD $this->type");
+
+$query_fields = array();
+$query_values = array();
+$query_fields_lang = array();
+$query_values_lang = array();
+
+if (!is_array($infos))
+	die();
+foreach ($this->info_list as $name)
+{
+	if (!isset($infos[$name]) || !is_string($infos[$name]))
+		die();
+	else
+	{
+		$query_fields[] = "`$name`";
+		$query_values[] = "`".db()->string_escape($infos[$name])."`";
+	}
+}
+foreach ($this->info_lang_list as $name)
+{
+	if (!isset($infos[$name]))
+		die();
+	else
+	{
+		$query_fields_lang[] = "`$name`";
+		$query_values_lang[] = "`".db()->string_escape($infos[$name])."`";
+	}
+}
+
+db()->query("INSERT INTO `_".$this->type."` (".implode(", ", $query_fields).") VALUES (".implode(", ", $query_values).")");
+$id = db()->last_id();
+db()->query("INSERT INTO `_".$this->type."_lang` (`id`, `lang_id`, ".implode(", ", $query_fields_lang).") VALUES ('$id', '".SITE_LANG_ID."', ".implode(", ", $query_values_lang).")");
+
+$this->add_more($id, $infos);
+
+$this->query_infos();
+
+if (APC_CACHE)
+	apc_store($this->type."_gestion", $this, APC_CACHE_GESTION_TTL);
+
+}
+/**
+ * Specific fields for an object
+ * @param integer $id
+ * @param array $infos
+ */
+protected function add_more($id, $infos)
+{
+
+// To be extended if needed !
+
+}
+
+}
+
+/**
+ * Default object type
+ */
+abstract class object_gestion extends session_select
+{
+
+protected $_type = "";
+
+protected $id=0;
+protected $name="";
+protected $label="";
+protected $description="";
+
+public function __construct($id, $query=true, $infos=array())
+{
+
+$type = $this->_type;
+$this->id = $id;
+
+foreach ($infos as $name=>$value)
+	if (isset($this->{$name}))
+		$this->{$name} = $value;
+
+$this->construct_more($infos);
+
+if ($query)
+	$this->query_info();
+
+}
+protected function construct_more($infos)
+{
+
+// To be extended if needed !
+
+}
+
+/**
+ * Query required info
+ */
+function query_info()
+{
+
+$type = $this->_type;
+$info_list = $type()->info_list();
+$info_lang_list = $type()->info_lang_list();
+
+$query_fields = array("`t1`.`id`");
+foreach($info_list as $field)
+	$query_fields[] = "`t1`.`$field`";
+foreach($info_lang_list as $field)
+	$query_fields[] = "`t2`.`$field`";
+
+$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$type` as t1 LEFT JOIN `_".$type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."' WHERE t1.id='$this->id'";
+$query = db()->query($query_string);
+while($infos = $query->fetch_assoc())
+{
+	foreach($infos as $name=>$value)
+		$this->{$name} = $value;
+}
+
+$this->query_info_more();
+
+}
+protected function query_info_more()
+{
+
+// To be extended if needed
+
+}
+
+/**
+ * Update the object
+ * @param array $infos
+ */
+public function update($infos)
+{
+
+if (!is_array($infos))
+	$infos = array();
+$type = $this->_type;
+$info_list = $type()->info_list();
+$info_lang_list = $type()->info_lang_list();
+
+$query_info = array();
+$query_info_lang = array();
+foreach ($info_list as $name)
+	if (isset($infos[$name]))
+		$query_info[] = "`$name`='".db()->escape_string($infos[$name])."'";
+foreach ($info_lang_list as $name)
+	if (isset($infos[$name]))
+		$query_info_lang[] = "`$name`='".db()->escape_string($infos[$name])."'";
+
+if (count($query_info))
+	db()->query("UPDATE `_$type` SET ".implode(", ",$query_info)." WHERE `id`='$this->id'");
+if (count($query_info_lang))
+	db()->query("UPDATE `_".$type."_lang` SET ".implode(", ",$query_info_lang)." WHERE `id`='$this->id' AND `lang_id`='".SITE_LANG_ID."'");
+
+$this->update_more($infos);
+
+$this->query_info();
+$type()->query_info();
+
+if (APC_CACHE)
+{
+	if (defined(strtoupper($type."_AUTOLOADALL")))
+		apc_store($type."_gestion", $type(), APC_CACHE_GESTION_TTL);
+	apc_store($type."_$this->id", $this, APC_CACHE_GESTION_TTL);
+}
+
+}
+protected function update_more($infos)
+{
+
+// To be extended if needed
+
+}
+
+function __tostring()
+{
+
+return "$this->name : $this->description";
+
+}
+public function id()
+{
+
+return $this->id;
+
+}
+public function name()
+{
+
+return $this->name;
+
+}
+public function label()
+{
+
+return $this->label;
+
+}
+public function info($name)
+{
+
+if (isset($this->{$name}))
+	return $this->{$name};
+
 }
 
 }

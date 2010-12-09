@@ -7,21 +7,30 @@
 	width: 100%;
 	background-color: white;
 	padding-bottom: 4px;
-	height: auto;
+	height:auto;
 }
 .menu ul
 {
 	height: 45px;
 	margin: 0px;
 	border-bottom: 1px blue solid;
-	padding: 0px;
 }
 .menu li
 {
 	float: left;
 	margin: 0px;
-	padding: 0px;
+	margin-right: 10px;
 	list-style-type: none;
+}
+.menu li a
+{
+	text-decoration: none;
+	color: blue;
+	font-weight: bold;
+}
+.menu li a:hover, .menu li.selected a
+{
+	color: orange;
 }
 
 .page_content
@@ -40,3 +49,19 @@
 	padding: 0px 5px;
 	background-color: white;
 }
+
+table td
+{
+	vertical-align: top;
+}
+
+tr.header td
+{
+	font-size: 1em;
+	padding: 10px;
+}
+td.label
+{
+	font-weight: bold;
+}
+

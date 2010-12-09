@@ -1,11 +1,14 @@
 <?
 
 /**
- * Data Banks management
+ * Data Objects (agregat)
  * 
- * This is a layer upon datamodels which communicates with database and cache (APC)
- * to fast and simply retrieve and store objects,
- * using many functions
+ * Object corresponding to a given Datamodel specification.
+ * Contains the data fields of the datamodel.
+ * Can be
+ * - upgraded,
+ * - displayed,
+ * - etc.
  * 
  */
 
@@ -13,500 +16,364 @@ if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [begin]");
 
 /**
- * Databank global managing class
+ * Agrégats de données
  *
  */
-class data_bank_gestion extends gestion
+class agregat
 {
-
-protected $type = "data_bank";
-
-function query_info($retrieve_all=false)
-{
-
-$this->list = array();
-$this->list_detail = array();
-$this->list_name = array();
-
-$query = db()->query("SELECT `_datamodel`.`id`, `_datamodel`.`name` FROM `_datamodel`");
-while ($datamodel = $query->fetch_assoc())
-{
-	$this->list_detail[$datamodel["id"]] = $datamodel;
-	$this->list_name[$datamodel["name"]] = $datamodel["id"];
-	if ($retrieve_all)
-		$this->list[$datamodel["id"]] = new datamodel($datamodel["id"], false, $this->list_detail[$id]);
-}
-
-$this->access_function_create();
-
-// permissions !!!!
-//$query = db()->query(" SELECT t1.id , t2.perm FROM _databank as t1 , _account_databank_perm as t2 , _databank_lang as t3 WHERE t1.id = t2.databank_id AND t2.account_id = ".login()->id()." AND t1.id = t3.id AND t3.lang = ".login()->lang()." ORDER BY t1.description");
-
-}
-
-function access_function_create()
-{
-
-foreach($this->list_name as $name=>$id)
-{
-	eval("function $name(\$id=null, \$fields=array()) { return databank(\"$id\", \$id, \$fields); }");
-}
-
-}
-
-/*
- * Sauvegarde/Restauration de la session
- */
-function __wakeup()
-{
-
-gestion::__wakeup();
-$this->access_function_create();
-
-}
-
-}
 
 /**
- * DATA BANK
+ * Datamodel specifications
+ * 
+ * @var array
  */
-class data_bank extends session_select
+protected $datamodel_id=0;
+
+/**
+ * Data fields
+ * 
+ * @var array
+ */
+protected $fields = array();
+protected $field_values = array();
+
+/**
+ * Form, display, etc. options
+ * 
+ * @var array
+ */
+protected $options = array();
+
+private $serialize_list = array("datamodel_id", "field_values");
+
+public function __sleep()
 {
 
-protected $id=0;
-/**
- * Name of the databank = name of the datamodel
- *
- * @var string
- */
-protected $name="";
-protected $label="";
+$this->field_values = array();
+foreach($this->fields as $name=>$field)
+	$this->field_values[$name] = $field->value;
 
-/**
- * Account default permissions.
- * set : r,i,u,d,a : read, insert, update, delete, admin
- * 
- * read : get values of an object
- * insert : add an object (so you become admin of it)
- * update : update values of an object
- * delete : delete an object
- * admin : admin the databank an so set all perm values for all
- * objects in the databank and all accounts
- * 
- * A read/insert/update/admin requires at least a read value for
- * any related required databank in the info_list.
- * 
- * Complex actions are defined by the permissions over related dataobjects.
- * For example :
- * 1) if someone can both insert messages and read contact list,
- * he (she) will be able to send an email to everybody...
- * Sending an email is no more than inserting a message linked to a contact.
- * 2) if someone has access to different stock places, he can
- * move a resource from a place to another
- * 
- * To conclude, permissions defines action poeple can do on objects,
- * and must reflect reality, so that a poeple must have access to his car,
- * etc.
- * 
- * A dataobject permission is defined in order of precision :
- * 1) databank global permissions
- * 2) dataobject specific permissions
- * 3) account global permissions
- * 4) account specific permissions
- * 
- * @var string
- */
-protected $perm="";
-protected $perm_type=array();
+return array("datamodel_id", "field_values");
 
-/**
- * List of retrieved objects, kept only during the page display
- * @var unknown_type
- */
-protected $objects=array();
-
-private $serialize_list = array( "id", "name", "label", "perm", "perm_type" );
-public $serialize_save_list = array();
-
-public function __construct($id)
+}
+public function __wakeup()
 {
 
-$this->id = $id;
-
-$this->perm_query();
-$this->library_load();
+foreach($this->field_values as $name=>$value)
+{
+	$this->fields[$name] = clone datamodel($this->datamodel_id)->{$name};
+	$this->fields[$name]->value = $value;
+}
 
 }
 
-/*
- * Sauvegarde/Restauration de la session
- */
-function __sleep()
+public function __construct($datamodel=null, $fields=array())
 {
 
-return session_select::__sleep($this->serialize_list);
+if ($datamodel !== null && is_a($datamodel, "datamodel"))
+	$this->datamodel_set($datamodel);
 
 }
-function __wakeup()
+
+public function datamodel_set(datamodel $datamodel)
 {
 
-session_select::__wakeup();
-$this->objects=array();
-$this->library_load();
+$this->datamodel_id = $datamodel->id();
 
-if (DEBUG_SESSION == true)
-	echo "<p>WAKEUP : data_bank id#$this->id</p>\n";
+$this->fields = array();
+// Champs par défaut :
+foreach($this->datamodel()->fields_key() as $name)
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+foreach($this->datamodel()->fields_required() as $name)
+	$this->fields[$name] = clone $this->datamodel()->{$name};
 
 }
 
 public function datamodel()
 {
 
-return datamodel($this->id);
+return datamodel($this->datamodel_id);
 
 }
 
-/**
- * Databank Id
- *
- * @return integer
- */
-public function id()
+public function __isset($name)
 {
 
-return $this->id;
+return isset($this->datamodel()->{$name});
 
 }
-public function name()
-{
 
-return datamodel($this->id)->name();
-
-}
-public function label()
-{
-
-return datamodel($this->id)->label();
-
-}
 public function __get($name)
 {
 
-$list = array("id", "name", "label");
-
-if (in_array($name, $list))
-	return $this->{$name};
-
-}
-
-/**
- * User permissions test
- * Uses user account and perm list.
- *
- * @return boolean
- */
-public function perm($type)
+if (isset($this->fields[$name]))
 {
-
-// MIS A TRUE PENDANT LES TESTS
-if (true || is_numeric(strpos($this->perm, $type)))
-	return true;
-else
-	return false;
+	return $this->fields[$name];
+}
+elseif (isset($this->field_values[$name]))
+{
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name]->value = $this->field_values[$name];
+	return $this->fields[$name];
+}
+elseif (isset($this->datamodel()->{$name}))
+{
+	return $this->fields[$name] = clone $this->datamodel()->{$name};
+}
+elseif (DEBUG_DATAMODEL)
+{
+	trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : Property '$name' not defined");
+}
 
 }
+
 /**
- * User permissions list
+ * Default disp value
  *
  * @return string
  */
-public function perm_list()
+public function __tostring()
 {
 
-return $this->perm;
-
-}
-
-function perm_query()
-{
-
-$this->perm = "";
-$this->perm_type = array();
-
-// Retrieving Perm
-$query = db()->query("SELECT `perm` FROM `_databank_perm` WHERE `datamodel_id`='$this->id'");
-if ($query->num_rows())
-{
-	list($this->perm) = $query->fetch_row();
-}
-// Retrieving Perm
-$query = db()->query("SELECT `perm_id`, `perm` FROM `_databank_perm_ref` WHERE `databank_id`='$this->id'");
-if ($query->num_rows())
-	while(list($perm_id, $perm) = $query->fetch_row())
-		$this->perm_type[$perm_id] = $perm;
-
-}
-
-function library_load()
-{
-
-if (is_a($library=datamodel($this->id)->library(), "library"))
-	$library->load();
+return $this->datamodel()->label();
 
 }
 
 /**
- * Retrieve an objet from the datamodel.
+ * Update a data field
+ */
+public function __set($name, $value)
+{
+
+if (isset($this->datamodel()->{$name}))
+{
+	if (!isset($this->fields[$name]))
+	{
+		$this->fields[$name] = clone $this->datamodel()->{$name};
+	}
+	$this->fields[$name]->value = $value;
+}
+elseif (DEBUG_DATAMODEL)
+	trigger_error("Datamodel '$this->datamodel' agregat : Property '$name' not defined");
+	
+}
+
+/**
+ * Correct the problem of fields
+ */
+function __clone()
+{
+
+foreach ($this->fields as $name=>$field)
+	$this->fields[$name] = clone $field;
+
+}
+
+/**
+ * Returns defined field list (eventually not complete !)
+ * TODO : find a solution
+ */
+public function field_list()
+{
+
+return $this->fields;
+
+}
+
+/**
+ * Set/init all fileds to default value
  * 
- * @param integer $id
- * @return mixed 
  */
-public function get($id, $fields=array())
+public function init()
 {
 
-if (!$this->perm("r"))
-{
-	if (DEBUG_DATAMODEL)
-		trigger_error("Databank $this->name : Permission error : Read access denied");
-	return false;
-}
-elseif (is_numeric($id) && $id>0)
-{
-	// TODO : hack : Retrieve a maximum of data by default but might be better...
-	if (isset($this->objects[$id]))
-	{
-		if (count($fields) || $fields === true)
-			$this->objects[$id]->db_retrieve($fields);
-		return $this->objects[$id];
-	}
-	elseif (APC_CACHE && ($object=apc_fetch("dataobject_".$this->id."_".$id)))
-	{
-		return $this->objects[$id] = $object;
-	}
-	elseif (is_array($object_list=datamodel($this->id)->db_get(array(array("name"=>"id", "value"=>$id)), $fields)) && ($object=array_pop($object_list)))
-	{
-		if (APC_CACHE)
-			apc_store("dataobject_".$this->id."_".$id, $object, APC_CACHE_DATAOBJECT_TTL);
-		return $this->objects[$id] = $object;
-	}
-	// Retrieve error
-	else
-	{
-		if (DEBUG_DATAMODEL)
-			trigger_error("Databank $this->name : Object id $id does nos exists");
-		return NULL;
-	}
-}
-// $id not ok
-else
-	return false;
+foreach ($this->datamodel()->fields() as $name=>$field)
+	$this->fields[$name] = clone $field;
 
 }
 
 /**
- * Retrieve infos about objects with params
- * 
- * @param integer $id
- * @param array $infos
- * @return mixed 
+ * Return a view of the object, using a datamodel template
+ * @param unknown_type $name
  */
-public function query($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
+public function view($name="")
 {
 
-//echo "<p>Databank ID#$this->id : query()</p>\n";
+if (!$name)
+	$name = $this->datamodel()->name();
 
-if (is_array($result=datamodel($this->id)->db_get($params, $fields, $sort, $limit, $start)))
+//$this->db_retrieve_all();
+
+// C'est un mega gros mix de toutes les façons de faire... va falloir choisir à un moment !
+if (template()->exists_name("datamodel/$name"))
 {
-	foreach($result as $object)
-		$this->objects["$object->id"] = $object;
-	return $result;
-}
-else
-	return false;
-
+	$list_name = template()->list_name_get();
+	$id = $list_name["datamodel/$name"];
+	$view = template($id);
+	$view->object_set($this);
+	return $view;
 }
 
+}
 /**
- * Compte
+ * Display
+ * @param unknown_type $name
  */
-public function count($params=array())
+public function disp($name="")
 {
 
-return datamodel($this->id)->db_count($params);
+echo $this->display($name);
 
 }
-
 /**
- * Add an object in the bank
+ * Return the default view
  *
- * @param unknown_type $fields
- * 
- * @return agregat
+ * @param unknown_type $name
+ * @return unknown
  */
-public function insert($fields)
+public function display($name="")
 {
 
-if ($id = datamodel($this->id)->db_insert($fields))
+return $this->view($name);
+
+}
+/**
+ * Return the default form view
+ *
+ * @param unknown_type $name
+ * @return unknown
+ */
+public function form($name="")
 {
-	return $this->get($id);
+
+$this->db_retrieve_all();
+
+if (!$name)
+	$name = $this->datamodel()->name();
+
+if (file_exists(PATH_TEMPLATE."/datamodel/".$name.".form.tpl.php"))
+{
+	$view = new datamodel_display_tpl_php($this->datamodel(), $this->fields);
+	$view->tplfile_set($name);
 }
 else
-	return false;
-
+{
+	$view = new datamodel_update_form($this->datamodel(), $this->fields);
 }
 
-public function insert_from_form($fields)
+return $view;
+
+}
+/**
+ * Return the default form view
+ *
+ * @param unknown_type $name
+ * @return unknown
+ */
+public function insert_form($name="")
 {
 
-foreach($fields as $name=>$value)
+$this->db_retrieve_all();
+
+if (!$name)
+	$name = $this->datamodel()->name();
+
+if (file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
 {
-	if (!isset($this->datamodel->{$name}))
-		unset($fields[$name]);
-	else
-	{
-		$field = clone datamodel($this->id)->{$name};
-		$field->value_from_form($value);
-		$fields[$name] = $field;
-	}
+	$view = new datamodel_display_tpl_php($this->datamodel(), $this->fields);
+	$view->tplfile_set($name);
 }
-return $this->insert($fields);
+else
+{
+	$view = new datamodel_insert_form($this->datamodel(), $this->fields);
+}
+
+return $view;
 
 }
 
 /**
- * Remove an object
- *
+ * Returns the datamodel action list
+ */
+public function action_list()
+{
+
+return $this->datamodel()->action_list();
+
+}
+
+/**
+ * Execute an action
+ * @param unknown_type $method
  * @param unknown_type $params
  */
-public function delete($params)
+public function action($method, $params)
 {
 
-if (is_array($list=datamodel($this->id)->db_delete($params)))
+$action_list = &$this->datamodel()->action_list();
+if (isset($action_list[$method]) && $action=$action_list[$method]["method"])
 {
-	foreach($list as $id)
+	$this->$action($params);
+}
+
+}
+
+/**
+ * Update the object from a form
+ * @param unknown_type $fields
+ */
+public function update_from_form($fields=array())
+{
+
+if (count($fields) > 0)
+{
+	foreach($fields as $name=>$value)
 	{
-		if (isset($this->objects[$id]))
-			unset($this->objects[$id]);
-		if (APC_CACHE)
-			apc_delete("dataobject_".$this->id."_".$id);
+		if ($this->__get($name))
+		{
+			$this->__get($name)->value_from_form($value);
+		}
 	}
-	return true;
+	// Champs calculés
+	$calculate = array();
+	$retrieve = array();
+	foreach($this->datamodel()->fields_calculated() as $name=>$list)
+	{
+		// On parcours les champs utiles dans un calcul
+		foreach($list as $value)
+			// Si le champ a �t� modifi� on doit le mettre � jour
+			if (isset($fields[$value]))
+				if (!isset($calculate[$name]))
+					$calculate[$name] = $list;
+	}
+	// Récupération des champs manquant
+	foreach($calculate as $name=>$list)
+	{
+		foreach ($list as $value)
+			if (!isset($fields[$value]) && !in_array($value, $retrieve))
+				$retrieve[] = $value;
+		if (!isset($fields[$value]) && !in_array($name, $retrieve))
+			$retrieve[] = $name;
+	}
+	if (count($retrieve)>0)
+	{
+		//print_r($retrieve);
+		$this->db_retrieve($retrieve);
+	}
+	// Calculs
+	foreach($calculate as $name=>$list)
+	{
+		$function = "calculate_$name";
+		$this->$function();
+	}
+	// Mise à jour en base de donnée
+	//$this->db_update();
 }
-else
-	return false;
-
-}
-
-/**
- * Search objects into the databank
- * 
- * @param array $query
- * @return mixed
- */
-public function search($params=array(), $fields=array())
-{
-
-/*
- * Dans certains cas, par ex. clients et fournisseurs, il faut pouvoir aller chercher
- * dans la databank d'objets liés, ici la databank entreprise.
- * 
- */
-
-// User read permission
-if (!$this->perm("r"))
-{
-	trigger_error("Databank $this->name : read acces denied in search function");
-	return false;
-}
-else
-{
-	return datamodel($this->id)->search($params, $fields);
-}
-
-}
-
-/**
- * Form to select and edit from a list with params
- *
- * @param array $params
- */
-public function select_form($params=array(), $url="", $varname="")
-{
-
-// User read permission test
-if (!$this->perm("r"))
-{
-	trigger_error("Databank $this->name : read acces denied in select form");
-}
-else
-{
-	datamodel($this->id)->select_form($params, $url, $varname);
+//$this->form()->disp();
+	
 }
 
 }
-
-/**
- * Form to add an object
- *
- */
-public function insert_form()
-{
-
-// User read permission test
-if (!$this->perm("r"))
-{
-	trigger_error("Databank $this->name : read acces denied in select form");
-}
-else
-{
-	datamodel($this->id)->insert_form()->disp();
-}
-
-}
-
-/**
- * Form to add an object
- *
- */
-public function table_list($params=array(), $fields=array(), $sort=array())
-{
-
-// User read permission test
-if (!$this->perm("r"))
-{
-	trigger_error("Databank $this->name : read acces denied in select form");
-}
-else
-{
-	datamodel($this->id)->table_list($params, $fields, $sort);
-}
-
-}
-
-/**
- * Create a new object
- * 
- */
-public function create($fields_all_init=false)
-{
-
-return datamodel($this->id)->create($fields_all_init);
-
-}
-
-/**
- * Returns if an object exists
- * @param unknown_type $id
- */
-public function exists($id)
-{
-
-return $this->datamodel()->exists($id);
-
-}
-
-}
-
 
 /**
  * Agregat pour databank
@@ -660,58 +527,6 @@ else
 }
 
 }
-
-}
-
-/**
- * Databank Access
- *
- * @param string $datamodel
- * @param integer $id
- * @param array $fields
- * @return mixed
- */
-function databank($datamodel_id=null, $id=null, $fields=array())
-{
-
-if (DEBUG_DATAMODEL)
-	echo "<p>DEBUG : Accessing databank : $datamodel</p>\n";
-
-/*
- * Retrieve or create the managing databank object
- */
-if (!isset($GLOBALS["databank_gestion"]))
-{
-	// APC
-	if (APC_CACHE)
-	{
-		if (!($GLOBALS["databank_gestion"]=apc_fetch("databank_gestion")))
-		{
-			$GLOBALS["databank_gestion"] = new data_bank_gestion();
-			apc_store("data_bank_gestion", $GLOBALS["databank_gestion"], APC_CACHE_GESTION_TTL);
-		}
-	}
-	// Session
-	else
-	{
-		if (!isset($_SESSION["databank_gestion"]))
-			$_SESSION["databank_gestion"] = new data_bank_gestion();
-		$GLOBALS["databank_gestion"] = $_SESSION["databank_gestion"];
-	}
-}
-
-if (is_numeric($datamodel_id) && (is_a($databank=$GLOBALS["databank_gestion"]->get($datamodel_id), "data_bank")))
-{
-	if ($id)
-		if (is_a($object=$databank->get($id, $fields), "data_bank_agregat"))
-			return $object;
-		else
-			return false;	
-	else
-		return $databank;
-}
-else
-	return $GLOBALS["databank_gestion"];
 
 }
 

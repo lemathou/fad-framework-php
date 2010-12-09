@@ -68,6 +68,7 @@ td.label
 /* AutoGrow */
 .autogrow
 {
+	width: 100%;
 	overflow: hidden;
 	height: auto;
 }
@@ -119,3 +120,27 @@ td.label
 	text-align: left;
 	height: 100%;
 }
+
+/* Types de donnée */
+
+.data_string
+{
+	width: 100%;
+}
+.data_name
+{
+	width: 100%;
+}
+.data_text
+{
+	width: 100%;
+}
+.data_richtext
+{
+	width: 100%;
+}
+.data_script_php
+{
+	width: 100%;
+}
+

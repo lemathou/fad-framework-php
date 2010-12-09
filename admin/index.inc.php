@@ -80,9 +80,9 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 <script type="text/javascript" language="Javascript" src="/js/jquery.asmselect.js"></script>
 <script type="text/javascript" language="javascript" src="/js/jquery.autogrowtextarea.js"></script>
 
-<script type="text/javascript" language="javascript" src="/js/json2.js"></script>
+<!--<script type="text/javascript" language="javascript" src="/js/json2.js"></script>-->
 
-<script type="text/javascript" language="Javascript" src="/edit_area/edit_area_full.js"></script>
+<script type="text/javascript" language="Javascript" src="/js/edit_area/edit_area_full.js"></script>
 <script type="text/javascript" language="javascript" src="/js/ckeditor/ckeditor.js"></script>
 <script type="text/javascript" language="javascript" src="/js/ckeditor/adapters/jquery.js"></script>
 

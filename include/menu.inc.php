@@ -3,7 +3,7 @@
 /**
   * $Id: menu.inc.php 76 2009-10-15 09:24:20Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -20,71 +20,20 @@ class menu_gestion extends gestion
 
 protected $type = "menu";
 
-public function query_info()
-{
-
-$this->list = array();
-$this->list_detail = array();
-$this->list_name = array();
-$query = db()->query("SELECT `_menu`.`id`, `_menu`.`name`, `_menu_lang`.`title` FROM `_menu` LEFT JOIN `_menu_lang` ON `_menu`.`id`=`_menu_lang`.`id` AND `_menu_lang`.`lang_id`='".SITE_LANG_ID."'");
-while (list($id, $name, $title)=$query->fetch_row())
-{
-	$this->list_name[$name] = $id;
-	$this->list_detail[$id] = array("name"=>$name, "label"=>$title);
-}
-
-}
-
-
-function del($id)
-{
-	
-}
-
-function add($name, $title="")
-{
-
-db()->query("INSERT INTO `_menu` (`name`) VALUES ('".db()->string_escape($name)."')");
-if ($id=db()->last_id())
-{
-	db()->query("INSERT INTO `_menu_lang` (`id`, `lang_id`, `title`) VALUES ('$id', '".SITE_LANG_DEFAULT_ID."', '".db()->string_escape($title)."')");
-}
-
-$this->query_info();
-
-}
-
 }
 
 /**
  * Menu
  */
-class menu
+class menu extends object_gestion
 {
 
-protected $id = 0;
-protected $name = "";
-protected $title = "";
+protected $_type = "menu";
 
 protected $list = array();
 
-public function __construct($id, $query=true, $fields=array())
+protected function query_info_more()
 {
-
-$this->id = $id;
-
-foreach ($fields as $i=>$j)
-	$this->{$i} = $j;
-
-$this->query();
-
-}
-
-protected function query()
-{
-
-//$query = db()->query("SELECT `_menu`.`name`, `_menu_lang`.`title` FROM `_menu` LEFT JOIN `_menu_lang` ON `_menu`.`id`=`_menu_lang`.`id` WHERE `_menu`.`id`='$this->id' AND `_menu_lang`.`lang_id`='".SITE_LANG_DEFAULT_ID."'");
-//list($this->name, $this->title)=$query->fetch_row();
 
 $this->list = array();
 $query = db()->query("SELECT `_menu_page_ref`.`pos`, `_menu_page_ref`.`page_id` FROM `_menu_page_ref` WHERE `_menu_page_ref`.`menu_id` = '$this->id' ORDER BY `_menu_page_ref`.`pos`");
@@ -196,28 +145,26 @@ protected $type = "page";
 
 protected $page_id = 0;
 
-protected static $infos = array("type", "name", "description", "template_id", "redirect_url", "alias_page_id");
-protected static $infos_lang = array("url", "titre", "titre_court");
+protected $info_list = array("name", "type", "template_id", "redirect_url", "alias_page_id", "perm");
+protected $info_lang_list = array("label", "description", "url", "titre_court");
 
-/**
- * Retrieve basic infos on all pages
- */
-public function query_info($retrieve_all=false)
+protected function query_info_more()
 {
 
-$this->list = array();
-$this->list_name = array();
-$this->list_detail = array();
-$query_string = " SELECT `_page`.`id` as id , `_page`.`name` as name , `_page`.`template_id` as template_id, `_page`.`redirect_url` as redirect_url, `_page`.`alias_page_id` as alias_page_id, `_page_lang`.`titre` as titre, `_page_lang`.`titre_court` as titre_court, `_page_lang`.`url` as url FROM `_page`, `_page_lang` WHERE `_page`.`id`=`_page_lang`.`id` AND `_page_lang`.`lang_id`='".SITE_LANG_ID."'";
-$query = db()->query($query_string);
-while ($page = $query->fetch_assoc())
+// Permissions
+$query = db()->query("SELECT `page_id`, `perm_id` FROM `_page_perm_ref`");
+while (list($page_id, $perm_id)=$query->fetch_row())
 {
-	if (DEBUG_MENU)
-		echo "<p>page_gestion::query() : ID#$page[id] : $page[name]</p>\n";
-	$this->list_detail[$page["id"]] = $page;
-	$this->list_name[$page["name"]] = $page["id"];
-	if ($retrieve_all)
-		$this->list[$page["id"]] = new page($page["id"], false , $page);
+	if (isset($this->list_detail[$page_id]))
+		$this->list_detail[$page_id]["perm_list"][] = $perm_id;
+}
+
+// Params
+$this->params_list = array();
+$query = db()->query("SELECT `page_id`, `name` , `value` , `update_pos` FROM `_page_params`");
+while ($param = $query->fetch_assoc())
+{
+	$this->list_detail[$param["page_id"]]["params_list"][] = array("name"=>$param["name"], "value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
 }
 
 }
@@ -225,9 +172,9 @@ while ($page = $query->fetch_assoc())
 /**
  * Set the default page
  * 
- * ID#1 : Homepage
- * ID#2 : Page does not exists (HTTP 404)
- * ID#3 : Page unavailable (HTTP 401)
+ * ID#1 : home :  Homepage
+ * ID#2 : notfound : Page does not exists (HTTP 404)
+ * ID#3 : unavailable : Page unavailable (HTTP 401)
  * 
  * TODO : include here all retrieved infos from the request url (language and params list)
  */
@@ -259,7 +206,7 @@ else
 	{
 		define("PAGE_ID", 2);
 	}
-	elseif (!$this->get($i)->perm_login())
+	elseif (!$this->get($i)->perm_login()) // perm("r")
 	{
 		define("PAGE_ID", 3);
 	}
@@ -289,21 +236,6 @@ else
 }
 
 /**
- * Returns if the user logged-in have the rights to see the page
- *  
- * @param int $id
- */
-public function perm($id)
-{
-
-if (!isset($this->list_detail[$id]))
-	return false;
-else
-	return $this->get($id)->perm_login();
-
-}
-
-/**
  * Affichage d'un set de pages
  * 
  * @param unknown_type $options
@@ -315,7 +247,7 @@ $return = array();
 
 if (in_array("table",$options))
 {
-	while(list(,$page)=each($this->list))
+	foreach ($this->list as $page)
 	{
 		$return[] = $page->url();
 	}
@@ -323,7 +255,7 @@ if (in_array("table",$options))
 }
 else
 {
-	while(list(,$page)=each($this->list))
+	foreach ($this->list as $page)
 	{
 		$return[] = $page->url();
 	}
@@ -338,61 +270,25 @@ else
  * @param $name
  * @param $infos
  */
-function add($name, $infos=array())
+function add_more($infos)
 {
 
-$query_fields_1 = array();
-$query_values_1 = array();
-//print_r($infos);
-
-// Base infos
-foreach (self::$infos as $name)
+$query_perm_list = array();
+if (isset($infos["perm_list"]) && is_array($infos["perm_list"])) foreach($infos["perm_list"] as $perm_id)
 {
-	$query_fields_1[] = "`_page`.`$name`"; 
-	if (!isset($infos[$name]) || $infos[$name] === null)
-		$query_values_1[] = "null";
-	else
-		$query_values_1[] = "'".db()->string_escape($infos[$name])."'";
+	$query_perm_list[] = "('$id', '$perm_id')";
+}
+if (count($query_perm_list)>0)
+{
+	db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(" , ",$query_perm_list));
 }
 
-echo "INSERT INTO `_page` (".implode(", ",$query_fields_1).") VALUES (".implode(", ",$query_values_1).")";
-
-db()->query("INSERT INTO `_page` (".implode(", ",$query_fields_1).") VALUES (".implode(", ",$query_values_1).")");
-
-if ($id=db()->last_id())
-{
-	// Language infos
-	$query_fields_2 = array();
-	$query_values_2 = array();
-	$query_fields_2[] = "`id`";
-	$query_values_2[] = "'$id'";
-	$query_fields_2[] = "`lang_id`";
-	$query_values_2[] = "'".SITE_LANG_DEFAULT_ID."'";
-	foreach (self::$infos_lang as $name)
-	{
-		$query_fields_2[] = "`_page_lang`.`$name`"; 
-		if (!isset($infos[$name]) || $infos[$name] === null)
-			$query_values_2[] = "null";
-		else
-			$query_values_2[] = "'".db()->string_escape($infos[$name])."'";
-	}
-	db()->query("INSERT INTO `_page_lang` (".implode(", ",$query_fields_2).") VALUES (".implode(", ",$query_values_2).")");
-	// Permissions
-	$query_perm_list = array();
-	if (isset($infos["perm"]) && is_array($infos["perm"])) foreach($infos["perm"] as $perm_id)
-	{
-		$query_perm_list[] = "('$id', '$perm_id')";
-	}
-	if (count($query_perm_list)>0)
-	{
-		db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(" , ",$query_perm_list));
-	}
-	$this->query();
-	if (APC_CACHE)
-	{
-		apc_store("page_gestion", $this, APC_CACHE_GESTION_TTL);
-	}
 }
+
+function del_more($id)
+{
+
+db()->query("DELETE INTO `_page_perm_ref` WHERE `page_id` = '$id'");
 
 }
 
@@ -402,19 +298,20 @@ if ($id=db()->last_id())
  * Defines an element of the menu, accessible via an specific url
  *
  */
-class page
+class page extends object_gestion
 {
 
-protected $id = 0;
+protected $_type = "page";
+
+protected $perm = "";
+
 protected $type = "";
 protected $url = "";
-protected $name = "";
-protected $titre = "";
 protected $titre_court = "";
-protected $description = "";
 
 // Template and params
-protected $template_id = null;
+protected $template_id = 0;
+protected $params_list = array();
 protected $params_default = array();
 protected $params_url = array();
 protected $params_get = array();
@@ -430,40 +327,47 @@ protected $redirect_url = null;
 // Page alias
 protected $alias_page_id = null;
 
-// DB infos
-protected static $infos = array("type", "name", "description", "template_id", "redirect_url", "alias_page_id");
-protected static $infos_lang = array("url", "titre", "titre_court");
+protected static $serialize_list = array("id", "name", "label", "description", "perm", "type", "url", "titre_court", "template_id", "params_list", "perm_list", "redirect_url", "alias_page_id");
 
-function __construct($id, $query=true, $infos=array())
+function __sleep()
 {
 
-if (DEBUG_MENU)
-	echo "<p class=\"debug\">page(ID#$id)::__construct()</p>\n";
-
-$this->id = $id;
-
-if ($query) // on récupère les données avec les params $infos
-	$this->query($infos);
-foreach ($infos as $i=>$j)
-{
-	if (in_array($i, array_merge(self::$infos, self::$infos_lang)))
-	{
-		if (DEBUG_MENU)
-			echo "<br />Page $id __construct : $i = $j\n";
-		$this->{$i} = $j;
-	}
-}
-
-$this->query_infos();
-$this->params_load();
+return session_select::__sleep(self::$serialize_list);
 
 }
 
-/**
- * Retrieve other infos :
- * - Permissions
- */
-function query_infos()
+function __wakeup()
+{
+
+session_select::__wakeup();
+$this->construct_params();
+
+}
+
+protected function construct_more($infos)
+{
+
+$this->construct_params();
+
+}
+
+protected function construct_params()
+{
+
+$this->params = array();
+$this->params_default = array();
+$this->params_url = array();
+foreach($this->params_list as $param)
+{
+	$this->params[$param["name"]] = $param["value"];
+	$this->params_default[$param["name"]] = $param["value"];
+	if (is_numeric($param["update_pos"]))
+		$this->params_url[$param["update_pos"]] = $param["name"];
+}
+
+}
+
+protected function query_info_more()
 {
 
 // Permissions
@@ -474,29 +378,28 @@ while (list($perm_id)=$query->fetch_row())
 	$this->perm_list[] = $perm_id;
 }
 
+// Params
+$this->params_list = array();
+$query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
+while ($param = $query->fetch_assoc())
+{
+	$this->params_list[] = array("name"=>$param["name"], "value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
 }
 
-/**
- * Update template (warning, there is a dedicated function to update each param)
- * 
- * @param integer $id
- * @param array $template
- */
-public function update($infos=array())
-{
 
-foreach(self::$infos as $name)
-	if (isset($infos[$name]))
-		$this->{$name} = $infos[$name];
-foreach(self::$infos_lang as $name)
-	if (isset($infos[$name]))
-		$this->{$name} = $infos[$name];
+}
+
+protected function update_more($infos)
+{
 
 if (isset($infos["perm_list"]) && is_array($infos["perm_list"]))
 {
-	$this->perm_list = array();
-	foreach ($infos["perm_list"] as $perm)
-		$this->perm_list[] = $perm;
+	db()->query("DELETE FROM `_page_perm_ref` WHERE `page_id`='$this->id'");
+	$query_perm_list = array();
+	foreach($infos["perm_list"] as $perm_id)
+		$query_perm_list[] = "('$this->id', '$perm_id')";
+	if (count($query_perm_list)>0)
+		db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(", ",$query_perm_list));
 }
 
 // Template optionnal script file
@@ -513,48 +416,57 @@ if (isset($infos["script"]))
 	}
 }
 
-if (APC_CACHE)
-{
-	apc_store("page_"+$this->id, $this, APC_CACHE_GESTION_TTL);
 }
 
-$this->db_update();
-
-}
 /**
- * Update template base infos in database
+ * Permission for this page
+ * Using global page perm, specific group page, and specific user page
  */
-public function db_update()
+public function perm($type="")
 {
 
-$l = array();
-// Base infos
-foreach (self::$infos as $name)
-	if ($this->{$name} === null)
-		$l[] = "`_page`.`$name`=null";
-	else
-		$l[] = "`_page`.`$name`='".db()->string_escape($this->{$name})."'";
-// Language infos
-foreach (self::$infos_lang as $name)
-	if ($this->{$name} === null)
-		$l[] = "`_page_lang`.`$name`=null";
-	else
-		$l[] = "`_page_lang`.`$name`='".db()->string_escape($this->{$name})."'";
-	
-//echo "UPDATE `_page`, `_page_lang` SET ".implode(", ", $l)." WHERE `_page`.`id`='$this->id' AND `_page`.`id`=`_page_lang`.`id` AND `_page_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID;
+$_type = $this->_type;
 
-db()->query("UPDATE `_page`, `_page_lang` SET ".implode(", ", $l)." WHERE `_page`.`id`='$this->id' AND `_page`.`id`=`_page_lang`.`id` AND `_page_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID);
-
-// Permissions
-db()->query("DELETE FROM `_page_perm_ref` WHERE `page_id`='$this->id'");
-$query_perm_list = array();
-foreach($this->perm_list as $perm_id)
+if ($type)
 {
-	$query_perm_list[] = "('$this->id', '$perm_id')";
+	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type)</p>\n";
+	// Work only for cumulative permissions
+	$return = false;
+	// Default perm
+	if (is_numeric(strpos($this->perm, $type)))
+		$return = true;
+	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type) : $return</p>\n";
+	// Specific perm
+	if ($return == false)
+	{
+		$perm_list = login()->perm_list();
+		//print_r($perm_list);
+		while ($return==false && (list($nb,$perm_id)=each($perm_list)))
+		{
+			//echo "<p>$perm_id : ".permission($perm_id)->$_type($this->id)."</p>\n";
+			if (is_numeric(strpos(permission($perm_id)->$_type($this->id), $type)))
+				$return = true;
+		}
+	}
+	// Specific perm for user
+	if ($return == false)
+	{
+		if (is_numeric(strpos(login()->user_perm($_type, $this->id), $type)))
+			$return = true;
+	}
+	return $return;
 }
-if (count($query_perm_list)>0)
+else
 {
-	db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(", ",$query_perm_list));
+	// Default perm (all)
+	$perm = new permission_info($this->perm);
+	// Specific perm
+	foreach(login()->perm_list() as $perm_id)
+		$perm->update(permission($perm_id)->$_type($this->id));
+	// Specific perm for user
+	if ($account_perm=login()->user_perm($_type, $this->id))
+		$perm->update($account_perm);
+	return $perm;
 }
 
 }
@@ -573,65 +485,15 @@ return $return;
 }
 
 /**
- * Returns the id : usefull for redirecting, forms, etc.
- *
- * @return integer
- */
-public function id()
-{
-
-return $this->id;
-
-}
-/**
- * Returns the name : may be usefull too...
- */
-public function name()
-{
-
-return $this->name;
-
-}
-public function label()
-{
-
-return $this->titre_court;
-
-}
-public function titre()
-{
-
-return $this->titre;
-
-}
-/**
  * Access the associated template
  */
 function template()
 {
 
+if (false)
+	echo "<p>page(ID#$this->id) : Accessing to template ID#$this->template_id</p>\n";
+
 return template($this->template_id);
-
-}
-
-/**
- * Load all params infos from database
- */
-public function params_load()
-{
-
-$this->params = array();
-$this->params_default = array();
-$this->params_url = array();
-
-$query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
-while (list($i, $j, $k)=$query->fetch_row())
-{
-	$this->params[$i] = json_decode($j);
-	$this->params_default[$i] = json_decode($j);
-	if (is_numeric($k))
-		$this->params_url[$k] = $i;
-}
 
 }
 
@@ -703,9 +565,9 @@ public function param_delete($name)
 {
 
 unset($this->params_default[$name]);
-foreach ($this->params_url as $n=>$i)
+foreach ($this->params_url as $nb=>$i)
 	if ($name == $i)
-		unset($this->params_url[$n]);
+		unset($this->params_url[$nb]);
 db()->query("DELETE FROM `_page_params` WHERE `page_id`='$this->id' AND `name`='$name'");
 
 }
@@ -780,10 +642,12 @@ else
 public function params_update_url($params=array())
 {
 
+//trigger_error("coucou");
+
 // Retrieved from the URL
-foreach($params as $i=>$value)
+foreach($params as $pos=>$value)
 {
-	if (isset($this->params_url[$i]) && ($name=$this->params_url[$i]))
+	if (isset($this->params_url[$pos]) && ($name=$this->params_url[$pos]))
 	{
 		if (DEBUG_TEMPLATE)
 			echo "<p>page(ID#$this->id)::params_update_url() : URL $name => $value</p>";
@@ -836,8 +700,8 @@ protected function params_apply()
 foreach ($this->params as $name=>$value)
 {
 	if (DEBUG_TEMPLATE)
-		echo "<p>page(ID#$this->id)::params_apply() : $name => $value</p>\n";
-	$this->template()->{$name} = $value;
+		echo "<p>page(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $value</p>\n";
+	$this->template()->__set($name, $value);
 }
 
 }
@@ -861,11 +725,13 @@ return $this->template();
 public function action()
 {
 
-foreach($this->params as $_name=>&$_value)
-	${$_name} = $_value;
-
 if (file_exists("page/scripts/$this->name.inc.php"))
 {
+	foreach($this->params as $_name=>&$_value)
+	{
+		//echo "<p>Param $_name : $_value</p>\n";
+		${$_name} = $_value;
+	}
 	include "page/scripts/$this->name.inc.php";
 }
 
@@ -881,6 +747,7 @@ public function url($params=array(), $text="")
 
 if (!$text)
 	$text = $this->url;
+
 
 if ($this->alias_page_id)
 {

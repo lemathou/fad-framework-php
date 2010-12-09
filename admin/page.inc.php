@@ -16,20 +16,6 @@ if (!defined("ADMIN_OK"))
 
 ?>
 <style type="text/css">
-td
-{
-	vertical-align: top;
-	font-size: 0.9em;
-}
-tr.header td
-{
-	font-size: 1em;
-	padding: 10px;
-}
-td.label
-{
-	font-weight: bold;
-}
 table.tpl_params td
 {
 	padding: 0px 1px;
@@ -49,10 +35,6 @@ table.tpl_params tr.title td
 {
 	font-weight: bold;
 	background-color: #ffa;
-}
-input, textarea
-{
-	width: 100%;
 }
 </style>
 
@@ -75,6 +57,24 @@ editAreaLoader.init({
 	,syntax: "php"	
 });
 </script>
+<form method="get" class="page_form">
+<input type="submit" value="Editer la page" />
+<select name="id" onchange="this.form.submit()">
+	<option value=""></option>
+<?php
+foreach (page()->list_detail_get() as $id=>$page)
+{
+	if (isset($_GET["id"]) && ($id==$_GET["id"]))
+		echo "	<option value=\"$id\" selected>[$id] $page[name]</option>\n";
+	else
+		echo "	<option value=\"$id\">[$id] $page[name]</option>\n";
+}
+?></select>
+<a href="?add">Ajouter</a>
+<a href="?list">Retour à la liste</a>
+</form>
+
+<div style="padding-top: 30px">
 <?
 // Types
 $type_list = array
@@ -87,24 +87,6 @@ $type_list = array
 	"php" => "Script PHP"
 );
 
-// Templates
-$template_list = array();
-$query = db()->query("SELECT t1.id , t1.name , t2.title FROM _template as t1 LEFT JOIN _template_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." WHERE t1.type='container'");
-while ($template = $query->fetch_assoc())
-{
-	if (!$template["title"])
-		$template["title"] = $template["name"];
-	$template_list[$template["id"]] = $template["title"];
-}
-
-// Permissions
-$perm_list = array();
-$query = db()->query("SELECT `id`, `name` FROM `_perm`");
-while ($perm = $query->fetch_assoc())
-{
-	$perm_list[$perm["id"]] = $perm["name"];
-}
-
 // ACTIONS
 
 // Insert
@@ -116,7 +98,7 @@ page()->add($_POST["insert"]["name"], $_POST["insert"]);
 }
 
 // Update
-if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]) && page()->exists($id=$_POST["update"]["id"]))
+if (isset($_POST["_update"]) && is_array($_POST["_update"]) && isset($_POST["id"]) && page()->exists($id=$_POST["id"]))
 {
 
 page($id)->update($_POST["update"]);
@@ -124,33 +106,24 @@ echo "<p>Page mise à jour</p>";
 
 }
 
-// EDITION
+// Permissions
+$perm_list = permission()->list_detail_get();
 
-if (isset($_GET["id"]) && is_numeric($id=$_GET["id"]) && ($query=db()->query("SELECT t1.id , t1.name , t1.template_id , t2.url , t2.titre_court , t2.titre FROM _page as t1 LEFT JOIN _page_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." WHERE t1.id='$id'")) && $query->num_rows())
+// ACTION
+
+if (isset($_GET["id"]) && page()->exists($id=$_GET["id"]))
 {
 
-$page = $query->fetch_assoc();
-
-$page["perm"] = array();
-$query_perm = db()->query("SELECT perm_id FROM _page_perm_ref WHERE page_id='$page[id]'");
-while (list($perm_id) = $query_perm->fetch_row())
-{
-	$page["perm"][] = $perm_id;
-}
+$page = page()->list_detail_get($id);
 
 ?>
-<p><a href="?list">Retour à la liste</a></p>
-
-<h2>Edition d'une page</h2>
-
-<form action="" method="POST">
-<table width="100%" cellspacing="0" cellpadding="0">
+<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
 <tr>
-	<td width="200 class="label">ID :</td>
-	<td width="300"><input name="update[id]" value="<?php echo $page["id"]; ?>" readonly /></td>
+	<td width="200" class="label"><label for="id">ID</label> :</td>
+	<td width="300"><input name="id" value="<?php echo $page["id"]; ?>" readonly /></td>
 	<td rowspan="8">
 	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle (optionnel)</h3>
-	<textarea id="update[script]" name="update[script]" style="background-color:#eee;" rows="20"><?php
+	<textarea id="script" name="script" class="data_script data_script_php" rows="20"><?php
 	$filename = "page/scripts/$page[name].inc.php";
 	if (file_exists($filename) && filesize($filename))
 	{
@@ -164,50 +137,50 @@ while (list($perm_id) = $query_perm->fetch_row())
 	</td>
 </tr>
 <tr>
-	<td class="label">Name :</td>
-	<td><input name="update[name]" value="<?php echo $page["name"]; ?>" /></td>
+	<td class="label"><label for="name">Name</label> :</td>
+	<td><input name="name" value="<?php echo $page["name"]; ?>" /></td>
 </tr>
 <tr>
-	<td class="label">Template associé :</td>
-	<td><select name="update[template_id]"><?php
-	foreach ($template_list as $tpl_id=>$name)
+	<td class="label"><label for="template_id">Template associé</label> :</td>
+	<td><select name="template_id"><?php
+	foreach (template()->list_detail_get() as $template)
 	{
-		if ($tpl_id == $page["template_id"])
-			echo "<option value=\"$tpl_id\" selected>$name</option>";
+		if ($template["id"] == $page["template_id"])
+			echo "<option value=\"$template[id]\" selected>$template[label]</option>";
 		else
-			echo "<option value=\"$tpl_id\">$name</option>";
+			echo "<option value=\"$template[id]\">$template[label]</option>";
 	}
 	?></select></td>
 </tr>
 <tr>
-	<td class="label">URL (rewriting) :</td>
-	<td><input name="update[url]" value="<?php echo $page["url"]; ?>" /></td>
+	<td class="label"><label for="url">URL (rewriting)</label> :</td>
+	<td><input name="url" value="<?php echo $page["url"]; ?>" /></td>
 </tr>
 <tr>
-	<td class="label">Titre court (lien) :</td>
-	<td><input name="update[titre_court]" value="<?php echo $page["titre_court"]; ?>" /></td>
+	<td class="label"><label for="titre_court">Titre court (lien)</label> :</td>
+	<td><input name="titre_court" value="<?php echo $page["titre_court"]; ?>" /></td>
 </tr>
 <tr>
-	<td class="label">Titre (header de page) :</td>
-	<td><input name="update[titre]" value="<?php echo $page["titre"]; ?>" /></td>
+	<td class="label"><label for="label">Label/Titre (header de page)</label> :</td>
+	<td><input name="label" value="<?php echo $page["label"]; ?>" /></td>
 </tr>
 <tr>
-	<td class="label">Permissions :</td>
-	<td><select name="update[perm_list][]" size="4" multiple>
+	<td class="label"><label for="perm_list">Permissions</label> :</td>
+	<td><select name="perm_list[]" size="4" multiple>
 	<?
-	foreach($perm_list as $i => $j)
+	foreach(permission()->list_detail_get() as $perm)
 	{
-		if (in_array($i, $page["perm"]))
-			print "<option value=\"$i\" selected>$j</option>";
+		if (in_array($perm["id"], $page["perm_list"]))
+			print "<option value=\"$perm[id]\" selected>$perm[label]</option>";
 		else
-			print "<option value=\"$i\">$j</option>";
+			print "<option value=\"$perm[id]\">$perm[label]</option>";
 	}
 	?>
 	</select></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input type="submit" value="Mettre à jour" /></td>
+	<td><input type="submit" name="_update" value="Mettre à jour" /></td>
 </tr>
 </table>
 </form>
@@ -287,7 +260,7 @@ if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]
 		?>
 		<tr>
 			<td class="label"><?=$name?></td>
-			<td><?=data()->title($param["datatype"])?></td>
+			<td><?=data()->get_name($param["datatype"])->label?></td>
 			<td><? if ($param["value"] === null) echo "<i>NULL</i>"; else echo json_encode($param["value"]); ?></td>
 			<?php
 			if (isset($tpl["params"]) && $tpl["params"] === true || (isset($tpl["params"][$name]) && $tpl["params"][$name] == $name))
@@ -398,10 +371,6 @@ if (isset($_POST["insert"]))
 }
 
 ?>
-<p><a href="?list">Retour à la liste</a></p>
-
-<h2>Ajout d'une page</h2>
-
 <form action="" method="POST">
 <table>
 <tr>
@@ -492,18 +461,22 @@ else
 	<td>Permissions</td>
 </tr>
 <?
-$query = db()->query(" SELECT t1.id , t1.name , t1.template_id , t2.url , t2.titre , t3.title as template FROM _page as t1 LEFT JOIN _page_lang as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_ID." LEFT JOIN _template_lang as t3 ON t3.id=t1.template_id AND t3.lang_id=".SITE_LANG_ID." ORDER BY t1.id ");
-while ($page = $query->fetch_assoc())
+foreach (page()->list_detail_get() as $page)
 {
+
+if (template()->exists($page["template_id"]))
+	$page["template"] = $template_list[$page["template_id"]]["label"];
+else
+	$page["template"] = "";
 
 print "<tr>\n";
 print "<td><a href=\"?id=$page[id]\">$page[id]</a></td>\n";
 print "<td><a href=\"?id=$page[id]\">$page[name]</a></td>\n";
 print "<td>$page[template]</td>\n";
-print "<td>$page[titre]</td>\n";
+print "<td>$page[label]</td>\n";
 print "<td>$page[url]</td>\n";
 print "<td>";
-$query_perm = db()->query("SELECT t1.name FROM _perm as t1 , _page_perm_ref as t2 WHERE t2.page_id = $page[id] AND t1.id=t2.perm_id");
+$query_perm = db()->query("SELECT t1.name FROM _permission as t1 , _page_perm_ref as t2 WHERE t2.page_id = $page[id] AND t1.id=t2.perm_id");
 while (list($perm)=$query_perm->fetch_row())
 	echo "<p>$perm</p>\n";
 echo "</td>\n";

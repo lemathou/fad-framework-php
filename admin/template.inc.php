@@ -89,8 +89,8 @@ $template = template($id);
 	});
 </script>
 
-<form action="?id=<?=$id?>" method="POST" style="margin-top: 5px;">
-<table width="100%" cellspacing="1" border="1" cellpadding="1">
+<form action="?id=<?=$id?>" method="POST">
+<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
 <tr>
 	<td class="label" width="200">ID</td>
 	<td width="300"><input name="update[id]" value="<?=$id?>" readonly /></td>
@@ -144,7 +144,7 @@ $template = template($id);
 </tr>
 <tr>
 	<td class="label">Title</td>
-	<td><input name="update[title]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("title")?>" style="background-color:#eee;width:100%;" /></td>
+	<td><input name="update[label]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("label")?>" style="background-color:#eee;width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Description</td>
@@ -170,12 +170,12 @@ $template = template($id);
 	<td class="label">Libraries</td>
 	<td><select name="update[library][]" size="4" multiple>
 	<?
-	foreach(library()->list_detail_get() as $i=>$library)
+	foreach(library()->list_detail_get() as $library)
 	{
-		if (in_array($i, $template->info("library_list")))
-			print "<option value=\"$i\" selected>$library[label]</option>";
+		if (in_array($library["id"], $template->info("library_list")))
+			print "<option value=\"$library[id]\" selected>$library[label]</option>";
 		else
-			print "<option value=\"$i\">$library[label]</option>";
+			print "<option value=\"$library[id]\">$library[label]</option>";
 	}
 	?>
 	</select></td>
@@ -243,8 +243,7 @@ if ($query->num_rows())
 
 ?>
 <form action="?id=<?=$id?>&param_edit=<?=$param_edit?>" method="POST">
-<p><a href="?id=<?=$id?>">Retour / annulation</a></p>
-<table style="border:1px black solid;">
+<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
 <tr>
 	<td>Name :</td>
 	<td><input name="param_edit[<?=$param["name"]?>][name]" value="<?=$param["name"]?>" /></td>
@@ -256,13 +255,12 @@ if ($query->num_rows())
 <tr>
 	<td>Datatype</td>
 	<td><select name="param_edit[<?=$param["name"]?>][datatype]"><?php
-	$query = db()->query("SELECT `_datatype`.`name`, `_datatype_lang`.`title` FROM `_datatype` LEFT JOIN `_datatype_lang` ON `_datatype`.`id`=`_datatype_lang`.`datatype_id` ORDER BY `_datatype_lang`.`title`");
-	while(list($name, $title)=$query->fetch_row())
+	foreach (data()->list_detail_get() as $datatype)
 	{
-		if ($param["datatype"] == $name)
-			echo "<option value=\"$name\" selected>$title</option>\n";
+		if ($param["datatype"] == $datatype["name"])
+			echo "<option value=\"$datatype[name]\" selected>$datatype[label]</option>\n";
 		else
-			echo "<option value=\"$name\">$title</option>\n";
+			echo "<option value=\"$datatype[name]\">$datatype[label]</option>\n";
 	}
 	?></select></td>
 </tr>
@@ -345,7 +343,7 @@ echo mysql_error();
 ?>
 
 <form action="?id=<?=$id?>" method="post">
-<table>
+<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
 <tr>
 	<td colspan="2">&nbsp;</td>
 	<td>Name</td>
@@ -387,7 +385,7 @@ while ($param = $query_params->fetch_assoc())
 	?></select></td>
 	<td><a href="?id=<?php echo $id; ?>&param_edit=<?=$param["name"]?>"><?=$param["name"]?></a></td>
 	<td><?=$param["description"]?></td>
-	<td><?=data()->title($param["datatype"])?></td>
+	<td><?=data()->get_name($param["datatype"])->label?></td>
 	<td><?=$param["defaultvalue"]?></td>
 </tr>
 <?php
@@ -441,7 +439,7 @@ elseif (isset($_GET["add"]))
 $template = array
 (
 	"name" => "",
-	"title" => "",
+	"label" => "",
 	"description" => "",
 	"details" => "",
 	"cache_mintime" => TEMPLATE_CACHE_MIN_TIME,
@@ -457,26 +455,22 @@ if (isset($_POST["insert"]))
 }
 
 ?>
-<h2>Ajout d'un template</h2>
-
-<p>La gestion des paramètres se fera à la page suivante</p>
-
 <form action="" method="POST">
-<table>
+<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
 <tr>
 	<td class="label">Name</td>
 	<td><input name="insert[name]" value="<?=$template["name"]?>" size="32" /></td>
 </tr>
 <tr>
 	<td class="label">Title</td>
-	<td><input name="insert[title]" value="<?=$template["title"]?>" size="64" /></td>
+	<td><input name="insert[label]" value="<?=$template["label"]?>" size="64" /></td>
 </tr>
 <tr>
 	<td class="label">Description</td>
 	<td><textarea name="insert[description]" cols="64" rows="4"><?=$template["description"]?></textarea></td>
 </tr>
 <tr>
-	<td class="label">Details</td>
+	<td class="label">Details (explicatifs)</td>
 	<td><textarea name="insert[details]" cols="64" rows="8"><?=$template["details"]?></textarea></td>
 </tr>
 <tr>
@@ -506,6 +500,7 @@ if (isset($_POST["insert"]))
 	<td><input type="submit" value="Ajouter" /></td>
 </tr>
 </table>
+<p>La gestion des paramètres se fera à la page suivante</p>
 </form>
 
 <?php
@@ -550,7 +545,7 @@ foreach($tpl_type_list as $i=>$j)
 <tr style="font-weight:bold;">
 	<td>ID</td>
 	<td>Name</td>
-	<td>Title</td>
+	<td>Label</td>
 	<td>Description</td>
 </tr>
 <?
@@ -567,13 +562,13 @@ else
 {
 	$query_where = "WHERE t1.name LIKE '$_GET[filter]/%'";
 }
-$query = db()->query(" SELECT t1.`id` , t1.`name` , t2.`title` , t2.`description` , t2.`details` FROM `_template` as t1 LEFT JOIN `_template_lang` as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_DEFAULT_ID." $query_where ORDER BY t1.name ");
+$query = db()->query(" SELECT t1.`id` , t1.`name` , t2.`label` , t2.`description` , t2.`details` FROM `_template` as t1 LEFT JOIN `_template_lang` as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_DEFAULT_ID." $query_where ORDER BY t1.name ");
 while ($template = $query->fetch_assoc())
 {
 	echo "<tr>\n";
 	echo "<td><a href=\"?id=$template[id]\">$template[id]</a></td>\n";
 	echo "<td><a href=\"?id=$template[id]\">$template[name]</a></td>\n";
-	echo "<td>$template[title]</td>\n";
+	echo "<td>$template[label]</td>\n";
 	echo "<td>$template[description]</td>\n";
 	echo "</tr>\n";
 }

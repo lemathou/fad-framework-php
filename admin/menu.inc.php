@@ -44,10 +44,10 @@ foreach (menu()->list_get() as $id=>$name)
 
 <?php
 
-if (isset($_GET["id"]) && (is_a($menu=menu($id=$_GET["id"]),"menu")))
+if (isset($_GET["id"]) && menu()->exists($id=$_GET["id"]))
 {
 
-echo "<p>MENU  ID#$id</p>";
+$menu = menu($id);
 
 if (isset($_POST["page_add"]) && $_POST["page_add"])
 {

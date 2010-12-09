@@ -7,12 +7,12 @@
   * 
   * This file is part of PHP FAD FRAMEWORK
   * 
-  * FTNGroupWare is free software; you can redistribute it and/or modify
+  * PHP FAD FRAMEWORK is free software; you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by
   * the Free Software Foundation; either version 2 of the License, or
   * (at your option) any later version.
   *
-  * FTNGroupWare is distributed in the hope that it will be useful,
+  * PHP FAD FRAMEWORK is distributed in the hope that it will be useful,
   * but WITHOUT ANY WARRANTY; without even the implied warranty of
   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   * GNU General Public License for more details.
@@ -27,9 +27,6 @@
   *
   */
 
-// Configuration
-include "config/config.inc.php";
-
 // Paramètres, Constantes, variables globales, constructeurs généraux, classes générales, fonctions diverses, etc.
 include PATH_INCLUDE."/header.inc.php";
 
@@ -37,10 +34,12 @@ include PATH_INCLUDE."/header.inc.php";
 include PATH_INCLUDE."/lang.inc.php";
 
 // Démarrage de la session
-include PATH_INCLUDE."/session_start.inc.php";
+session_start();
+// Rafraichissement du login
+login()->refresh();
 
-// Mise en place des banques de donnée et des fonctions associées !!
-databank();
+// Mise en place des fonctions associées aucx banques de donnée !!
+datamodel();
 
 // Controller (Warning !!)
 //include "include/data_controller.inc.php";
@@ -48,43 +47,30 @@ databank();
 if (REDIRECT)
 {
 	header("Location: http://".SITE_DOMAIN."/".SITE_LANG."/");
+	die("Redirection en cours...");
 }
 
 // Choix de la page
 include PATH_INCLUDE."/page_choose.inc.php";
 
-header("Content-type: text/html; charset=".SITE_CHARSET);
-
 // Affichage du template
-//echo PAGE_ID;
+header("Content-type: text/html; charset=".SITE_CHARSET);
 page_current()->tpl()->disp();
 gentime("TEMPLATE_DISP");
 
-if ($dr=login()->info_get("disconnect_reason"))
-{
-if ($dr==1)
-	$dr="Ce compte ne figure pas dans nos bases.";
-elseif ($dr==4)
-	$dr="Mot de passe invalide.";
-elseif ($dr==5)
-	$dr="Compte temporairement désactivé, veuillez nous contacter pour plus d'information.";
-else
-	$dr="Erreur d'authentification.";
-?>
-<script type="text/javascript">
-alert('<?=$dr?>');
-</script>
-<?
-unset($dr);
-}
+// Gestion message login
+login()->message_show();
 
 // On incrémente le nombre de pages vues par le visiteur
 login()->page_count++;
 
 gentime("END");
 
-if (login()->perm(6)) { ?>
-<div style="width:980px;margin:5px;border:1px gray solid;padding:5px;background-color:white;">
+?>
+
+<?php if (login()->perm(2)) { // SuperAdmin ?>
+
+<div style="width:980px;margin:5px;padding:5px;background-color:white;">
 <h1>DEBUG Gentime</h1>
 <h3>PHP</h3>
 <?

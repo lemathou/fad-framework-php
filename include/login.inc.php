@@ -24,6 +24,7 @@ protected $email = "";
 protected $password_crypt = ""; // TODO : verify and supress it if possible
 
 protected $type;
+protected $perm = array();
 protected $perm_list = array();
 
 protected $actif = "";
@@ -428,11 +429,7 @@ function HttpAcceptLanguage($str=NULL)
 private function perm_query()
 {
 
-// Il faut faire en sorte qu'aucune permission par défaut ne soit donnée !
-// Don cà revoir, mais il faut tenir compte de l'utilisateur non connecté...
-// Comment gérer ses permissions ??
-
-// All users
+// All users : TODO : le dégager en mettant une permission en lecture sur l'ensemble des pages lisibles par tout le monde.
 $this->perm_list = array( 3 );
 // Registered users
 if ($this->id)
@@ -441,19 +438,26 @@ if ($this->id)
 else
 	$this->perm_list[] = 1;
 
-// Special perms
+// Global perms
 $query = db()->query("SELECT `perm_id` FROM `_account_perm_ref` WHERE `account_id` = '".$this->id."'");
 while (list($perm_id) = $query->fetch_row())
 	$this->perm_list[] = $perm_id;
 
+// Specific perms
+$this->perm = array();
+$query = db()->query("SELECT `type`, `id`, `perm` FROM `_account_perm` WHERE `account_id`='$this->id'");
+while(list($type, $library_id, $perm)=$query->fetch_row())
+	$this->perm[$type][$id] = $perm;
+
 // Régénération du menu puisque nouvelles permissions
-page()->query();
+page()->query_info();
 
 // Régénération databank
 //	databank()->query();
 
 }
 
+// Global perm
 public function perm($perm)
 {
 
@@ -466,14 +470,32 @@ public function perm_list()
 return $this->perm_list;
 
 }
+// Specific perm
+public function user_perm($type, $id)
+{
 
+if (isset($this->perm[$type][$id]))
+	return $this->perm[$type][$id];
+else
+	return null;
+
+}
+
+/**
+ * Retrieve usefull info
+ */
 public function id()
 {
 
 return $this->id;
 
 }
+public function lang()
+{
 
+return $this->lang_id;
+
+}
 public function info_get($info)
 {
 
@@ -484,13 +506,6 @@ else
 	error()->add("login", "Undefined variable '$info'");
 	return false;
 }
-
-}
-
-public function lang()
-{
-
-return $this->lang_id;
 
 }
 

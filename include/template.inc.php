@@ -18,20 +18,9 @@ class template_gestion extends gestion
 
 protected $type = "template";
 
+protected $info_list = array("name", "type", "cache_mintime", "cache_maxtime", "login_dependant");
+
 protected $default_id = 0;
-
-public function query_info($retrieve_all=false)
-{
-
-$this->list = array();
-$query = db()->query("SELECT `_template`.`id`, `_template`.`name`, `_template`.`type`, `_template_lang`.`title` FROM `_template` LEFT JOIN `_template_lang` ON `_template`.`id`=`_template_lang`.`id` AND `_template_lang`.`lang_id`='".SITE_LANG_ID."'");
-while (list($id, $name, $type, $label)=$query->fetch_row())
-{
-	$this->list_name[$name] = $id;
-	$this->list_detail[$id] = array ("name"=>$name, "type"=>$type, "label"=>$label);
-}
-
-}
 
 public function get($id=0)
 {
@@ -39,23 +28,26 @@ public function get($id=0)
 if (!$id && TEMPLATE_ID)
 	$id = TEMPLATE_ID;
 
+//echo "<p>Accessing Template ID#$id</p>\n";
+
 if (isset($this->list[$id]))
 {
+	//echo "<p>Template ID#$id found in list : ".get_class($this->list[$id])."</p>\n";
 	return $this->list[$id];
 }
-elseif (APC_CACHE && ($template=apc_fetch("template_$id")))
+elseif (false && APC_CACHE && ($template=apc_fetch("template_$id")))
 {
 	return $this->list[$id] = $template;
 }
 elseif ($this->exists($id))
 {
 	if ($this->list_detail[$id]["type"] == "container")
-		$template = new template_container($id);
+		$template = new template_container($id, false, $this->list_detail[$id]);
 	elseif (substr($this->list_detail[$id]["name"], 0, 9) == "datamodel")
-		$template = new template_datamodel($id);
+		$template = new template_datamodel($id, false, $this->list_detail[$id]);
 	else
-		$template = new template($id);
-	if (APC_CACHE)
+		$template = new template($id, false, $this->list_detail[$id]);
+	if (false && APC_CACHE)
 		apc_store("template_$id", $template, APC_CACHE_TEMPLATE_TTL);
 	return $this->list[$id] = $template;
 }
@@ -70,54 +62,62 @@ else
 
 }
 
-/**
- * Add a template
- * @param array $template
- */
-public function add($template)
+protected function query_info_more()
 {
 
-if (!login()->perm(6))
-	die("ONLY ADMIN CAN CAN TEMPLATES");
+// Libraries
+// TODO
 
-if (!(is_array($template) && isset($template["name"]) && isset($template["cache_mintime"]) && isset($template["cache_maxtime"]) && isset($template["title"]) && isset($template["description"]) && isset($template["details"])))
-	die("ERROR");
-
-$query_string = "INSERT INTO `_template` (`name`, `type`, `cache_mintime`, `cache_maxtime`) VALUES ('".$template["name"]."', 'page', '".$template["cache_mintime"]."', '".$template["cache_maxtime"]."')";
-$query = db()->query($query_string);
-if ($id = $query->last_id())
+// Params
+$query = db()->query("SELECT t1.`template_id`, t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
+$param_order = array(); // temp
+while ($param = $query->fetch_assoc())
 {
-	$query_string = "INSERT INTO `_template_lang` (`id`, `lang_id`, `title`, `description`, `details`) VALUES ('$id', '".SITE_LANG_ID."', '".addslashes($template["title"])."', '".addslashes($template["description"])."', '".addslashes($template["details"])."')";
-	$query = db()->query($query_string);
-	if (isset($template["library"]) && is_array($template["library"]) && (count($template["library"]) > 0))
+	$this->list_detail[$param["template_id"]]["param_list_detail"][$param["order"]] = array
+	(
+		"name"=>$param["name"],
+		"datatype"=>$param["datatype"],
+		"value"=>json_decode($param["defaultvalue"], true),
+		"label"=>$param["description"]
+	);
+	$param_order[$param["template_id"]][$param["name"]] = $param["order"];
+}
+$query_opt = db()->query("SELECT `template_id`, `name`, `opttype`, `optname`, `optvalue` FROM `_template_params_opt`");
+while ($opt = $query_opt->fetch_assoc())
+{
+	if (isset($this->list_detail[$opt["template_id"]]))
+		$this->list_detail[$opt["template_id"]]["param_list_detail"][$param_order[$opt["template_id"]][$opt["name"]]][$opt["opttype"]][$opt["optname"]] = json_decode($opt["optvalue"], true);
+}
+
+}
+
+protected function add_more($id, $template)
+{
+
+// Libraries
+if (isset($template["library_list"]) && is_array($template["library_list"]))
+{
+	$query_library_list = array();
+	foreach($template["library_list"] as $library_id)
 	{
-		$query_library_list = array();
-		foreach($template["library"] as $library_id)
+		if (library()->exists($library_id))
 		{
-			if (library()->get($library_id))
-			{
-				$query_library_list[] = "($id, $library_id)";
-			}
-		}
-		if (count($query_library_list)>0)
-		{
-			$query_string = " INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
-			db()->query($query_string);
+			$query_library_list[] = "($id, $library_id)";
 		}
 	}
-	$this->list_detail[$id] = array("name"=>$template["name"], "type"=>'page');
-	$this->list_name[$template["name"]] = $id;
-	if (APC_CACHE == true)
+	if (count($query_library_list)>0)
 	{
-		$this->list = array();
-		apc_store("template_gestion", $this, APC_CACHE_GESTION_TTL);
+		$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
+		db()->query($query_string);
 	}
-	return $id;
 }
-else
+	
+}
+
+protected function del_more($id)
 {
-	return false;
-}
+
+db()->query("DELETE FROM `_template_library_ref` WHERE `template_id` = '$id'");
 
 }
 
@@ -127,17 +127,19 @@ else
  * Defines the display of the page, based on database infos and a template file
  * 
  */
-class template
+class template extends object_gestion
 {
 
-protected $id=0;
+protected $_type = "template";
 
-protected $type="";
+protected $type = "";
 
-protected $name="";
-protected $title="";
-protected $description="";
-protected $details="";
+/*
+ * Cache related infos
+ */
+protected $cache_mintime = 0;
+protected $cache_maxtime = 0;
+protected $login_dependant = 0;
 
 /*
  * Obsolète à terme
@@ -147,8 +149,8 @@ protected $library_list = array();
 /*
  * Complete list of params
  */
-protected $param_list = array();
 protected $param_list_detail = array();
+protected $param_list = array();
 /*
  * Effective params, using Data Objects (Yeah !)
  */
@@ -160,81 +162,90 @@ protected $param = array();
 protected $tpl_filename = "";
 
 /*
- * Cache related infos
+ * Calculated fields
  */
 protected $cache_id = "";
 protected $cache_folder = "";
 protected $cache_filename = "";
-protected $cache_mintime = 0;
-protected $cache_maxtime = 0;
-protected $login_dependant = 0;
 
-protected static $infos = array("type", "name", "cache_mintime", "cache_maxtime", "login_dependant");
-protected static $infos_lang = array("title", "description", "details");
+protected static $infos = array("name", "type", "cache_mintime", "cache_maxtime", "login_dependant");
+protected static $infos_lang = array("label", "description");
 
-function __construct($id, $query=true, $params=array())
+protected static $serialize_list = array("_type", "id", "name", "label", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list_detail");
+
+function __sleep()
 {
 
-$this->id = $id;
-
-if ($query)
-	$this->query();
-if (is_array($params) && count($params)>0)
-	foreach ($params as $name=>$value)
-			$this->params[$name] = $value;
+return session_select::__sleep(self::$serialize_list);
 
 }
 
-/**
- * Query required infos on template before using it
- * @param unknown_type $infos
- */
-public function query()
+function __wakeup()
 {
 
-// Global infos
-list($this->type, $this->name, $this->cache_mintime, $this->cache_maxtime, $this->login_dependant, $this->title, $this->description, $this->details) =
-	db()->query("SELECT `_template`.`type`, `_template`.`name`, `_template`.`cache_mintime`, `_template`.`cache_maxtime`, `_template`.`login_dependant`, `_template_lang`.`title`, `_template_lang`.`description`, `_template_lang`.`details` FROM `_template`, `_template_lang` WHERE `_template`.`id`=`_template_lang`.`id` AND `_template_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID." AND `_template`.`id`='".$this->id."'")->fetch_row();
+session_select::__wakeup();
+
+$this->tpl_filename = "template/".$this->name.".tpl.php";
+
+$this->construct_params();
+
+//echo "<p>template(ID#$this->id)::__wakeup()</p>\n";
+
+}
+
+protected function construct_more($infos)
+{
+
+$this->tpl_filename = "template/".$this->name.".tpl.php";
+
+$this->construct_params();
+
+}
+
+protected function construct_params()
+{
+
+$this->param_list = array();
+$this->param = array();
+foreach ($this->param_list_detail as $nb=>$param)
+{
+	$this->param_list[$nb] = $param["name"];
+	if (DEBUG_TEMPLATE)
+		echo "<p>DEBUG template(ID#$this->id)::query() : param ".$param["name"]."</p>\n";
+	$datatype = "data_".$param["datatype"];
+	$this->param[$param["name"]] = new $datatype($param["name"], null, $param["label"]);
+	if (isset($param["structure"]) && count($param["structure"]))
+	{
+		foreach ($param["structure"] as $i=>$j)
+			$this->param[$param["name"]]->structure_opt_set($i, $j);
+	}
+	$this->param[$param["name"]]->value = $param["value"];
+}
+
+}
+
+protected function query_info_more()
+{
 
 $this->tpl_filename = "template/".$this->name.".tpl.php";
 
 // Params
-$this->param_list = array();
 $this->param_list_detail = array();
-$this->param = array();
+$param_order = array(); // temp
 $query = db()->query("SELECT t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.`template_id`='".$this->id."' ORDER BY t1.`order` ASC");
 while ($param = $query->fetch_row())
 {
-	$this->param_list[$param[0]] = $param[1];
-	$this->param_list_detail[$param[1]] = array("datatype"=>$param[2], "value"=>json_decode($param[3], true), "structure"=>array(), "label"=>$param[4]);
+	$this->param_list_detail[$param[0]] = array("name"=>$param[1], "datatype"=>$param[2], "value"=>json_decode($param[3], true), "label"=>$param[4]);
+	$param_order[$param[1]] = $param[0];
 }
 $query_opt = db()->query("SELECT `name`, `opttype`, `optname`, `optvalue` FROM `_template_params_opt` WHERE `template_id`='".$this->id."'");
 while ($opt = $query_opt->fetch_row())
 {
-	$this->param_list_detail[$opt[0]][$opt[1]][$opt[2]]=json_decode($opt[3], true);
+	$this->param_list_detail[$param_order[$opt[0]]][$opt[1]][$opt[2]] = json_decode($opt[3], true);
 }
-foreach ($this->param_list_detail as $name=>$param)
-{
-	if (DEBUG_TEMPLATE)
-		echo "<p>DEBUG template(ID#$this->id)::query() : param $name</p>\n";
-	$datatype = "data_".$param["datatype"];
-	$this->param[$name] = new $datatype($name, null, $param["label"]);
-	if (count($param["structure"]))
-	{
-		foreach ($param["structure"] as $i=>$j)
-			$this->param[$name]->structure_opt_set($i, $j);
-	}
-	$this->param[$name]->value = $param["value"];
-}
+$this->construct_params();
 
-}
-
-/**
- * Retrieve list of required libraries
- */
-protected function library_query()
-{
-
+// Libraries
 $this->library_list = array();
 $query = db()->query("SELECT `library_id` FROM `_template_library_ref` WHERE `template_id`='".$this->id."'");
 while (list($library_id) = $query->fetch_row())
@@ -244,45 +255,39 @@ while (list($library_id) = $query->fetch_row())
 
 }
 
-/**
- * Update template (warning, there is a dedicated function to update each param)
- * 
- * @param integer $id
- * @param array $template
- */
-public function update($infos)
+protected function update_more($infos)
 {
 
-foreach(self::$infos as $name)
-	if (isset($infos[$name]))
-		$this->{$name} = $infos[$name];
-foreach(self::$infos_lang as $name)
-	if (isset($infos[$name]))
-		$this->{$name} = $infos[$name];
-
-if (isset($infos["library"]) && is_array($infos["library"]))
+// Libraries
+if (isset($infos["library_list"]) && is_array($infos["library_list"]))
 {
-	$this->library_list = array();
+	db()->query("DELETE FROM `_template_library_ref` WHERE `template_id`='$this->id'");
+	$query_library_list = array();
 	foreach ($infos["library"] as $library_id)
 	{
 		if (library()->exists($library_id))
 		{
-			$this->library_list[] = $library_id;
+			$query_library_list[] = "($this->id, $library_id)";
 		}
+	}
+	if (count($query_library_list)>0)
+	{
+		$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
+		db()->query($query_string);
 	}
 }
 
 // Template file
 if (isset($infos["filecontent"]))
 {
-	$filename = "template/$this->name.tpl.php";
+	$filename = PATH_TEMPLATE."/$this->name.tpl.php";
 	fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["filecontent"]));
 }
 
 // Template optionnal script file
 if (isset($infos["script"]))
 {
-	$filename = "template/$this->name.inc.php";
+	$filename = PATH_TEMPLATE."/$this->name.inc.php";
 	if ($infos["script"])
 	{
 		fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["script"]));
@@ -291,39 +296,6 @@ if (isset($infos["script"]))
 	{
 		unlink($filename);
 	}
-}
-
-$this->db_update();
-
-}
-/**
- * Update template base infos in database
- */
-public function db_update()
-{
-
-// Base infos
-$l = array();
-foreach (self::$infos as $name)
-	$l[] = "`_template`.`$name`='".db()->string_escape($this->{$name})."'";
-// Language infos
-$l = array();
-foreach (self::$infos_lang as $name)
-	$l[] = "`_template_lang`.`$name`='".db()->string_escape($this->{$name})."'";
-
-db()->query("UPDATE `_template`, `_template_lang` SET ".implode(", ", $l)." WHERE `_template`.`id`='$this->id' AND `_template`.`id`=`_template_lang`.`id` AND `_template_lang`.`lang_id`=".SITE_LANG_DEFAULT_ID);
-
-// Libraries dependences
-db()->query("DELETE FROM `_template_library_ref` WHERE `template_id`='$this->id'");
-$query_library_list = array();
-foreach($this->library_list as $library_id)
-{
-	$query_library_list[] = "($this->id, $library_id)";
-}
-if (count($query_library_list)>0)
-{
-	$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
-	db()->query($query_string);
 }
 
 }
@@ -346,10 +318,7 @@ foreach ($this->library_list as $library_id)
 function __isset($name)
 {
 
-if (isset($this->param[$name]))
-	return true;
-else
-	return false;
+return isset($this->param[$name]);
 
 }
 
@@ -359,7 +328,10 @@ function __get($name)
 if (isset($this->param[$name]))
 	return $this->param[$name];
 else
+{
+	// TODO : trigger_error
 	return null;
+}
 
 }
 
@@ -368,44 +340,25 @@ else
  */
 public function __set($name, $value)
 {
-	if (in_array($name, $this->param_list))
-	{
-		if (DEBUG_TEMPLATE)
-			echo "<p>DEBUG : template(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
-		$this->param[$name]->value_from_form($value);
-	}
-	else
-	{
-		if (DEBUG_TEMPLATE)
-			echo "<p>DEBUG : TEMPLATE($this->id)->__set NOT DEFINED : $name</p>\n";
-	}
-}
 
-/**
- * Returns usefull infos
- */
-public function id()
+if (in_array($name, $this->param_list))
 {
-
-return $this->id;
-
+	if (DEBUG_TEMPLATE)
+		echo "<p>DEBUG : template(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
+	$this->param[$name]->value_from_form($value);
 }
-public function name()
+else
 {
-
-return $this->name;
+	if (DEBUG_TEMPLATE)
+		echo "<p>DEBUG : TEMPLATE($this->id)->__set NOT DEFINED : $name</p>\n";
+}
 
 }
-public function label()
-{
 
-return $this->title;
-
-}
 function title()
 {
 
-return $this->title;
+return $this->label;
 
 }
 
@@ -423,7 +376,7 @@ if ($name == "library_list" || in_array($name, array_merge(self::$infos, self::$
 public function param_list()
 {
 
-return $this->param_list_detail;
+return $this->param_list;
 
 }
 
@@ -443,6 +396,7 @@ $this->params_check();
  */
 if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && login()->id()))
 {
+	//echo "<p>DISP CACHE template ID#$this->id</p>\n";
 	$this->cache_id_set();
 	if (isset($_GET["_page_regen"]) || !$this->cache_check())
 	{
@@ -494,9 +448,11 @@ else
 function params_reset()
 {
 
-foreach($this->param_list_detail as $_name=>$_param)
+//echo "<p>template(ID#$this->id)::params_reset()</p>\n";
+
+foreach ($this->param_list_detail as $param)
 {
-	$this->param[$_name]->value_from_form($_param["value"]);
+	$this->param[$param["name"]]->value = $param["value"];
 }
 
 }
@@ -507,13 +463,12 @@ foreach($this->param_list_detail as $_name=>$_param)
 protected function params_check()
 {
 
-if (file_exists("template/$this->name.inc.php"))
+if (file_exists($filename=PATH_TEMPLATE."/$this->name.inc.php"))
 {
 	// Including references !
-	foreach ($this->param as $_name=>$_value)
-		${$_name} = $_value;
+	extract($this->param);
 	//echo "<!-- Template Script : template/$this->name.inc.php -->\n";
-	include "template/$this->name.inc.php";
+	include $filename;
 }
 
 }
@@ -528,10 +483,12 @@ $return = array();
 
 if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
 {
+	$list_name = template()->list_name_get();
 	foreach($matches as $match)
 	{
-		if ($id=template()->exists_name($match[1]))
+		if (template()->exists_name($match[1]))
 		{
+			$id = $list_name[$match[1]];
 			if (isset($match[3]))
 			{
 				//echo $match[3]." : ";
@@ -558,10 +515,12 @@ protected function subtemplates_apply($tpl)
 
 if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
 {
+	$list_name = template()->list_name_get();
 	foreach($matches as $match)
 	{
-		if ($id=template()->exists_name($match[1]))
+		if (template()->exists_name($match[1]))
 		{
+			$id = $list_name[$match[1]];
 			if (DEBUG_TEMPLATE)
 				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id</p>\n";
 			// TODO : VOIR SI PB DE RECURSION !!!!
@@ -573,7 +532,7 @@ if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $match
 				$params = json_decode($match[3], true);
 				if ($params === true) // On tente de passer tous les paramètres
 				{
-					foreach($param_list as $name=>$detail)
+					foreach($param_list as $nb=>$name)
 					{
 						if (isset($this->param[$name]))
 						{
@@ -587,7 +546,7 @@ if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $match
 				{
 					if (DEBUG_TEMPLATE)
 						echo "<p>--> $name_from : $name</p>\n";
-					if (isset($this->param[$name_from]) && isset($param_list[$name]))
+					if (isset($this->param[$name_from]) && in_array($name, $param_list))
 					{
 						if (DEBUG_TEMPLATE)
 							echo "<p>--> $name_from : $name</p>\n";
@@ -602,14 +561,16 @@ if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $match
 
 if (preg_match_all("/\[\[INCLUDE_DATAMODEL:(.*),(.*),(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
 {
+	$list_name = template()->list_name_get();
 	foreach($matches as $match)
 	{
-		if ($id=template()->exists_name("datamodel/$match[1]"))
+		if (template()->exists_name("datamodel/$match[1]"))
 		{
+			$id = $list_name["datamodel/$match[1]"];
 			if (DEBUG_TEMPLATE)
 				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id, for datamodel ID#$match[2], object ID#$match[3]</p>\n";
 			template($id)->params_reset();
-			template($id)->object_set(databank($match[2])->get($match[3], true));
+			template($id)->object_set(datamodel($match[2])->get($match[3], true));
 			$tpl = str_replace($match[0], template($id), $tpl);
 		}
 	}
@@ -624,14 +585,15 @@ return $tpl;
  */
 protected function execute()
 {
-	//echo "<!-- template($this->name):__tostring() -->";
-	foreach ($this->param as $_name=>$_value)
-		${$_name} = $_value;
-	ob_start();
-	include "template/".$this->name.".tpl.php";
-	$return = $this->subtemplates_apply(ob_get_contents());
-	ob_end_clean();
-	return $return;
+
+//echo "<p>template(#ID$this->id:$this->name)::execute()</p>\n";
+ob_start();
+extract($this->param);
+include PATH_TEMPLATE."/$this->name.tpl.php";
+$return = $this->subtemplates_apply(ob_get_contents());
+ob_end_clean();
+return $return;
+
 }
 
 /*
@@ -647,16 +609,16 @@ else
 
 foreach($this->param_list as $name)
 {
-	$params_str .= ",$name='".addslashes(json_encode($this->param[$name]->value_to_db()))."'";
+	$params_str .= ",$name=".json_encode($this->param[$name]->value);
 }
 
 /*
  * Set variables
  */
 $this->cache_id = md5($params_str);
-//echo "<p>$params_str : $this->cache_id</p>";
-$this->cache_folder = "cache/".substr($this->cache_id,0,1);
+$this->cache_folder = PATH_CACHE."/".substr($this->cache_id,0,1);
 $this->cache_filename = "$this->cache_folder/$this->cache_id";
+//echo "<p>$params_str : $this->cache_id</p>";
 
 }
 
@@ -667,13 +629,11 @@ $this->cache_filename = "$this->cache_folder/$this->cache_id";
 public function cache_generate()
 {
 
-foreach ($this->param as $_name=>$_value)
-{
-	${$_name} = $_value;
-}
-
+//echo "<p>template(ID#$this->id)::cache_generate() ".PATH_TEMPLATE."/$this->name.tpl.php : $this->cache_id</p>\n";
+//print_r($this->param);
 ob_start();
-include $this->tpl_filename;
+extract($this->param);
+include PATH_TEMPLATE."/$this->name.tpl.php";
 fwrite(fopen($this->cache_filename,"w"), ob_get_contents());
 ob_end_clean();
 
@@ -717,11 +677,11 @@ elseif (($cache_datetime+TEMPLATE_CACHE_MAX_TIME) < $time)
 else
 {
 	$return = true;
-	foreach($this->param_list_detail as $name=>$param)
+	foreach($this->param_list_detail as $param)
 	{
 		if ($param["datatype"] == "dataobject") // TODO : add directly a query function into the dataobject, for example $param->update_datetime_get() ...
 		{
-			$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["structure"]["databank"]."' AND `dataobject_id`='".$this->param[$name]->value_to_db()."' ORDER BY `datetime` DESC LIMIT 1");
+			$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["structure"]["databank"]."' AND `dataobject_id`='".$this->param[$param["name"]]->value_to_db()."' ORDER BY `datetime` DESC LIMIT 1");
 			if ($query->num_rows())
 			{
 				list($i) = $query->fetch_row();
@@ -759,12 +719,24 @@ return $this->subtemplates_apply($tpl);
 protected function cache_disp()
 {
 
+/*
+ * Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
+ */
+
+//header('Status: 304 Not Modified', false, 304);
+//header('Last-Modified: '.gmdate('D, d M Y H:i:s',filemtime($filename)).' GMT');
+//header('Expires: '.gmdate('D, d M Y H:i:s',filemtime($filename)+60).' GMT');
+//header('Content-Length: '.strlen($tpl));
+
 echo $this->cache_return();
 
 }
 
 }
 
+/**
+ * Specific for container (primary) templates
+ */
 class template_container extends template
 {
 
@@ -772,9 +744,10 @@ public function __set($name, $value)
 {
 
 if (DEBUG_TEMPLATE)
-	echo "<p>DEBUG : template(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
+	echo "<p>DEBUG : template_container(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
+
 if (isset($this->param[$name]))
-	$this->param[$name]->value_from_form($value);
+	$this->param[$name]->value = $value;
 else
 	$this->param[$name] = new data($name, $value, $name);
 
@@ -788,15 +761,17 @@ $params_str = "$this->id,".PAGE_ID;
 // Each param sent to the template is used, with precision of its name
 foreach($this->param as $name=>$value)
 {
-	$params_str .= ",$name='".addslashes(json_encode($value))."'";
+	$params_str .= ",$name='".addslashes(json_encode($value->value))."'";
 }
 
 /*
  * Set variables
  */
 $this->cache_id = md5($params_str);
-$this->cache_folder = "cache/".substr($this->cache_id,0,1);
+$this->cache_folder = PATH_CACHE."/".substr($this->cache_id,0,1);
 $this->cache_filename = "$this->cache_folder/$this->cache_id";
+
+//echo fread(fopen($this->cache_filename, "r"), filesize($this->cache_filename));
 
 }
 
@@ -804,10 +779,9 @@ public function params_reset()
 {
 
 $this->param = array();
-
-foreach($this->param_list_detail as $_name=>$_param)
+foreach($this->param_list_detail as $param)
 {
-	$this->param[$_name] = new data($_name, $_param["value"], $_name);
+	$this->param[$param["name"]] = new data($param["name"], $param["value"], $param["label"]);
 }
 
 }
@@ -843,21 +817,15 @@ return $this->object;
 
 function object_retrieve_values()
 {
-	
+
+//echo "<p>TEMPLATE_DATAMODEL()::object_retrieve_values()</p>";
+
 $this->params = array();
-foreach(datamodel($this->object->datamodel()->id())->fields() as $field)
+foreach($this->object->datamodel()->fields() as $field)
 {
 	$this->param[$field->name] = $this->object->{$field->name};
 }
 
-/*
-databank($this->datamodel_id)->get($this->object_id,$this->param_list);
-foreach($this->param_list as $name)
-{
-	echo "<p>$name</p>";
-	$this->params[$name] = databank($this->datamodel_id)->get($this->object_id)->{$name};
-}
-*/
 }
 
 protected function cache_id_set()
@@ -954,10 +922,9 @@ if (TEMPLATE_CACHE && $this->object && $this->object->id->value && ($this->cache
 }
 else
 {
-		foreach ($this->param as $_name=>$_value)
-			${$_name} = $_value;
+		extract($this->param);
 		ob_start();
-		include "template/".$this->name.".tpl.php";
+		include PATH_TEMPLATE."/".$this->name.".tpl.php";
 		$return = ob_get_contents();
 		ob_end_clean();
 		echo $return;
@@ -988,7 +955,7 @@ else
 		foreach ($this->param as $_name=>$_value)
 			${$_name} = $_value;
 		ob_start();
-		include "template/".$this->name.".tpl.php";
+		include PATH_TEMPLATE."/".$this->name.".tpl.php";
 		$return = ob_get_contents();
 		ob_end_clean();
 		return $return;
@@ -1045,11 +1012,9 @@ $this->cache_id = md5($params_str);
 public function cache_generate()
 {
 
-foreach ($this->params as $_name=>$_value)
-	${$_name} = $_value;
-
 ob_start();
-include $this->tpl_filename;
+extract($this->params);
+include PATH_TEMPLATE."/$this->name.tpl.php";
 db()->query("REPLACE INTO `_template_cache` (`template_id`, `hash`, `datetime`, `content`) VALUES ( '$this->id', '$this->cache_id', NOW(), '".(addslashes($tpl=ob_get_contents()))."')");
 $this->cache = array("time"=>time(), "content"=>$tpl);
 ob_end_clean();
@@ -1098,11 +1063,11 @@ elseif (($this->cache["time"]+TEMPLATE_CACHE_MAX_TIME) < $time)
 else
 {
 	$return = true;
-	foreach($this->param_list_detail as $name=>$param)
+	foreach($this->param_list_detail as $param)
 	{
 		if ($return == true && $param["datatype"] == "dataobject")
 		{
-			$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["structure"]["databank"]."' AND `dataobject_id`='".$this->params[$name]."' ORDER BY `datetime` DESC LIMIT 1");
+			$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["structure"]["databank"]."' AND `dataobject_id`='".$this->params[$param["name"]]."' ORDER BY `datetime` DESC LIMIT 1");
 			if ($query->num_rows())
 			{
 				list($i) = $query->fetch_row();
@@ -1118,58 +1083,6 @@ else
 			echo "<p>CACHE_CHECK (ID#$this->id) : Params updated -> FALSE</p>\n";
 	return $return;
 }
-
-}
-
-/**
- * Display cached template file
- */
-protected function cache_disp()
-{
-
-$tpl = $this->cache_return();
-
-/*
- * Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
- */
-
-//header('Status: 304 Not Modified', false, 304);
-//header('Last-Modified: '.gmdate('D, d M Y H:i:s',filemtime($filename)).' GMT');
-//header('Expires: '.gmdate('D, d M Y H:i:s',filemtime($filename)+60).' GMT');
-//header('Content-Length: '.strlen($tpl));
-
-echo $tpl;
-
-}
-
-/**
- * Returns cached template file
- */
-protected function cache_return()
-{
-
-$tpl = $this->cache["content"];
-
-if (preg_match_all("/\[\[INCLUDE_TEMPLATE:(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
-{
-	foreach($matches as $match)
-	{
-		if ($id=template()->exists_name($match[1]))
-		{
-			if (DEBUG_TEMPLATE)
-				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id</p>\n"; 
-			foreach($this->params as $name=>$value)
-			{
-				if (DEBUG_TEMPLATE)
-					echo "<p>--> $name : $value</p>\n";
-				template($id)->__set($name, $value);
-			}
-			$tpl = str_replace($match[0], template($id), $tpl);
-		}
-	}
-}
-
-return $tpl;
 
 }
 

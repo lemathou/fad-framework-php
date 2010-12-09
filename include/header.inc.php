@@ -47,6 +47,9 @@ include PATH_INCLUDE."/globals.inc.php";
 // Réécriture d'URL obsolète pour l'instant
 //include "include/rewriting.inc.php";
 
+// Permissions
+include PATH_INCLUDE."/permission.inc.php";
+
 // Menu & Pages
 include PATH_INCLUDE."/menu.inc.php";
 

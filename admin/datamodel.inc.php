@@ -85,7 +85,7 @@ if (isset($_POST["_db_create"]))
 }
 
 // Position maximale
-list($pos_max)=db()->query("SELECT pos FROM _datamodel_fields WHERE datamodel_id='".$datamodel->id()."' ORDER BY pos DESC LIMIT 1")->fetch_row();
+list($pos_max)=db()->query("SELECT MAX(`pos`) FROM `_datamodel_fields` WHERE `datamodel_id`='".$datamodel->id()."'")->fetch_row();
 
 if (empty($_GET["field_edit"])) { ?>
 <form method="post"><table>
@@ -99,7 +99,7 @@ if (empty($_GET["field_edit"])) { ?>
 	<?php
 	foreach (library()->list_detail_get() as $library)
 	{
-		if(is_a($datamodel->library(), "library") && $library["id"] == $datamodel->library()->id)
+		if(is_a($datamodel->library(), "library") && $library["id"] == $datamodel->library()->id())
 			echo "<option value=\"$library[id]\" selected>$library[name]</option>\n";
 		else
 			echo "<option value=\"$library[id]\">$library[name]</option>\n";
@@ -117,7 +117,7 @@ if (empty($_GET["field_edit"])) { ?>
 </tr>
 <tr>
 	<td>Description :</td>
-	<td><textarea name="description" style="width:100%;" rows="10"><?php echo array_pop(db()->query("SELECT description FROM _datamodel_lang WHERE id = ".$datamodel->id()." AND lang_id=".SITE_LANG_ID)->fetch_row()) ?></textarea></td>
+	<td><textarea name="description" style="width:100%;" rows="10"><?=$datamodel->info("description")?></textarea></td>
 </tr>
 <tr>
 	<td>Table (en BDD) :</td>
@@ -146,11 +146,6 @@ if (empty($_GET["field_edit"])) { ?>
 	</tr>
 <?php
 $field_opt_list = array("" , "key" , "required" , "calculated");
-$query_type = db()->query("SELECT t1.name , t2.title FROM _datatype as t1 LEFT JOIN _datatype_lang as t2 ON t1.id=t2.datatype_id AND t2.lang_id=".SITE_LANG_ID." ORDER BY t2.title");
-while (list($i,$j) = $query_type->fetch_row())
-{
-	$field_type_list[$i] = $j;
-}
 
 list($pos_max) = db()->query("SELECT MAX(t1.`pos`) FROM `_datamodel_fields` as t1 WHERE t1.`datamodel_id`='".$datamodel->id()."'")->fetch_row();
 $query = db()->query("SELECT t1.`pos` , t1.`name` , t2.`label` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`query` , t1.`lang` , t1.`db_sync` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` AND t2.`lang_id`=".SITE_LANG_ID." WHERE t1.`datamodel_id`='".$datamodel->id()."' ORDER BY t1.`pos`");
@@ -186,12 +181,12 @@ while ($field=$query->fetch_assoc())
 		<td><input name="name" value="<?=$field["name"]?>" /><input type="hidden" name="name_orig" value="<?=$field["name"]?>" /></td>
 		<td><input name="label" value="<?=$field["label"]?>" /></td>
 		<td><select name="type"><?php
-		foreach ($field_type_list as $i=>$j)
+		foreach (data()->list_detail_get() as $j)
 		{
 			if ($field["type"]==$i)
-				echo "<option value=\"$i\" selected>$j</option>\n";
+				echo "<option value=\"$j[name]\" selected>$j[label]</option>\n";
 			else
-				echo "<option value=\"$i\">$j</option>\n";
+				echo "<option value=\"$j[name]\">$j[label]</option>\n";
 		}
 		?></select></td>
 		<td><textarea name="defaultvalue"><?php echo $field["defaultvalue"]; ?></textarea><input type="checkbox" name="defaultvalue_null" <?php if ($field["defaultvalue"]===null) echo "checked"; ?> /></td>
@@ -276,7 +271,7 @@ while ($field=$query->fetch_assoc())
 		<td><?=$field["pos"]?></td>
 		<td><a href="?id=<?=$datamodel->id()?>&field_edit=<?=$field["name"]?>"><?=$field["name"]?></a></td>
 		<td><input readonly value="<?=$field["label"]?>" /></td>
-		<td><input readonly value="<?=$field_type_list[$field["type"]]?>" /></td>
+		<td><input readonly value="<?=$field["type"]?>" /></td>
 		<td><?php if ($field["defaultvalue"] === null) { ?><i>NULL</i><?php } else { ?><textarea readonly rows="1"><?=$field["defaultvalue"]?></textarea><?php } ?></td>
 		<td><input readonly value="<?=$field["opt"]?>" size="10" /></td>
 		<td><input readonly value="<?php if ($field["query"]) echo "OUI"; else echo "NON"; ?>"<?php if ($field["query"]) echo " style=\"color:blue;\""; ?> size="3" /></td>
@@ -299,9 +294,9 @@ if (!isset($_GET["field_edit"])) {
 		<td><input name="name" value="" /><input type="hidden" name="id" value="<?=$datamodel->id()?>" /></td>
 		<td><input name="label" value="" /></td>
 		<td><select name="type"><?php
-		foreach ($field_type_list as $i=>$j)
+		foreach (data()->list_detail_get() as $j)
 		{
-			echo "<option value=\"$i\">$j</option>\n";
+			echo "<option value=\"$j[name]\">$j[label]</option>\n";
 		}
 		?></select></td>
 		<td><textarea name="defaultvalue"></textarea><input type="checkbox" name="defaultvalue_null" /></td>

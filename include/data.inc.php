@@ -1012,46 +1012,15 @@ protected $structure_opt = array ();
 protected $form_opt = array
 (
 	"type" => "textarea",
-	"width" => "400px",
-	"height" => "50px",
 );
 
 public function form_field_disp($print=true, $options=array())
 {
 
-$width = ( isset($this->form_opt["width"]) && $this->form_opt["width"] > 0 ) ? "width:".$this->form_opt["width"].";" : "";
-$height = ( isset($this->form_opt["height"]) && $this->form_opt["height"] > 0 ) ? "height:".$this->form_opt["height"].";" : "";
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
 $attrib_class = " class=\"".get_called_class()."\"";
 
-if ($width || $height)
-	$style = " style=\"$width$height\"";
-else
-	$style = "";
-
-$return = "<textarea name=\"$this->name\"$style$attrib_maxlength$attrib_class>$this->value</textarea>";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
-public function form_field_disp_update($print=true, $options=array())
-{
-
-$width = ( isset($this->form_opt["width"]) && $this->form_opt["width"] > 0 ) ? "width:".$this->form_opt["width"].";" : "";
-$height = ( isset($this->form_opt["height"]) && $this->form_opt["height"] > 0 ) ? "height:".$this->form_opt["height"].";" : "";
-$attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
-$attrib_class = " class=\"".get_called_class()."\"";
-
-if ($width || $height)
-	$style = " style=\"$width$height\"";
-else
-	$style = "";
-
-$return = "<textarea id=\"$this->name\" onchange=\"javascript:this.name = this.id;\"$style$attrib_maxlength$attrib_class>$this->value</textarea>";
+$return = "<textarea name=\"$this->name\"$attrib_maxlength$attrib_class>$this->value</textarea>";
 
 if ($print)
 	print $return;
@@ -1098,8 +1067,6 @@ protected $structure_opt = array
 protected $form_opt = array
 (
 	"type" => "textarea",
-	"width" => 400,
-	"height" => 300,
 );
 
 public function form_field_disp($print=true, $options=array())
@@ -1322,22 +1289,6 @@ else
 
 }
 
-public function form_field_disp_update($print=true, $options=array())
-{
-
-$attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] > 0 ) ? " size=\"".$this->form_opt["size"]."\"" : "";
-$attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
-
-$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" class=\"".get_called_class()."\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
 function value_to_db()
 {
 
@@ -1482,19 +1433,6 @@ else
 
 }
 
-public function form_field_disp_update($print=true, $options=array())
-{
-
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
-
-$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" value=\"$this->value\" size=\"4\" maxlength=\"4\"$attrib_readonly class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
 
 public function db_field_create()
 {
@@ -1788,28 +1726,13 @@ else
 
 }
 
-public function form_field_disp_update($print=true, $options=array())
-{
-
-$return = "<select id=\"$this->name\" onchange=\"javascript:this.name = this.id+'[]';\" multipl class=\"".get_called_class()."\">";
-foreach ($this->structure_opt["fromlist"] as $i=>$j)
-	if (in_array($i,$this->value))
-		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
-	else
-		$return .= "<option value=\"$i\">$j</option>";
-$return .= "</select>";
-
-if ($print)
-	echo $return;
-else
-	return $return;
-
-}
-
 public function value_from_db($value)
 {
 
-$this->value = explode(",", $value);
+$this->value = array();
+if (is_array($value)) foreach ($value as $i)
+	if (isset($this->structure_opt["fromlist"][$i]))
+		$this->value[] = $i;
 
 }
 
@@ -2544,7 +2467,7 @@ protected $type = "object";
 
 protected $structure_opt = array
 (
-	"object" => array ( "type" => "objecttype" ),
+	"object" => array("type" => "objecttype"),
 );
 
 protected $db_opt = array
@@ -2632,7 +2555,7 @@ function __tostring()
 //print_r($this->disp_opt);
 //echo (string)$this->value->{$this->disp_opt["ref_disp_field"]};
 
-if (is_a($object=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat"))
+if (is_a($object=datamodel($this->structure_opt["databank"], $this->value), "data_bank_agregat"))
 {
 	if (isset($this->disp_opt["ref_field_disp"]) && ($fieldname=$this->disp_opt["ref_field_disp"]) && isset(datamodel($this->structure_opt["databank"])->{$fieldname}))
 	{
@@ -2653,7 +2576,7 @@ function object()
 {
 
 if ($this->value)
-	return databank($this->structure_opt["databank"], $this->value);
+	return datamodel($this->structure_opt["databank"], $this->value);
 else
 	return null;
 
@@ -2662,7 +2585,7 @@ else
 function disp_url()
 {
 
-if (is_a($object=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat"))
+if (is_a($object=datamodel($this->structure_opt["databank"], $this->value), "data_bank_agregat"))
 	return "<a href=\"http://".SITE_DOMAIN.SITE_BASEPATH."/".$this->structure_opt["databank"]."/".$this->value."/\">".$object."</a>";
 else
 	return "";
@@ -2693,7 +2616,7 @@ else
 function value_from_form($value)
 {
 
-if (is_numeric($value) && is_a(($object=databank($this->structure_opt["databank"],$value)), "data_bank_agregat"))
+if (is_numeric($value) && is_a(($object=datamodel($this->structure_opt["databank"], $value)), "data_bank_agregat"))
 	$this->value = $value;
 else
 	$this->value = null;
@@ -2704,7 +2627,7 @@ function form_field_disp($print=true, $option=array())
 {
 
 // Pas beaucoup de valeurs : liste simple
-if (($databank=databank($this->structure_opt["databank"])) && (($nb=$databank->count()) <= 50))
+if (($databank=datamodel($this->structure_opt["databank"])) && (($nb=$databank->count()) <= 50))
 {
 	if (isset($option["order"]))
 		$query = $databank->query(array(), array(), $option["order"]);
@@ -2715,7 +2638,7 @@ if (($databank=databank($this->structure_opt["databank"])) && (($nb=$databank->c
 	$return .= "<option value=\"\"></option>";
 	foreach($query as $object)
 	{
-		if (is_a($o=databank($this->structure_opt["databank"],$this->value), "data_bank_agregat") && ($o->id->value == $object->id->value))
+		if (is_a($o=datamodel($this->structure_opt["databank"],$this->value), "data_bank_agregat") && ($o->id->value == $object->id->value))
 		{
 			$return .= "<option value=\"$object->id\" selected=\"selected\">$object</option>";
 		}
@@ -2729,7 +2652,7 @@ else
 {
 	$return = "<div style=\"display:inline;\"><input name=\"$this->name\" value=\"$this->value\" type=\"hidden\" class=\"q_id\" />";
 	if ($this->value)
-		$value = (string)databank($this->structure_opt["databank"],$this->value);
+		$value = (string)datamodel($this->structure_opt["databank"],$this->value);
 	else
 		$value = "";
 	$return .= "<input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
@@ -2833,7 +2756,7 @@ function object()
 {
 
 if ($this->nonempty())
-	return databank($this->value[0], $this->value[1]);
+	return datamodel($this->value[0], $this->value[1]);
 else
 	return null;
 
@@ -2852,7 +2775,7 @@ elseif (!in_array(($databank=$list[0]),$this->structure_opt["databank_select"]))
 	trigger_error("Data field '$this->name' : Undefined databank '$databank' in value");
 	$this->value = array(0, 0);
 }
-elseif(!($object = databank($databank,$list[1])))
+elseif(!($object = datamodel($databank,$list[1])))
 {
 	trigger_error("Data field '$this->name' : Undefined object in value");
 	$this->value = array(0, 0);
@@ -2882,7 +2805,7 @@ function value_from_form($value)
 {
 
 //print_r($value);
-if (is_array($value) && isset($value[0]) && isset($value[1]) && in_array(($databank=$value[0]),$this->structure_opt["databank_select"]) && ($object = databank($databank,$value[1])))
+if (is_array($value) && isset($value[0]) && isset($value[1]) && in_array(($databank=$value[0]),$this->structure_opt["databank_select"]) && ($object = datamodel($databank,$value[1])))
 {
 	$this->value = $value;
 }
@@ -2946,7 +2869,7 @@ if (!is_array($this->value) || !count($this->value))
 }
 elseif ($this->disp_opt["ref_field_disp"])
 {
-	$query = databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array($this->disp_opt["ref_field_disp"]), $order);
+	$query = datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array($this->disp_opt["ref_field_disp"]), $order);
 	$return = array();
 	foreach($query as $object)
 	{
@@ -2956,7 +2879,7 @@ elseif ($this->disp_opt["ref_field_disp"])
 }
 else
 {
-	implode(", ", databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array(), $order));
+	implode(", ", datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array(), $order));
 }
 
 }
@@ -2975,11 +2898,11 @@ else
 if (is_array($this->value) && count($this->value))
 {
 	// Retrieve objects in databank
-	databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
+	datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
 	// Sort by order
 	$return = array();
 	foreach ($this->value as $nb=>$id)
-		$return[] = databank($this->structure_opt["databank"])->get($id);
+		$return[] = datamodel($this->structure_opt["databank"])->get($id);
 	return $return;
 }
 else
@@ -2997,7 +2920,7 @@ if (is_array($value))
 {
 	foreach($value as $id)
 	{
-		if (databank($this->structure_opt["databank"])->exists($id))
+		if (datamodel($this->structure_opt["databank"])->exists($id))
 		{
 			$this->value[] = $id;
 		}
@@ -3017,21 +2940,19 @@ else
 // Pas beaucoup de valeurs : liste simple
 if (($nb=datamodel($this->structure_opt["databank"])->db_count()) < 20)
 {
-	$query = databank($this->structure_opt["databank"])->query();
+	$query = datamodel($this->structure_opt["databank"])->query();
 	if ($nb<10)
 		$size = $nb;
 	else
 		$size = 5;
-	$return = "<select name=\"".$this->name."[]\" title=\"$this->label\" multiple size=\"$size\" class=\"".get_called_class()."\">\n";
-	if ($this->db_opt["order_field"])
-	{
-		foreach ($this->value as $id)
-			$return .= "<option value=\"$id\" selected>".databank($this->structure_opt["databank"])->get($id)."</option>";
-	}
+	$return = "<input name=\"$this->name\" type=\"hidden\" />";
+	$return .= "<select name=\"".$this->name."[]\" title=\"$this->label\" multiple size=\"$size\" class=\"".get_called_class()."\">\n";
+	foreach ($this->value as $id)
+			$return .= "<option value=\"$id\" selected>".datamodel($this->structure_opt["databank"])->get($id)."</option>";
 	foreach($query as $object)
 	{
 		if (!in_array($object->id->value, $this->value))
-			$return .= "<option value=\"$object->id\" selected>$object</option>";
+			$return .= "<option value=\"$object->id\">$object</option>";
 	}
 	$return .= "</select>\n";
 }
@@ -3043,9 +2964,9 @@ else
 	$return .= "<div><select name=\"".$this->name."[]\" title=\"$this->label\" multiple class=\"".get_called_class()." q_id\">";
 	if (is_array($this->value) && count($this->value))
 	{
-		databank($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
+		datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
 		foreach ($this->value as $id)
-			$return .= "<option value=\"$id\" selected>".databank($this->structure_opt["databank"])->get($id)."</option>";
+			$return .= "<option value=\"$id\" selected>".datamodel($this->structure_opt["databank"])->get($id)."</option>";
 	}
 	$return .= "</select></div>";
 	$return .= "<input class=\"q_str\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
@@ -3061,13 +2982,6 @@ else
 
 }
 
-function form_field_disp_light($print=true)
-{
-
-
-
-}
-
 public function db_query_param($value, $type="=")
 {
 
@@ -3077,7 +2991,7 @@ if (!in_array($type, $type_list))
 
 $fieldname = $this->db_opt["ref_id"];
 
-if (is_array($value))
+if (is_array($value) && count($value))
 	return "`".$fieldname."` IN (".implode(", ",$this->value).")";
 else
 	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
@@ -3090,16 +3004,29 @@ else
 public function db_create()
 {
 
-return array
-(
-	"name" => $this->db_opt["ref_table"],
-	"options" => array(),
-	"fields" => array
+if ($this->db_opt["ref_table"])
+{
+	$return = array
 	(
-		$this->db_opt["ref_id"] => array ( "type" => "integer", "size" => 10, "signed"=>false, "null"=>false, "key"=>true ),
-		$this->db_opt["ref_field"] => array ( "type" => "integer", "size" => 10, "signed"=>false, "null"=>false, "key"=>true )
-	)
-);
+		"name" => $this->db_opt["ref_table"],
+		"options" => array(),
+	);
+	if ($this->db_opt["order_field"])
+		$return["fields"] = array
+		(
+			$this->db_opt["ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
+			$this->db_opt["order_field"] = array("type"=>"integer", "size"=>3, "signed"=>false, "null"=>false, "key"=>true),
+			$this->db_opt["ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>false)
+		);
+	else
+		$return["fields"] = array
+		(
+			$this->db_opt["ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
+			$this->db_opt["ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true)
+		);
+}
+
+return $return;
 
 }
 
@@ -3108,75 +3035,21 @@ return array
 /**
  * Data types global container class
  */
-class data_gestion
+class data_gestion extends gestion
 {
 
-protected $list = array();
-protected $list_name = array();
-
-public function __construct()
-{
-
-$query = db()->query("SELECT t1.id, t1.name , t2.title FROM _datatype as t1 LEFT JOIN _datatype_lang as t2 ON t1.id=t2.datatype_id ORDER BY t2.title");
-while(list($id, $name, $title)=$query->fetch_row())
-{
-	$this->list[$id] = array("name"=>$name, "title"=>$title);
-	$this->list_name[$name] = $id;
-}
-
-}
+protected $type = "datatype";
 
 public function get($id)
 {
 
-if (isset($this->list[$id]))
+if ($this->exists($id))
 {
-	$datatype = "data_".$this->list[$id]["name"];
-	return new $datatype($this->list[$id]["name"], null);
+	$datatype = "data_".$this->list_detail[$id]["name"];
+	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
 }
 else
 	return null;
-
-}
-
-public function exists($id)
-{
-
-return isset($this->list[$id]);
-
-}
-
-public function __isset($name)
-{
-
-return isset($this->list_name[$name]);
-
-}
-
-public function id($name)
-{
-
-if (isset($this->list_name[$name]))
-	return $this->list_name[$name];
-else
-	return null;
-
-}
-
-public function title($name)
-{
-
-if (isset($this->list_name[$name]))
-	return $this->list[$this->list_name[$name]]["title"];
-else
-	return null;
-
-}
-
-public function list_get()
-{
-
-return $this->list;
 
 }
 
@@ -3193,10 +3066,10 @@ if (!isset($GLOBALS["data_gestion"]))
 	// APC
 	if (APC_CACHE)
 	{
-		if (!($GLOBALS["data_gestion"]=apc_fetch("data_gestion")))
+		if (!($GLOBALS["data_gestion"]=apc_fetch("datatype_gestion")))
 		{
 			$GLOBALS["data_gestion"] = new data_gestion();
-			apc_store("data_gestion", $GLOBALS["data_gestion"], APC_CACHE_GESTION_TTL);
+			apc_store("datatype_gestion", $GLOBALS["data_gestion"], APC_CACHE_GESTION_TTL);
 		}
 	}
 	// Session

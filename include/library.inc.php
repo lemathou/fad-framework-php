@@ -106,9 +106,6 @@ protected $_type = "library";
 protected $list = array();
 protected $loaded = false;
 
-// Données à sauver en session
-private static $serialize_list = array("id", "name", "label", "description", "list");
-
 function construct_more($infos)
 {
 
@@ -192,20 +189,7 @@ return $this->loaded;
 function __sleep()
 {
 
-return session_select::__sleep(self::$serialize_list);
-
-}
-
-function __wakeup()
-{
-
-session_select::__wakeup();
-$this->loaded = false;
-
-if (DEBUG_SESSION == true)
-	echo "<p>WAKEUP : library id#$this->id</p>\n";
-
-//$this->load();
+return array("id", "name", "label", "description", "list");
 
 }
 

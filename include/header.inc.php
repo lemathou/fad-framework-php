@@ -3,7 +3,7 @@
 /**
   * $Id: header.inc.php 74 2009-07-03 06:41:02Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -23,7 +23,7 @@ include PATH_INCLUDE."/library.inc.php";
 
 // Types de donnée, datamodels, agrégats et banques de données
 include PATH_INCLUDE."/data.inc.php";
-include PATH_INCLUDE."/data_verify.inc.php";
+//include PATH_INCLUDE."/data_verify.inc.php"; // DEPRECATED
 include PATH_INCLUDE."/data_model.inc.php";
 include PATH_INCLUDE."/data_display.inc.php";
 include PATH_INCLUDE."/data_bank.inc.php";
@@ -44,7 +44,7 @@ include PATH_INCLUDE."/globals.inc.php";
 // Sécurité : banissement d'IP, logs, etc.
 //include "include/security.inc.php";
 
-// Réécriture d'URL obsolète pour l'instant
+// Réécriture d'URL : obsolète pour l'instant
 //include "include/rewriting.inc.php";
 
 // Permissions
@@ -59,7 +59,7 @@ include PATH_INCLUDE."/login.inc.php";
 // Templates
 include PATH_INCLUDE."/template.inc.php";
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

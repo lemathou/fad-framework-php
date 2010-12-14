@@ -449,18 +449,12 @@ else
 <p>Une page associée à un template se paréamètre en fonction de ce dernier.</p>
 <p>Une page peut être associée à un ou plusieurs menus.</p>
 
-<p><a href="?add">Ajouter une page</a></p>
-
-<table cellspacing="1" border="1" cellpadding="1">
-<tr style="font-weight:bold;">
-	<td>ID</td>
-	<td>Name</td>
-	<td>Template</td>
-	<td>Title (head)</td>
-	<td>URL</td>
-	<td>Permissions</td>
-</tr>
 <?
+
+page()->table_list(array(), array("label", "description", "type", "template_id", "perm"));
+
+/*
+$template_list = template()->list_detail_get();
 foreach (page()->list_detail_get() as $page)
 {
 
@@ -487,5 +481,7 @@ print "</tr>\n";
 </table>
 
 <?php
+*/
+
 }
 ?>

@@ -44,8 +44,6 @@ protected $field_values = array();
  */
 protected $options = array();
 
-private $serialize_list = array("datamodel_id", "field_values");
-
 public function __sleep()
 {
 

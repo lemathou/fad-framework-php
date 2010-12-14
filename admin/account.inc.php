@@ -16,11 +16,6 @@ if (!defined("ADMIN_OK"))
 
 // Permissions
 $perm_list = array();
-$query = db()->query(" SELECT id , name FROM _perm ");
-while ($perm = $query->fetch_assoc())
-{
-	$perm_list[$perm["id"]] = $perm["name"];
-}
 
 // Lang
 $lang_list = array();

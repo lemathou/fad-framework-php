@@ -68,7 +68,7 @@ gentime("END");
 
 ?>
 
-<?php if (login()->perm(2)) { // SuperAdmin ?>
+<?php if (DEBUG_GENTIME && login()->perm(2)) { // SuperAdmin ?>
 
 <div style="width:980px;margin:5px;padding:5px;background-color:white;">
 <h1>DEBUG Gentime</h1>

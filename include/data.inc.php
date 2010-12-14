@@ -496,7 +496,7 @@ if ($this->verify($value))
 // Convert
 elseif ($force)
 {
-	$this->value = $this->convert($value, $this->structure_opt);
+	$this->value = $this->convert($value);
 	return true;
 }
 // Verification failure
@@ -533,30 +533,7 @@ elseif ($name == "datamodel" && is_a($value, "datamodel"))
 public function verify($value)
 {
 
-if ($value !== null || $this->required==true)
-{
-	$return = true;
-	//echo "<br/>Verifying step 1 ok";
-	foreach($this->structure_opt as $name=>$parameters)
-	{
-		//echo $name."<br />\n";
-		if ($return == true)
-		{
-			$name = "data_verify_$name";
-			//print_r($parameters);
-			if ($name::verify($value, $parameters) == false)
-			{
-				//echo "<br />Verify : ".$name::convert($value, $parameters);
-				$return = false;
-			}
-		}
-	}
-	return $return;
-}
-else
-{
-	return false;
-}
+return true;
 
 }
 
@@ -568,16 +545,6 @@ else
  */
 public function convert($value, $options=array())
 {
-
-foreach($this->structure_opt as $name=>$parameters)
-{
-	$name = "data_verify_$name";
-	// Les classes de conversion seront � modifier en statique d�s que je passe en PHP 5.3
-	$conversion = new $name();
-	// Debug :
-	//echo "<br/>$name : $parameters";
-	$value = $conversion->convert($value, $parameters);
-}
 
 return $value;
 
@@ -756,7 +723,7 @@ if (count($attrib_class_list))
 else
 	$attrib_class = "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"".$this->__tostring()."\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
+$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
 
 if ($print)
 	print $return;
@@ -806,17 +773,34 @@ return array( "type" => "string", "size" => $this->structure_opt["size"] );
 public function __tostring()
 {
 
-if (isset($this->disp_opt["preg_replace"]))
-{
-	//print_r($this->disp_opt["preg_replace"]);
-}
-
 if (isset($this->disp_opt["preg_replace"]) && is_array($opt=$this->disp_opt["preg_replace"]) && isset($opt["pattern"]) && isset($opt["replace"]) && preg_match($opt["pattern"], $this->value))
 {
 	return preg_replace($opt["pattern"], $opt["replace"], $this->value);
 }
 else
 	return data::__tostring();
+
+}
+
+function verify($value)
+{
+
+if (isset($this->structure_opt["size"]))
+{
+	$maxlength = $this->structure_opt["size"];
+	if (!is_string($value) || !is_numeric($value))
+		return false;
+	elseif (is_numeric($maxlength) && $maxlength > 0 && strlen((string)$value) > $maxlength)
+		return false;
+}
+if (isset($this->structure_opt["ereg"]))
+{
+	$ereg = $this->structure_opt["ereg"];
+	if (!preg_match($ereg,$value))
+		return false;
+}
+
+return true;
 
 }
 
@@ -925,6 +909,24 @@ return $return;
 
 }
 
+function verify($value)
+{
+
+if (isset($this->structure_opt["integer"]))
+{
+	$param = $this->structure_opt["integer"];
+	if (!is_numeric($value) || ((int)$value != $value) || (isset($param["signed"]) && $param["signed"] == false && $value < 0))
+		return false;
+	else
+		return true;
+}
+else
+{
+	return true;
+}
+
+}
+
 }
 
 /**
@@ -990,8 +992,29 @@ return $return;
 
 }
 
+function verify($value)
+{
+
+if (isset($this->structure_opt["float"]))
+{
+	$param = $this->structure_opt["float"];
+	if (!is_numeric($value))
+		return false;
+	elseif ($param["signed"] && !preg_match('/^?[-]?([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($param["precision"]-1).'}[1-9]){0,1}$/', $value))
+		return false;
+	elseif (!$param["signed"] && !preg_match('/^([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($param["precision"]-1).'}[1-9]){0,1}$/', $value))
+		return false;
+	else
+		return true;
+}
+else
+{
+	return true;
 }
 
+}
+
+}
 
 /**
  * Text
@@ -1207,6 +1230,16 @@ return array("type" => "select", "value_list" => $value_list);
 
 }
 
+function verify($value)
+{
+
+if (!isset($this->structure_opt["select"][$value]))
+	return false;
+else
+	return true;
+
+}
+
 }
 
 /**
@@ -1377,6 +1410,16 @@ else
 	return false;
 }
 
+function verify($value)
+{
+
+if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
+	return false;
+else
+	return true;
+
+}
+
 }
 
 /**
@@ -1441,6 +1484,16 @@ return array( "type" => "year" );
 
 }
 
+function verify($value)
+{
+
+if (!is_string($value) || !preg_match("([0-9]{4})",$value))
+	return false;
+else
+	return true;
+
+}
+
 }
 
 /**
@@ -1487,6 +1540,16 @@ public function db_field_create()
 {
 
 return array( "type" => "time" );
+
+}
+
+public function verify($value)
+{
+
+if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+	return false;
+else
+	return true;
 
 }
 
@@ -1600,6 +1663,16 @@ return array( "type" => "datetime" );
 
 }
 
+public function verify($value)
+{
+
+if (!is_numeric($value))
+	return false;
+else
+	return true;
+
+}
+
 }
 
 /**
@@ -1669,9 +1742,14 @@ else
 public function value_to_form()
 {
 
-print_r($this->value); 
-
 return $this->value;
+
+}
+
+public function verify($value)
+{
+
+return is_array($value);
 
 }
 
@@ -1760,6 +1838,19 @@ public function db_field_create()
 {
 
 return array( "type" => "fromlist" , "value_list" => array_keys($this->structure_opt["fromlist"]) );
+
+}
+
+public function verify($value)
+{
+
+if (!is_array($value))
+	return false;
+else foreach ($value as $i)
+	if (!isset($this->structure_opt["fromlist"][$i]))
+		return false;
+
+return true;
 
 }
 
@@ -2137,6 +2228,26 @@ return array("type" => "float", "size" => 5, "precision" => 2);
 
 }
 
+public function verify($value)
+{
+
+if (!is_numeric($value) || $value < 0 || $value > 1)
+	return false;
+else
+	return true;
+
+}
+
+public function convert($value)
+{
+
+if ($value)
+	return 1;
+else
+	return 0;
+
+}
+
 }
 /**
  * Priority
@@ -2226,6 +2337,26 @@ if ($print)
 	print $return;
 else
 	return $return;
+
+}
+
+public function verify($value)
+{
+
+if ($value !== true || $value !== false)
+	return false;
+else
+	return true;
+
+}
+
+public function convert($value)
+{
+
+if ($value)
+	return true;
+else
+	return false;
 
 }
 
@@ -2409,6 +2540,23 @@ else
 
 }
 
+public function verify($value)
+{
+
+$regex = ($this->structure_opt["email"]["strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+
+if (is_string($value) && preg_match($regex, $value, $match))
+{
+	if (checkdnsrr($match[2], "MX"))
+		return true;
+	else
+		return false;
+}
+else
+	return false;
+
+}
+
 }
 
 /**
@@ -2434,6 +2582,18 @@ function link($target="_blank")
 		return "<a href=\"$this->value\" target=\"$target\">$this->value</a>";
 	else
 		return "<a href=\"$this->value\">$this->value</a>";
+}
+
+public function verify($value)
+{
+
+$regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
+
+if (!is_string($value) || !preg_match($regex, $value))
+	return false;
+else
+	return true;
+
 }
 
 }
@@ -2528,7 +2688,7 @@ protected $type = "dataobject";
 
 protected $structure_opt = array
 (
-	"databank" => "databank_name",
+	"databank" => 0,
 );
 
 protected $db_opt = array
@@ -2576,47 +2736,26 @@ function object()
 {
 
 if ($this->value)
-	return datamodel($this->structure_opt["databank"], $this->value);
+	return datamodel($this->structure_opt["databank"], $this->value, true);
 else
 	return null;
 
 }
 
-function disp_url()
+function verify($value)
 {
 
-if (is_a($object=datamodel($this->structure_opt["databank"], $this->value), "data_bank_agregat"))
-	return "<a href=\"http://".SITE_DOMAIN.SITE_BASEPATH."/".$this->structure_opt["databank"]."/".$this->value."/\">".$object."</a>";
+if (!is_numeric($value) || !datamodel($this->structure_opt["databank"])->exists($value))
+	return false;
 else
-	return "";
-
-}
-
-function value_from_db($value)
-{
-
-// No need to verify, it's from db ^^
-if (is_numeric($value))
-	return $this->value = $value;
-else
-	return $this->value = null;
-
-}
-
-function value_to_db()
-{
-
-if ($this->value)
-	return $this->value;
-else
-	return null;
+	return true;
 
 }
 
 function value_from_form($value)
 {
 
-if (is_numeric($value) && is_a(($object=datamodel($this->structure_opt["databank"], $value)), "data_bank_agregat"))
+if (is_numeric($value) && datamodel($this->structure_opt["databank"])->exists($value))
 	$this->value = $value;
 else
 	$this->value = null;
@@ -2638,7 +2777,7 @@ if (($databank=datamodel($this->structure_opt["databank"])) && (($nb=$databank->
 	$return .= "<option value=\"\"></option>";
 	foreach($query as $object)
 	{
-		if (is_a($o=datamodel($this->structure_opt["databank"],$this->value), "data_bank_agregat") && ($o->id->value == $object->id->value))
+		if ($this->value == $object->id->value)
 		{
 			$return .= "<option value=\"$object->id\" selected=\"selected\">$object</option>";
 		}
@@ -2652,7 +2791,7 @@ else
 {
 	$return = "<div style=\"display:inline;\"><input name=\"$this->name\" value=\"$this->value\" type=\"hidden\" class=\"q_id\" />";
 	if ($this->value)
-		$value = (string)datamodel($this->structure_opt["databank"],$this->value);
+		$value = (string)datamodel($this->structure_opt["databank"], $this->value, true);
 	else
 		$value = "";
 	$return .= "<input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
@@ -2869,7 +3008,7 @@ if (!is_array($this->value) || !count($this->value))
 }
 elseif ($this->disp_opt["ref_field_disp"])
 {
-	$query = datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array($this->disp_opt["ref_field_disp"]), $order);
+	$query = datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order);
 	$return = array();
 	foreach($query as $object)
 	{
@@ -2879,7 +3018,7 @@ elseif ($this->disp_opt["ref_field_disp"])
 }
 else
 {
-	implode(", ", datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), array(), $order));
+	implode(", ", datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order));
 }
 
 }
@@ -2898,7 +3037,7 @@ else
 if (is_array($this->value) && count($this->value))
 {
 	// Retrieve objects in databank
-	datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
+	datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), true);
 	// Sort by order
 	$return = array();
 	foreach ($this->value as $nb=>$id)
@@ -2909,6 +3048,28 @@ else
 {
 	return array();
 }
+
+}
+
+function verify($value)
+{
+
+if (!is_array($value))
+{
+	return false;
+}
+else
+{
+	foreach($value as $id)
+	{
+		if (!datamodel($this->structure_opt["databank"])->exists($id))
+		{
+			return false;
+		}
+	}
+}
+
+return true;
 
 }
 

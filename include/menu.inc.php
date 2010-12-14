@@ -327,19 +327,15 @@ protected $redirect_url = null;
 // Page alias
 protected $alias_page_id = null;
 
-protected static $serialize_list = array("id", "name", "label", "description", "perm", "type", "url", "titre_court", "template_id", "params_list", "perm_list", "redirect_url", "alias_page_id");
-
 function __sleep()
 {
 
-return session_select::__sleep(self::$serialize_list);
+return array("id", "name", "label", "description", "perm", "type", "url", "titre_court", "template_id", "params_list", "perm_list", "redirect_url", "alias_page_id");
 
 }
-
 function __wakeup()
 {
 
-session_select::__wakeup();
 $this->construct_params();
 
 }
@@ -730,6 +726,7 @@ if (file_exists("page/scripts/$this->name.inc.php"))
 	foreach($this->params as $_name=>&$_value)
 	{
 		//echo "<p>Param $_name : $_value</p>\n";
+
 		${$_name} = $_value;
 	}
 	include "page/scripts/$this->name.inc.php";

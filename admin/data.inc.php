@@ -17,7 +17,7 @@ if (!defined("ADMIN_OK"))
 if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["add"]) && count($_POST))
 {
 
-$object = databank($_GET["datamodel_id"])->create();
+$object = datamodel($_GET["datamodel_id"])->create();
 $object->update_from_form($_POST);
 $object->db_insert();
 
@@ -26,7 +26,7 @@ $object->db_insert();
 if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["object_id"]) && $_GET["object_id"] && count($_POST))
 {
 
-$object = databank($_GET["datamodel_id"])->get($_GET["object_id"]);
+$object = datamodel($_GET["datamodel_id"])->get($_GET["object_id"]);
 $object->update_from_form($_POST);
 $object->db_update();
 
@@ -51,7 +51,7 @@ foreach (datamodel()->list_name_get() as $name=>$id)
 <?php
 if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]))
 {
-	$databank = databank($_GET["datamodel_id"]);
+	$databank = datamodel($_GET["datamodel_id"]);
 	if ($databank->count() <= 20)
 	{
 		?>
@@ -104,14 +104,14 @@ foreach($opt_list as $i=>$j)
 if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["add"]))
 {
 
-databank($_GET["datamodel_id"])->create()->insert_form()->disp();
+datamodel($_GET["datamodel_id"])->create()->insert_form()->disp();
 
 }
 
 elseif (isset($_GET["datamodel_id"]) && isset($_GET["object_id"]) && $_GET["object_id"])
 {
 
-databank($_GET["datamodel_id"])->get($_GET["object_id"])->form()->disp();
+datamodel($_GET["datamodel_id"])->get($_GET["object_id"])->form()->disp();
 
 }
 

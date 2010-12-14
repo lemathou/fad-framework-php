@@ -9,7 +9,7 @@
   * 
   */
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 /**
@@ -408,12 +408,48 @@ protected function add_more($id, $infos)
 
 }
 
+/**
+ * Display a list
+ * @param array params : filtering parameters
+ * @param array field_list : fields to display (automatically adds id and name)
+ */
+public function table_list($params=array(), $field_list=array())
+{
+
+
+
+?>
+<table width="100%" cellspacing="1" border="1" cellpadding="1">
+<tr style="font-weight:bold;">
+	<td>[id] name</td>
+<?
+foreach($field_list as $name)
+	echo "<td>$name</td>\n";
+?>
+</tr>
+<?
+foreach ($this->list_detail as $info)
+{
+
+echo "<tr>\n";
+	print "<td><a href=\"?id=$info[id]\">[$info[id]] $info[name]</a></td>\n";
+foreach($field_list as $name)
+	echo "<td>".$info[$name]."</td>\n";
+echo "</tr>\n";
+
+}
+?>
+</table>
+<?
+
+}
+
 }
 
 /**
  * Default object type
  */
-abstract class object_gestion extends session_select
+abstract class object_gestion
 {
 
 protected $_type = "";

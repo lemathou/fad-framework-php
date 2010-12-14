@@ -35,7 +35,7 @@ if (isset($this->list[$id]))
 	//echo "<p>Template ID#$id found in list : ".get_class($this->list[$id])."</p>\n";
 	return $this->list[$id];
 }
-elseif (false && APC_CACHE && ($template=apc_fetch("template_$id")))
+elseif (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc" && ($template=apc_fetch("template_$id")))
 {
 	return $this->list[$id] = $template;
 }
@@ -47,7 +47,7 @@ elseif ($this->exists($id))
 		$template = new template_datamodel($id, false, $this->list_detail[$id]);
 	else
 		$template = new template($id, false, $this->list_detail[$id]);
-	if (false && APC_CACHE)
+	if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
 		apc_store("template_$id", $template, APC_CACHE_TEMPLATE_TTL);
 	return $this->list[$id] = $template;
 }
@@ -171,24 +171,17 @@ protected $cache_filename = "";
 protected static $infos = array("name", "type", "cache_mintime", "cache_maxtime", "login_dependant");
 protected static $infos_lang = array("label", "description");
 
-protected static $serialize_list = array("_type", "id", "name", "label", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list_detail");
-
 function __sleep()
 {
 
-return session_select::__sleep(self::$serialize_list);
+return array("_type", "id", "name", "label", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list_detail");
 
 }
-
 function __wakeup()
 {
 
-session_select::__wakeup();
-
 $this->tpl_filename = "template/".$this->name.".tpl.php";
-
 $this->construct_params();
-
 //echo "<p>template(ID#$this->id)::__wakeup()</p>\n";
 
 }
@@ -386,28 +379,16 @@ return $this->param_list;
 public function disp()
 {
 
-$this->params_check();
-
 /*
- * Verify if :
- * - cache is enables
- * - template is cacheable
- * - template is not login_dependant
+ * Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
  */
-if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && login()->id()))
-{
-	//echo "<p>DISP CACHE template ID#$this->id</p>\n";
-	$this->cache_id_set();
-	if (isset($_GET["_page_regen"]) || !$this->cache_check())
-	{
-		$this->cache_generate();
-	}
-	$this->cache_disp();
-}
-else
-{
-	echo $this->execute();
-}
+
+//header('Status: 304 Not Modified', false, 304);
+//header('Last-Modified: '.gmdate('D, d M Y H:i:s',filemtime($filename)).' GMT');
+//header('Expires: '.gmdate('D, d M Y H:i:s',filemtime($filename)+60).' GMT');
+//header('Content-Length: '.strlen($tpl));
+
+echo $this->__tostring();
 
 }
 
@@ -634,7 +615,10 @@ public function cache_generate()
 ob_start();
 extract($this->param);
 include PATH_TEMPLATE."/$this->name.tpl.php";
-fwrite(fopen($this->cache_filename,"w"), ob_get_contents());
+if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
+	apc_store("tpl_$this->cache_id", $this->tpl=ob_get_contents(), TEMPLATE_CACHE_MAX_TIME);
+else
+	fwrite(fopen($this->cache_filename,"w"), ob_get_contents());
 ob_end_clean();
 
 }
@@ -673,11 +657,16 @@ elseif (($cache_datetime+TEMPLATE_CACHE_MAX_TIME) < $time)
 		echo "<p>CACHE_CHECK : Cache filename too old -> FALSE</p>\n";
 	return false;
 }
+/*
+if (!($this->tpl = apc_fetch("tpl_$this->cache_id")))
+	return false;
+*/
 // Paramètres du template modifiés
 else
 {
 	$return = true;
 	foreach($this->param_list_detail as $param)
+
 	{
 		if ($param["datatype"] == "dataobject") // TODO : add directly a query function into the dataobject, for example $param->update_datetime_get() ...
 		{
@@ -706,29 +695,16 @@ else
 protected function cache_return()
 {
 
-$filesize = filesize($this->cache_filename);
-$tpl = ($filesize>0) ? fread(fopen($this->cache_filename, "r"), $filesize) : "";
-
-return $this->subtemplates_apply($tpl);
-
-}
-
-/**
- * Display cached template file
- */
-protected function cache_disp()
+if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
 {
-
-/*
- * Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
- */
-
-//header('Status: 304 Not Modified', false, 304);
-//header('Last-Modified: '.gmdate('D, d M Y H:i:s',filemtime($filename)).' GMT');
-//header('Expires: '.gmdate('D, d M Y H:i:s',filemtime($filename)+60).' GMT');
-//header('Content-Length: '.strlen($tpl));
-
-echo $this->cache_return();
+	return $this->subtemplates_apply($this->tpl);
+}
+else
+{
+	$filesize = filesize($this->cache_filename);
+	$tpl = ($filesize>0) ? fread(fopen($this->cache_filename, "r"), $filesize) : "";
+	return $this->subtemplates_apply($tpl);
+}
 
 }
 
@@ -909,26 +885,7 @@ else
 public function disp()
 {
 
-$this->params_check();
-
-if (TEMPLATE_CACHE && $this->object && $this->object->id->value && ($this->cache_maxtime > 0) && !($this->login_dependant && login()->id()))
-{
-	$this->cache_id_set();
-	if (isset($_GET["_page_regen"]) || !$this->cache_check())
-	{
-		$this->cache_generate();
-	}
-	$this->cache_disp();
-}
-else
-{
-		extract($this->param);
-		ob_start();
-		include PATH_TEMPLATE."/".$this->name.".tpl.php";
-		$return = ob_get_contents();
-		ob_end_clean();
-		echo $return;
-}
+echo $this->__tostring();
 
 }
 

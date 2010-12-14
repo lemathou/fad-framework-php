@@ -164,21 +164,15 @@ protected $action_list = array();
  */
 protected $objects = array();
 
-// Données à sauver en session
-private static $serialize_list = array("id", "name", "label", "description", "perm", "library_id", "table", "fields", "fields_key", "fields_required", "fields_calculated", "fields_index", "db_opt", "disp_opt", "action_list");
-
 function __sleep()
 {
 
-//return session_select::__sleep(self::$serialize_list);
 return array("id", "name", "label", "description", "perm", "library_id", "table", "fields", "fields_key", "fields_required", "fields_calculated", "fields_index", "db_opt", "disp_opt", "action_list");
 
 }
 function __wakeup()
 {
 
-//session_select::__wakeup();
-//$this->objects=array();
 $this->library_load();
 
 if (DEBUG_SESSION == true)
@@ -1778,6 +1772,7 @@ else
 		// PAS DEFINI
 		else
 		{
+
 			unset($params[$param_nb]);
 		}
 	}

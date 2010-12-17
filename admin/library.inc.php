@@ -1,7 +1,7 @@
 <?
 
 /**
-  * $Id: library.inc.php 58 2009-03-03 15:47:37Z mathieu $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
@@ -9,27 +9,35 @@
   * 
   */
 
-
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 
-$library_list = library()->list_detail_get();
-
 // Insert
-if (isset($_POST["insert"]))
+if (isset($_POST["_insert"]))
 {
 
-library()->add($_POST["insert"]);
+library()->add($_POST);
 
 }
 
 // Update
-if (isset($_POST["update"]) && is_array($update=$_POST["update"]) && isset($update["id"]) && library()->exists($update["id"]))
+if (isset($_POST["_update"]) && isset($_POST["id"]) && library()->exists($_POST["id"]))
 {
 
-library($update["id"])->update($update);
+library($_POST["id"])->update($_POST);
 
 }
+
+// Delete
+if (isset($_POST["_delete"]) && library()->exists($_POST[_delete]))
+{
+
+library()->delete($_POST["_delete"]);
+
+}
+
+$library_list = library()->list_detail_get();
+
 ?>
 <form method="get" class="page_form">
 <input type="submit" value="Editer la librairie" />
@@ -61,12 +69,12 @@ while (list($library_id) = $query_library->fetch_row())
 	$update["library_list"][] = $library_id;
 	
 ?>
-<form action="?id=<?=$id?>" method="POST">
+<form action="?id=<?=$id?>" method="post">
 <table width="100%">
 <tr style="font-weight:bold;">
 	<td width="200">ID :</td>
-	<td><input name="update[id]" value="<?=$id?>" readonly /></td>
-	<td rowspan="10" width="60%"><textarea id="filecontent" name="update[filecontent]" style="width:100%" rows="40"><?php 
+	<td><input name="id" value="<?=$id?>" readonly /></td>
+	<td rowspan="6" width="60%"><textarea id="filecontent" name="filecontent" style="width:100%;"><?php 
 	$filename = "library/$update[name].inc.php";
 	if (file_exists($filename))
 	{
@@ -76,19 +84,19 @@ while (list($library_id) = $query_library->fetch_row())
 </tr>
 <tr>
 	<td>Name :</td>
-	<td><input name="update[name]" value="<?=$update["name"]?>" maxlength="64" style="width:100%;" /></td>
+	<td><input name="name" value="<?=$update["name"]?>" maxlength="64" style="width:100%;" /></td>
 </tr>
 <tr>
 	<td>Nom complet :</td>
-	<td><input name="update[label]" value="<?=$update["label"]?>" maxlength="128" style="width:100%;" /></td>
+	<td><input name="label" value="<?=$update["label"]?>" maxlength="128" style="width:100%;" /></td>
 </tr>
 <tr>
 	<td>Description :</td>
-	<td><textarea name="update[description]" style="width:100%;" rows="10"><?=$update["description"]?></textarea></td>
+	<td><textarea name="description" style="width:100%;" rows="10"><?=$update["description"]?></textarea></td>
 </tr>
 <tr>
 	<td>Dependances :</td>
-	<td><select name="update[library_list][]" size="10" multiple style="width:100%;">
+	<td><select name="library_list[]" size="10" multiple style="width:100%;">
 	<?
 	foreach($library_list as $i => $j)
 		if (in_array($i, $update["library_list"]))
@@ -100,7 +108,7 @@ while (list($library_id) = $query_library->fetch_row())
 </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input type="submit" value="Mettre à jour" /></td>
+	<td><input type="submit" name="_update" value="Mettre à jour" /></td>
 </tr>
 </table>
 </form>
@@ -109,13 +117,14 @@ while (list($library_id) = $query_library->fetch_row())
 $(document).ready(function(){
 	// initialisation
 	editAreaLoader.init({
-		id: "filecontent"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: true
-		,word_wrap: true
-		,language: "fr"
-		,syntax: "php"	
+		"id": "filecontent"	// id of the textarea to transform		
+		,"start_highlight": true	// if start with highlight
+		,"allow_resize": "both"
+		,"min_height": "600"
+		,"allow_toggle": true
+		,"word_wrap": true
+		,"language": "fr"
+		,"syntax": "php"	
 	});
 });
 </script>
@@ -131,20 +140,20 @@ elseif (isset($_GET["add"]))
 <table width="100%">
 <tr style="font-weight:bold;">
 	<td class="label">Name (unique) :</td>
-	<td><input name="insert[name]" value="" maxlength="64" style="width:100%;" /></td>
-	<td rowspan="10" width="60%"><textarea id="insert[filecontent]" name="insert[filecontent]" style="width:100%;" rows="40"></textarea></td>
+	<td><input name="name" value="" maxlength="64" style="width:100%;" /></td>
+	<td rowspan="10" width="60%"><textarea id="filecontent" name="filecontent" style="width:100%;"></textarea></td>
 </tr>
 <tr>
 	<td class="label">Nom complet :</td>
-	<td><input name="insert[label]" value="" maxlength="128" style="width:100%;" /></td>
+	<td><input name="label" value="" maxlength="128" style="width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Description :</td>
-	<td><textarea name="insert[description]" style="width:100%;height:100%;" rows="10"></textarea></td>
+	<td><textarea name="description" style="width:100%;height:100%;" rows="10"></textarea></td>
 </tr>
 <tr>
 	<td class="label">Dependances :</td>
-	<td><select name="insert[library_list][]" size="10" multiple style="width:100%;">
+	<td><select name="library_list[]" size="10" multiple style="width:100%;">
 	<?
 	foreach($library_list as $i => $j)
 		echo "<option value=\"$i\">$j[label]</option>";
@@ -153,7 +162,7 @@ elseif (isset($_GET["add"]))
 </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input type="submit" value="Ajouter" /></td>
+	<td><input type="submit" name="_insert" value="Ajouter" /></td>
 </tr>
 </table>
 </form>
@@ -162,13 +171,14 @@ elseif (isset($_GET["add"]))
 $(document).ready(function(){
 	// initialisation
 	editAreaLoader.init({
-		id: "insert[filecontent]"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: true
-		,word_wrap: true
-		,language: "fr"
-		,syntax: "php"	
+		"id": "filecontent"	// id of the textarea to transform		
+		,"start_highlight": true	// if start with highlight
+		,"allow_resize": "both"
+		,"min_height": "600"
+		,"allow_toggle": true
+		,"word_wrap": true
+		,"language": "fr"
+		,"syntax": "php"	
 	});
 });
 </script>

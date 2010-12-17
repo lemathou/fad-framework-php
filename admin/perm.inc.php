@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: permission.inc.php 76 2009-10-15 09:24:20Z mathieu $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 

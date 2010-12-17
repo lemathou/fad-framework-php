@@ -1,7 +1,7 @@
 <?
 
 /**
-  * $Id: header.inc.php 74 2009-07-03 06:41:02Z mathieu $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
@@ -51,6 +51,7 @@ include PATH_INCLUDE."/globals.inc.php";
 include PATH_INCLUDE."/permission.inc.php";
 
 // Menu & Pages
+include PATH_INCLUDE."/page.inc.php";
 include PATH_INCLUDE."/menu.inc.php";
 
 // Login

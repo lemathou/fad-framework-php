@@ -1,7 +1,7 @@
 <?
 
 /**
-  * $Id: agregat.inc.php 40 2008-10-01 07:37:20Z mathieu $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
@@ -102,7 +102,7 @@ class data
 {
 
 /**
- * Nom à utiliser comme identifiant (unique dans un contexte car sert de référence les agrégats)
+ * Unique name as an identifier for example in forms
  *
  * @var string
  */
@@ -118,25 +118,27 @@ protected $label="";
 protected $datamodel_id=0;
 
 /**
- * Type de donnée (audio, texte, video, file, etc.)
- *
+ * Datatype (audio, text, video, file, etc.)
+ * 
  * @var string
  */
 protected $type="";
 
 /**
  * Données brutes dans le format dééfini et "contraint" le plus adapté
- *
+ * 
  * @var mixed
  */
 protected $value=null;
 
 /**
  * Required means Not null
- *
+ * 
  * @var bool
  */
 protected $required=false;
+
+protected $option_list = array();
 
 /**
  * Options de structure et par extension de Verification & Conversion (Voir les classes de conversion associées)
@@ -166,7 +168,7 @@ protected $disp_opt = array();
  * 	"css_class" => "",
  * 	"css_stype" => "",
  */
-public static $disp_opt_list = array("mime_type", "ref_field_disp", "preg_replace");
+public static $disp_opt_list = array("mime_type", "ref_field_disp", "preg_replace", "template_datamodel", "");
 
 /**
  * Précisions pour les formulaires, tout sera généré via la classe form (à voir)
@@ -175,12 +177,6 @@ public static $disp_opt_list = array("mime_type", "ref_field_disp", "preg_replac
  */
 protected $form_opt = array();
 public static $form_opt_list = array("type", "tabindex", "accesskey", "size", "cols", "rows", "width", "height");
-
-/**
- * Data avalaible using __get()
- * @var array
- */
-protected static $get_list = array("name", "type", "label", "value", "structure_opt", "db_opt", "disp_opt", "form_opt", "datamodel_id");
 
 /**
  * Constructor
@@ -197,16 +193,28 @@ $this->label = $label;
 
 if (is_array($structure_opt))
 	foreach ($structure_opt as $i=>$j)
+	{
 		$this->structure_opt_set($i,$j);
+		//$this->opt_set($i,$j);
+	}
 if (is_array($db_opt))
 	foreach ($db_opt as $i=>$j)
+	{
 		$this->db_opt_set($i,$j);
+		//$this->opt_set($i,$j);
+	}
 if (is_array($disp_opt))
 	foreach ($disp_opt as $i=>$j)
+	{
 		$this->disp_opt_set($i,$j);
+		//$this->opt_set($i,$j);
+	}
 if (is_array($form_opt))
 	foreach ($form_opt as $i=>$j)
+	{
 		$this->form_opt_set($i,$j);
+		//$this->opt_set($i,$j);
+	}
 
 // Par défaut on force la valeur à l'initialisation
 $this->value_set($value, true);
@@ -219,16 +227,16 @@ $this->value_set($value, true);
 public function __get($name)
 {
 
-if (in_array($name, self::$get_list))
+if (is_string($name) && in_array($name, array("name", "type", "label", "value", "opt_list", "datamodel_id", "structure_opt", "db_opt", "disp_opt", "form_opt")) && isset($this->{$name}))
 	return $this->{$name};
 elseif ($name == "datamodel")
 	return datamodel($this->datamodel_id);
 else
-	return NULL;
+	return null;
 
 }
 
-public function datamodel_set($datamodel_id=0)
+public function datamodel_set($datamodel_id)
 {
 
 // TODO : Cannot verify the consistence of the datamodel, the fields are constructed at the same time... 
@@ -243,11 +251,24 @@ return datamodel($this->datamodel_id);
 }
 
 /**
- * Set structure options.
- *
- * @param string $name
- * @param mixed $value
+ * Define options
  */
+public function opt_set($name, $value)
+{
+
+if (isset(self::$opt_list[$name]))
+	$this->opt_list[$name] = $value;
+
+}
+public function opt_get($name)
+{
+
+if (isset($this->opt_list[$name]))
+	return $this->opt_list[$name];
+elseif (isset(self::$opt_list[$name]))
+	return self::$opt_list[$name];
+
+}
 public function structure_opt_set($name, $value)
 {
 
@@ -263,15 +284,6 @@ else
 	return false;
 
 }
-
-/**
- * View structure_opt
- * 
- * To store the value in the database if needed.
- * 
- * @param string $name
- * @param mixed $value
- */
 public function structure_opt($name)
 {
 
@@ -287,15 +299,6 @@ public function structure_opt_list_get()
 return $this->structure_opt;
 
 }
-
-/**
- * Set database options.
- * 
- * To store the value in the database if needed.
- * 
- * @param string $name
- * @param mixed $value
- */
 public function db_opt_set($name, $value)
 {
 
@@ -308,15 +311,6 @@ else
 	return false;
 
 }
-
-/**
- * Set database options.
- * 
- * To store the value in the database if needed.
- * 
- * @param string $name
- * @param mixed $value
- */
 public function db_opt($name)
 {
 
@@ -332,14 +326,6 @@ public function db_opt_list_get()
 return $this->db_opt;
 
 }
-
-
-/**
- * Set display options.
- *
- * @param string $name
- * @param mixed $value
- */
 public function disp_opt_set($name, $value)
 {
 
@@ -352,13 +338,6 @@ else
 	return false;
 	
 }
-
-/**
- * Get display options.
- *
- * @param string $name
- * @return mixed $value
- */
 public function disp_opt($name)
 {
 
@@ -374,14 +353,6 @@ public function disp_opt_list_get()
 return $this->disp_opt;
 
 }
-
-
-/**
- * Set form options.
- *
- * @param string $name
- * @param mixed $value
- */
 public function form_opt_set($name, $value)
 {
 
@@ -394,13 +365,6 @@ else
 	return false;
 
 }
-
-/**
- * Get form options.
- *
- * @param string $name
- * @return mixed $value
- */
 public function form_opt($name)
 {
 
@@ -433,26 +397,7 @@ return array
 }
 
 /**
- * Return value
- *
- * @return string
- */
-public function __tostring()
-{
-
-return (string)$this->value;
-
-}
-
-function disp_url()
-{
-	
-return $this->__tostring();
-
-}
-
-/**
- * Return true if the value is empty (or not set)
+ * Returns if the value is empty (or not set)
  */
 public function null()
 {
@@ -463,7 +408,6 @@ else
 	return true;
 
 }
-
 public function nonempty()
 {
 
@@ -471,6 +415,21 @@ if ($this->value)
 	return true;
 else
 	return false;
+
+}
+
+/**
+ * Only the value can be updated, the other properties are too complex
+ *
+ * @param unknown_type $name
+ * @param unknown_type $value
+ * @return unknown
+ */
+public function __set($name, $value)
+{
+
+if ($name == "value")
+	$this->value = $value;
 
 }
 
@@ -483,8 +442,6 @@ else
  */
 public function value_set($value, $force=false)
 {
-
-//echo "<p>$this->name : $value / ".$this->verify($value)."</p>\n";
 
 // Verify and update
 if ($this->verify($value))
@@ -506,37 +463,18 @@ else
 }
 
 }
-
-/**
- * Only the value can be updated, the other properties are too complex
- *
- * @param unknown_type $name
- * @param unknown_type $value
- * @return unknown
- */
-public function __set($name, $value)
-{
-
-if ($name == "value")
-	$this->value = $value;
-elseif ($name == "datamodel" && is_a($value, "datamodel"))
-	$this->datamodel_id = $value->id();
-	
-}
-
 /**
  * Verify a potential value
  * 
  * @param mixed verify
  * @return boolean
  */
-public function verify($value)
+public function verify($value, $options=array())
 {
 
 return true;
 
 }
-
 /**
  * Convert a value with the structure options
  * 
@@ -547,6 +485,105 @@ public function convert($value, $options=array())
 {
 
 return $value;
+
+}
+
+/**
+ * Convert the value in database format
+ * 
+ * @param unknown_type $value
+ * @return unknown
+ */
+public function value_from_db($value)
+{
+
+$this->value = $value;
+
+}
+
+public function value_to_db()
+{
+
+if ($this->value === null)
+	return null;
+else
+	return "$this->value";
+
+}
+
+/**
+ * Return the query string for the datamodel
+ * 
+ * @param $value
+ * @return unknown_type
+ */
+public function db_query_param($value, $type="=")
+{
+
+if (!in_array($type, array("=", "<", ">", "<=", ">=", "<>", "LIKE", "NOT LIKE")))
+	$type = "=";
+
+if (!isset($this->db_opt["field"]) || !($fieldname = $this->db_opt["field"]))
+	$fieldname = $this->name;
+
+if (is_array($value))
+{
+	if (count($value))
+	{
+		$q = array();
+		foreach($value as $i)
+			$q[] = "'".db()->string_escape($i)."'";
+		return "`".$fieldname."` IN (".implode(" , ",$q).")";
+	}
+	else
+		return "`".$fieldname."` IN ( null )";
+}
+else
+	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
+
+}
+
+/**
+ * Convert the value from the appripriate format used in the form_field() view in an HTML form 
+ *
+ * @param unknown_type $value
+ */
+public function value_from_form($value)
+{
+
+$this->value_set($value, true);
+
+}
+/**
+ * Convert the value to export it in an HTML form in the appropriate format
+ * TODO : Is this really usefull ..?
+ * 
+ * @param unknown_type $value
+ * @return unknown
+ */
+public function value_to_form()
+{
+
+return $this->value;
+
+}
+
+/**
+ * Return value
+ *
+ * @return string
+ */
+public function __tostring()
+{
+
+return (string)$this->value;
+
+}
+
+function disp_url() // TODO : is this usefull ? if not destroy ! (see in data_display)
+{
+	
+return $this->__tostring();
 
 }
 
@@ -584,88 +621,6 @@ else
 
 }
 
-/**
- * Convert the value in database format
- * 
- * @param unknown_type $value
- * @return unknown
- */
-public function value_from_db($value)
-{
-
-$this->value = $value;
-
-}
-
-public function value_to_db()
-{
-
-if ($this->value === null)
-	return null;
-else
-	return "$this->value";
-
-}
-
-/**
- * Return the query string for the datamodel
- * 
- * @param $value
- * @return unknown_type
- */
-public function db_query_param($value, $type="=")
-{
-
-$type_list = array( "=", "LIKE", "<", ">", "<=", ">=", "NOT LIKE" );  
-if (!in_array($type, $type_list))
-	$type = "=";
-
-if (!isset($this->db_opt["field"]) || !($fieldname = $this->db_opt["field"]))
-	$fieldname = $this->name;
-
-if (is_array($value))
-{
-	if (count($value))
-	{
-		$q = array();
-		foreach($value as $i)
-			$q[] = "'".db()->string_escape($i)."'";
-		return "`".$fieldname."` IN (".implode(" , ",$q).")";
-	}
-	else
-		return "`".$fieldname."` IN ( null )";
-}
-else
-	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
-
-}
-
-/**
- * Convert the value from an HTML form format
- *
- * @param unknown_type $value
- */
-public function value_from_form($value)
-{
-
-$this->value_set($value, true);
-
-}
-
-
-/**
- * Convert the value in HTML form format
- *
- * @param unknown_type $value
- * @return unknown
- */
-public function value_to_form()
-{
-
-return $this->value;
-
-}
-
 }
 
 /* BASE DATA TYPES */
@@ -689,22 +644,10 @@ protected $structure_opt = array
 	"size" => 256
 );
 
-protected $disp_opt = array
-(
-	"mime_type" => "text/plain"
-);
-
-// Form specific properties
-protected $form_opt = array
-(
-	"type" => "text",
-	"size" => 32
-);
-
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] )
+$attrib_size = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 && $this->structure_opt["size"] < 32 )
 	? " size=\"".$this->form_opt["size"]."\""
 	: "";
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 )
@@ -723,35 +666,12 @@ if (count($attrib_class_list))
 else
 	$attrib_class = "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
-
-if ($print)
-	print $return;
+if ($this->type == "password")
+	$type = "password";
 else
-	return $return;
+	$type = "text";
 
-}
-
-public function form_field_disp_update($print=true, $options=array())
-{
-
-$attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] > 0 )
-	? " size=\"".$this->form_opt["size"]."\""
-	: "";
-$attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 )
-	? " maxlength=\"".$this->structure_opt["size"]."\""
-	: "";
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
-	? " readonly"
-	: "";
-$attrib_class_list = array(get_called_class());
-
-if (count($attrib_class_list))
-	$attrib_class = " class=\"".implode(" ", $attrib_class_list)."\"";
-else
-	$attrib_class = "";
-
-$return = "<input type=\"".$this->form_opt["type"]."\" id=\"$this->name\" onchange=\"javascript:this.name = this.id;\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
+$return = "<input type=\"$type\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
 
 if ($print)
 	print $return;
@@ -823,17 +743,11 @@ protected $type = "password";
 protected $structure_opt = array
 (
 	"size" => 64,
-	"enctype" => "md5",
+	"enctype" => "md5"
 );
 
-protected $form_opt = array
-(
-	"type" => "password",
-	"size" => 12,
-);
-
-/* penser à la conversion en md5=>voir comment modifier par la suite
- * le mieux est peut-être de stocker directement )à l'insertion en md5
+/* TODO : penser à la conversion en md5=>voir comment modifier par la suite
+ * le mieux est peut-être de stocker directement à l'insertion en md5
  * pour pouvoir plus aisément comparer... a voir !!
  */
 
@@ -848,7 +762,6 @@ class data_integer extends data_string
 
 protected static $id = 3;
 
-// TODO : static
 protected $type = "integer";
 
 protected $structure_opt = array
@@ -856,21 +769,10 @@ protected $structure_opt = array
 	"integer" => array( "signed" => true , "size" => 11 ),
 );
 
-protected $form_opt = array
-(
-	"type" => "text",
-	"size" => 6,
-);
-
 public function form_field_disp($print=true, $options=array())
 {
 
-// ($this->structure_opt["integer"]["size"]+1) en prenant en compte "-"
-
-$attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] <= $this->structure_opt["integer"]["size"] )
-	? " size=\"".$this->form_opt["size"]."\""
-	: " size=\"".($this->structure_opt["integer"]["size"]+1)."\"";
-$attrib_maxlength = " maxlength=\"".($this->structure_opt["integer"]["size"]+1)."\"";
+$attrib_size = $attrib_maxlength = " maxlength=\"".($this->structure_opt["integer"]["size"]+1)."\"";
 $attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
 	? " readonly"
 	: "";
@@ -1032,11 +934,6 @@ protected $type = "text";
 
 protected $structure_opt = array ();
 
-protected $form_opt = array
-(
-	"type" => "textarea",
-);
-
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1085,11 +982,6 @@ protected $mime_type = "text/html";
 protected $structure_opt = array
 (
 	"string_tag_authorized" => array ( "b" , "i" , "u" , "font" , "strong" , "a" , "p" ),
-);
-
-protected $form_opt = array
-(
-	"type" => "textarea",
 );
 
 public function form_field_disp($print=true, $options=array())
@@ -1141,11 +1033,6 @@ protected $structure_opt = array
 	"select" => array(),
 );
 
-protected $form_opt = array
-(
-	"type" => "select",
-);
-
 public function form_field($options=array())
 {
 
@@ -1168,24 +1055,6 @@ $return .= "</select>";
 
 if ($print)
 	echo $return;
-else
-	return $return;
-
-}
-
-public function form_field_disp_update($print=true, $options=array())
-{
-
-$return = "<select id=\"$this->name\" class=\"".get_called_class()."\" onchange=\"javascript:this.name = this.id;\">";
-foreach ($this->structure_opt["select"] as $i=>$j)
-	if ($this->value == $i)
-		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
-	else
-		$return .= "<option value=\"$i\">$j</option>";
-$return .= "</select>";
-
-if ($print)
-	print $return;
 else
 	return $return;
 
@@ -3018,7 +2887,7 @@ elseif ($this->disp_opt["ref_field_disp"])
 }
 else
 {
-	implode(", ", datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order));
+	return implode(", ", datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order));
 }
 
 }

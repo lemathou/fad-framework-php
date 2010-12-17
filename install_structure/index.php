@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: _template.php 66 2009-03-03 15:51:14Z mathieu $
+  * $Id$
   * 
   * « Copyright 2008 Mathieu Moulin - lemathou@free.fr »
   * 

@@ -35,7 +35,7 @@
 				}
 				
 				// usefull? => _$("cursor_pos").style.top=new_top+"px";	
-				
+		
 				if(this.do_highlight==true)
 				{
 					// fill selection elements

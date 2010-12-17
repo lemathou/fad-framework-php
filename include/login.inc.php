@@ -1,7 +1,7 @@
 <?
 
 /**
-  * $Id: login.inc.php 76 2009-10-15 09:24:20Z mathieu $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
@@ -51,14 +51,32 @@ if ($query->num_rows())
 function __get($name)
 {
 
-if (isset($this->{$name}))
+if (in_array($name, array("id", "email", "lang", "sid", "os")))
 	return $this->{$name};
-else
-{
-	if (DEBUG_LOGIN)
-		trigger_error("DEBUG : account(ID#$this->id)->__get('$name') : does not exists  ");
-	return null;
+elseif (LOG_ERROR)
+	error()->add("login", "Undefined variable '$info'");
+
 }
+
+/**
+ * Retrieve usefull info
+ */
+public function id()
+{
+
+return $this->id;
+
+}
+public function lang()
+{
+
+return $this->lang_id;
+
+}
+public function info($name)
+{
+
+return $this->__get($name);
 
 }
 
@@ -357,7 +375,6 @@ if (isset($_COOKIE["sid"]))
 $this->id = 0;
 
 $this->type = "";
-$this->username = "";
 $this->contact_id = 0;
 $this->lang_id = 0;
 $this->email = "";
@@ -446,7 +463,7 @@ while (list($perm_id) = $query->fetch_row())
 // Specific perms
 $this->perm = array();
 $query = db()->query("SELECT `type`, `id`, `perm` FROM `_account_perm` WHERE `account_id`='$this->id'");
-while(list($type, $library_id, $perm)=$query->fetch_row())
+while(list($type, $id, $perm)=$query->fetch_row())
 	$this->perm[$type][$id] = $perm;
 
 // Régénération du menu puisque nouvelles permissions
@@ -478,34 +495,6 @@ if (isset($this->perm[$type][$id]))
 	return $this->perm[$type][$id];
 else
 	return null;
-
-}
-
-/**
- * Retrieve usefull info
- */
-public function id()
-{
-
-return $this->id;
-
-}
-public function lang()
-{
-
-return $this->lang_id;
-
-}
-public function info_get($info)
-{
-
-if (isset($this->{$info}))
-	return $this->{$info};
-else
-{
-	error()->add("login", "Undefined variable '$info'");
-	return false;
-}
 
 }
 

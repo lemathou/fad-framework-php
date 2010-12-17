@@ -1,7 +1,7 @@
 <?
 
 /**
-  * $Id: rewriting.inc.php 75 2009-08-24 15:12:38Z mathieu $
+  * $Id$
   * 
   * � Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr �
   * 

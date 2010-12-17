@@ -1,9 +1,9 @@
 <?
 
 /**
-  * $Id: mysql.inc.php 74 2009-07-03 06:41:02Z mathieu $
+  * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -12,16 +12,16 @@
 /**
   * MySQL abstraction layer
   */
-class db extends session_select implements db_i
+class db implements db_i
 {
 
-protected $id = NULL;
+protected $id = null;
 
 protected $infos=array();
 protected $options=array();
 
-protected $errno = NULL;
-protected $error = NULL;
+protected $errno = null;
+protected $error = null;
 
 // Purement statistique donc publique, en plus c'est plus pratique pour db_query
 public $query_list = array();
@@ -32,10 +32,32 @@ public $fetch_results_total = 0;
 public $time = 0;
 public $time_total = 0;
 
-// Données à sauver en session
-private $serialize_list = array( "infos" , "options" , "queries_total" , "fetch_results_total" , "time_total" );
-public $serialize_save_list = array();
+function __sleep()
+{
 
+$this->queries_total += $this->queries;
+$this->fetch_results_total += $this->fetch_results;
+$this->time_total += $this->time;
+
+return array("infos", "options", "queries_total", "fetch_results_total", "time_total");
+
+}
+public function __wakeup()
+{
+
+$this->connect();
+
+}
+public function __destruct()
+{
+
+if ($this->id)
+{
+	mysql_close($this->id);
+	$this->id = null;
+}
+
+}
 function __construct($infos=array(), $options=array())
 {
 
@@ -54,8 +76,10 @@ if (in_array("permanent", $this->options))
 	$this->id = mysql_pconnect($this->infos["hostname"], $this->infos["username"], $this->infos["password"]);
 else
 	$this->id = mysql_connect($this->infos["hostname"], $this->infos["username"], $this->infos["password"]);
+
 // Choix base de donnée
 mysql_select_db($this->infos["database"], $this->id);
+
 // Encoding
 if ($this->infos["charset"] == "UTF8")
 {
@@ -101,7 +125,7 @@ public function update($table, $update, $where="", $order="", $limit="")
 {
 
 $this->queries++;
-return new db_query(" UPDATE `$table` SET $update $where $order $limit", $this->id);
+return new db_query("UPDATE `$table` SET $update $where $order $limit", $this->id);
 
 }
 
@@ -109,7 +133,7 @@ public function delete($table, $where, $order, $limit)
 {
 
 $this->queries++;
-return new db_query(" DELETE FROM `$table` $where $order $limit", $this->id);
+return new db_query("DELETE FROM `$table` $where $order $limit", $this->id);
 
 }
 
@@ -145,43 +169,6 @@ public function last_id()
 {
 
 return mysql_insert_id($this->id);
-
-}
-
-public function __destruct()
-{
-
-if ($this->id)
-{
-	mysql_close($this->id);
-	$this->id = NULL;
-}
-
-}
-
-public function __sleep()
-{
-
-$this->queries_total += $this->queries;
-$this->fetch_results_total += $this->fetch_results;
-$this->time_total += $this->time;
-
-if ($this->id)
-{
-	mysql_close($this->id);
-	$this->id = NULL;
-}
-
-return parent::__sleep($this->serialize_list);
-
-}
-
-public function __wakeup()
-{
-
-session_select::__wakeup();
-
-$this->connect();
 
 }
 
@@ -319,36 +306,71 @@ return mysql_real_escape_string($string);
 class db_query implements db_query_i
 {
 
-// id de la connexion au serveur
+// server connection ID
 protected $db_id; 
-// id de la requ�te
+// server request ID
 protected $id;
+// query_string
+protected $query_string="";
+// num_rows
+protected $num_rows=null;
 
-// On effectue la requète
+protected function log_error($error="")
+{
+
+echo "<p>DEBUG : ".mysql_error()."</p>\n";
+fwrite(fopen(LOG_DB_ERROR_PATH, "a"), date("Y-m-d H:i:s")." : $error\n");
+
+}
+
+public function __destruct()
+{
+
+if (false && $this->id)
+{
+	$this->free();
+}
+
+}
 function __construct($query_string, $db_id)
 {
 
-//print $query_string;
 $this->db_id = $db_id;
+$this->query_string = $query_string;
+
+if (!$this->id)
+	$this->execute();
+
+}
+
+public function execute()
+{
+
 $time1 = microtime(true);
-$this->id = mysql_query($query_string, $this->db_id);
+$this->id = mysql_query($this->query_string, $this->db_id);
 $time2 = microtime(true);
 db()->time += ($time2 - $time1);
-if (mysql_error())
-{
-	print "<p>".$query_string." : ".mysql_error()."</p>";
-}
+
+if (($error=mysql_error()) && LOG_DB_ERROR)
+	$this->log_error($error);
 
 }
 
 public function num_rows()
 {
 
-$time1 = microtime(true);
-$return = mysql_num_rows($this->id);
-$time2 = microtime(true);
-db()->time += ($time2 - $time1);
-return $return;
+if (!$this->id)
+	$this->execute();
+
+if (!is_numeric($this->num_rows))
+{
+	$time1 = microtime(true);
+	$this->num_rows = mysql_num_rows($this->id);
+	$time2 = microtime(true);
+	db()->time += ($time2 - $time1);
+}
+
+return $this->num_rows;
 
 }
 
@@ -381,6 +403,9 @@ switch($type)
 public function fetch_all($type="row", $return="list")
 {
 
+if (!$this->id)
+	$this->execute();
+
 switch($return)
 {
 	case "list":
@@ -402,13 +427,18 @@ switch($return)
 public function fetch_row()
 {
 
+if (!$this->id)
+	$this->execute();
+
 $time1 = microtime(true);
 if ($return = mysql_fetch_row($this->id))
-{
 	db()->fetch_results++;
-}
 $time2 = microtime(true);
 db()->time += ($time2 - $time1);
+
+if (mysql_error() && LOG_DB_ERROR)
+	$this->log_error();
+
 return $return;
 
 }
@@ -416,13 +446,18 @@ return $return;
 public function fetch_array()
 {
 
+if (!$this->id)
+	$this->execute();
+
 $time1 = microtime(true);
 if ($return = mysql_fetch_array($this->id, MYSQL_ASSOC))
-{
 	db()->fetch_results++;
-}
 $time2 = microtime(true);
 db()->time += ($time2 - $time1);
+
+if (mysql_error() && LOG_DB_ERROR)
+	$this->log_error();
+
 return $return;
 
 }
@@ -430,19 +465,27 @@ return $return;
 public function fetch_assoc()
 {
 
+if (!$this->id)
+	$this->execute();
+
 $time1 = microtime(true);
 if ($return = mysql_fetch_assoc($this->id))
-{
 	db()->fetch_results++;
-}
 $time2 = microtime(true);
 db()->time += ($time2 - $time1);
+
+if (mysql_error() && LOG_DB_ERROR)
+	$this->log_error();
+
 return $return;
 
 }
 
 public function affected_rows()
 {
+
+if (!$this->id)
+	$this->execute();
 
 return mysql_affected_rows($this->db_id);
 
@@ -451,6 +494,9 @@ return mysql_affected_rows($this->db_id);
 public function last_id()
 {
 
+if (!$this->id)
+	$this->execute();
+
 return mysql_insert_id($this->db_id);
 
 }
@@ -458,7 +504,12 @@ return mysql_insert_id($this->db_id);
 public function free()
 {
 
-return mysql_free_result($this->id);
+if ($this->id)
+{
+	$return = mysql_free_result($this->id);
+	$this->id = null;
+	return $return;
+}
 
 }
 

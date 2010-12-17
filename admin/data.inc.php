@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: data.inc.php 76 2010-10-15 09:24:20Z mathieu $
+  * $Id$
   * 
   * Copyright 2010 Mathieu Moulin - lemathou@free.fr
   * 

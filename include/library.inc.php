@@ -1,7 +1,7 @@
 <?
 
 /**
-  * $Id: library.inc.php 71 2009-03-18 18:09:34Z mathieu $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
@@ -226,6 +226,19 @@ if ($id)
 	return $GLOBALS["library_gestion"]->get($id);
 else
 	return $GLOBALS["library_gestion"];
+
+}
+
+/**
+ * Auto loading of datamodel class definitions
+ */
+function __autoload($class_name)
+{
+
+if (substr($class_name, -7) == "agregat" && ($name=substr($class_name, 0, -8)) && datamodel()->exists_name($name))
+{
+	datamodel()->{$name};
+}
 
 }
 

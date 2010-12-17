@@ -1,7 +1,7 @@
 <?
 
 /**
-  * $Id: header.inc.php 74 2009-07-03 06:41:02Z mathieu $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
   * 

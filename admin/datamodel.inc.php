@@ -30,15 +30,13 @@ if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
 	$_type()->del($_POST["_delete"]);
 }
 
-$_type_list = $_type()->list_detail_get();
-
 ?>
 <form method="get" class="page_form">
 <input type="submit" value="<?php echo $_label; ?>" />
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach ($_type_list as $id=>$info)
+foreach ($_type()->list_detail_get() as $id=>$info)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
 		echo "	<option value=\"$id\" selected>[$id] $info[name]</option>\n";
@@ -54,11 +52,18 @@ foreach ($_type_list as $id=>$info)
 <div style="padding-top: 30px">
 <?php
 
+$_type_list = $_type()->list_detail_get();
+
 $library_list = library()->list_detail_get();
 
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
+if (empty($_GET["field_edit"]))
+{
+	$_type($id)->update_form();
+}
+	
 $object = $_type($id);
 
 list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$id'")->fetch_row();
@@ -91,48 +96,7 @@ if (isset($_POST["_db_create"]))
 // Position maximale
 list($pos_max)=db()->query("SELECT MAX(`pos`) FROM `_datamodel_fields` WHERE `datamodel_id`='$id'")->fetch_row();
 
-if (empty($_GET["field_edit"])) { ?>
-<form method="post"><table>
-<tr>
-	<td>ID :</td>
-	<td><input name="id" value="<?=$id?>" size="6" readonly /></td>
-</tr>
-<tr>
-	<td>Librairie :</td>
-	<td><select name="library_id">
-	<?php
-	foreach ($library_list as $library)
-	{
-		if(is_a($object->library(), "library") && $library["id"] == $object->library()->id())
-			echo "<option value=\"$library[id]\" selected>$library[name]</option>\n";
-		else
-			echo "<option value=\"$library[id]\">$library[name]</option>\n";
-	}
-	?>
-	</select></td>
-</tr>
-<tr>
-	<td>Name :</td>
-	<td><input name="name" value="<?=$object->name()?>" /></td>
-</tr>
-<tr>
-	<td>Label :</td>
-	<td><input name="label" value="<?=$object->label()?>" size="64" /></td>
-</tr>
-<tr>
-	<td>Description :</td>
-	<td><textarea name="description" style="width:100%;" rows="10"><?=$object->info("description")?></textarea></td>
-</tr>
-<tr>
-	<td>Table (en BDD) :</td>
-	<td><input name="table" value="<?=$object->db_opt("table")?>" /></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" name="_update" value="Mettre à jour" onclick="return(confirm('Êtes-vous certain de vouloir mettre à jour ce datamodel ?'))" /></td>
-</tr>
-</table></form>
-<?php } ?>
+?>
 
 <form method="post" action="?id=<?=$id?>">
 <h3>Liste des champs :</h3>
@@ -333,50 +297,14 @@ if (!isset($_GET["field_edit"])) {
 elseif (isset($_GET["add"]))
 {
 
-?>
-
-<form method="post" action="?add">
-<p>Ajouter un datamodel</p>
-<table>
-<tr>
-	<td>Name :</td>
-	<td><input name="name" /></td>
-</tr>
-<tr>
-	<td>Label :</td>
-	<td><input name="label" /></td>
-</tr>
-<tr>
-	<td>Librairie :</td>
-	<td><select name="library_id"><?php
-	foreach ($library_list as $id=>$library)
-	{
-		echo "<option value=\"$id\">$library[name]</option>";
-	}
-	?></select></td>
-</tr>
-<tr>
-	<td>Table :</td>
-	<td><input name="table" /></td>
-</tr>
-<tr>
-	<td>Description :</td>
-	<td><textarea name="description"></textarea></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input name="_insert" "type="submit" value="Ajouter" /></td>
-</tr>
-</table>
-</form>
-<?php
+$_type()->insert_form();
 
 }
 
 else
 {
 
-$_type()->table_list(array(), array("label", "description"));
+$_type()->table_list();
 
 }
 

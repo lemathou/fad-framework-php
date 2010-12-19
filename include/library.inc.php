@@ -21,55 +21,16 @@ class library_gestion extends gestion
 
 protected $type = "library";
 
+protected $info_detail = array
+(
+	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
+	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
+	"dep_list"=>array("label"=>"Dépendances", "type"=>"object_list", "object_type"=>"library", "db_table"=>"_library_ref", "db_id"=>"id", "db_field"=>"parent_id"),
+	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_LIBRARY, "filename"=>"{name}.inc.php")
+);
+
 protected $retrieve_all = true;
-
-protected function query_info_more()
-{
-
-foreach ($this->list_detail as &$library)
-	$library["dep_list"] = array();
-
-$query = db()->query("SELECT `id`, `parent_id` FROM `_library_ref`");
-while (list($id, $parent_id) = $query->fetch_row())
-	$this->list_detail[$id]["dep_list"][] = $parent_id;
-
-}
-
-protected function add_more($id, $library)
-{
-
-if (isset($library["dep_list"]) && is_array($library["dep_list"]) && (count($library["dep_list"]) > 0))
-{
-	$query_dep_list = array();
-	foreach($library["dep_list"] as $library_id) if ($this->exists($library_id))
-		$query_dep_list[] = "('$library_id', '$id')";
-	if (count($query_library_list)>0)
-	{
-		$query_string = "INSERT INTO `_library_ref` (`parent_id`, `id`) VALUES ".implode(", ",$query_dep_list);
-		db()->query($query_string);
-	}
-}
-
-if (isset($library["filecontent"]))
-{
-	$filename = "library/$library[name].inc.php";
-	if (!$library["filecontent"])
-		$library["filecontent"] = "<?php\n\n\n?>";
-	fwrite(fopen($filename,"w"), htmlspecialchars_decode($library["filecontent"]));
-}
-	
-}
-
-protected function del_more($id)
-{
-
-db()->query("DELETE FROM `_library_ref` WHERE `id`='$id'");
-
-$filename = "library/".$this->list_detail[$id]["name"].".inc.php";
-if (file_exists($filename))
-	unset($filename);
-
-}
 
 /**
  * Load a library
@@ -126,40 +87,6 @@ function __sleep()
 {
 
 return array("id", "name", "label", "description", "dep_list");
-
-}
-
-protected function query_info_more()
-{
-
-$query = db()->query("SELECT `parent_id` FROM `_library_ref` WHERE `id`='".$this->id."'");
-$this->dep_list=array();
-while (list($id) = $query->fetch_row())
-	$this->dep_list[] = $id;
-
-}
-
-protected function update_more($infos)
-{
-
-if (isset($infos["dep_list"]))
-{
-	db()->query("DELETE FROM `_library_ref` WHERE `id`='$this->id'");
-	if (is_array($infos["dep_list"]) && count($infos["dep_list"]))
-	{
-		$query_dep_list = array();
-		foreach($infos["dep_list"] as $library_id) if (library()->exists($library_id))
-			$query_library_list[] = "('$library_id', '$this->id')";
-		if (count($query_library_list)>0)
-			db()->query("INSERT INTO `_library_ref` (`parent_id`, `id`) VALUES ".implode(", ", $query_dep_list));
-	}
-}
-
-if (isset($infos["filecontent"]))
-{
-	$filename = "library/$this->name.inc.php";
-	fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["filecontent"]));
-}
 
 }
 

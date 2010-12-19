@@ -705,6 +705,23 @@ $(document).ready( function(){
         animate: true,
         addItemTarget: 'bottom'
     });
+	$("select.data_fromlist").asmSelect({
+        sortable: true,
+        animate: true,
+        addItemTarget: 'bottom'
+    });
+	$("textarea.data_script").each(function(){
+		// initialisation
+		editAreaLoader.init({
+			"id": this.id	// id of the textarea to transform		
+			,"start_highlight": true	// if start with highlight
+			,"allow_resize": "both"
+			,"allow_toggle": true
+			,"word_wrap": true
+			,"language": "fr"
+			,"syntax": "php"	
+		});
+	});
 	$("textarea.data_text").autoGrow();
 	$("textarea.data_richtext").ckeditor();
 	$("input.data_datetime").datetimepicker();

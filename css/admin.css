@@ -65,3 +65,24 @@ td.label
 	font-weight: bold;
 }
 
+/* Page specifics */
+table.tpl_params td
+{
+	padding: 0px 1px;
+	border: 1px #ccc solid;
+}
+table.tpl_params tr.separator td
+{
+	border: 0px;
+}
+table.tpl_params tr.tpl_name td
+{
+	font-weight: bold;
+	border: 0px;
+	font-size: 1em;
+} 
+table.tpl_params tr.title td
+{
+	font-weight: bold;
+	background-color: #ffa;
+}

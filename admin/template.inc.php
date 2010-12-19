@@ -30,8 +30,6 @@ if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
 	$_type()->del($_POST["_delete"]);
 }
 
-$_type_list = $_type()->list_detail_get();
-
 ?>
 <form method="get" class="page_form">
 <input type="submit" value="<?php echo $_label; ?>" />
@@ -59,106 +57,9 @@ $library_list = library()->list_detail_get();
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
-$template = template($id);
+$_type($id)->update_form();
 
 ?>
-<form action="?id=<?=$id?>" method="post" style="margin-top: 5px;">
-<table width="100%" cellspacing="0" cellpadding="1">
-<tr>
-	<td class="label" width="200">ID</td>
-	<td width="300"><input name="id" value="<?=$id?>" readonly /></td>
-	<td rowspan="11">
-	<h3 style="margin-bottom: 0px;">TEMPLATE</h3>
-	<textarea id="filecontent" name="filecontent" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
-	$filename = "template/".$template->info("name").".tpl.php";
-	if (file_exists($filename) && filesize($filename))
-	{
-		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
-	}
-	else
-	{
-		$content="";
-	}
-	?></textarea>
-	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle / Modification / Mise à jour (optionnel)</h3>
-	<textarea id="script" name="script" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
-	$filename = "template/".$template->info("name").".inc.php";
-	if (file_exists($filename) && filesize($filename))
-	{
-		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
-	}
-	else
-	{
-		$content="";
-	}
-	?></textarea>
-	</td>
-</tr>
-<tr>
-	<td class="label">Type</td>
-	<td><select name="type"><?php
-	$type_list = array
-	(
-		"container"=>"Conteneur (passage de variables)",
-		"inc"=>"Inclusion fréquente",
-		"page"=>"Page de contenu",
-		"datamodel"=>"Datamodel",
-	);
-	foreach ($type_list as $i=>$j)
-		if ($template->info("type") == $i)
-			echo "<option value=\"$i\" selected>$j</option>\n";
-		else
-			echo "<option value=\"$i\">$j</option>\n";
-	?></select></td>
-</tr>
-<tr>
-	<td class="label">Name</td>
-	<td><input name="name" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("name")?>" style="background-color:#eee;width:100%;" /></td>
-</tr>
-<tr>
-	<td class="label">Title</td>
-	<td><input name="label" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("label")?>" style="background-color:#eee;width:100%;" /></td>
-</tr>
-<tr>
-	<td class="label">Description</td>
-	<td><textarea name="description" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("description")?></textarea></td>
-</tr>
-<tr>
-	<td class="label">Details</td>
-	<td><textarea name="details" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("details")?></textarea></td>
-</tr>
-<tr>
-	<td class="label">Durée Min du cache<br /><span style="color:#400">Attention avec ce paramètre !!</span></td>
-	<td><input name="cache_mintime" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_mintime")?>" style="background-color:#eee;" size="3" maxlength="3" /></td>
-</tr>
-<tr>
-	<td class="label">Durée Max du cache<br />(0 = pas de cache)</td>
-	<td><input name="cache_maxtime" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_maxtime")?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
-</tr>
-<tr>
-	<td class="label">Dépendant du login</td>
-	<td><input name="login_dependant" value="0" type="radio"<?php if (!$template->info("login_dependant")) echo " checked"; ?> /> NON <input name="update[login_dependant]" value="1" type="radio"<?php if ($template->info("login_dependant")) echo " checked"; ?> /> OUI</td>
-</tr>
-<tr>
-	<td class="label">Libraries</td>
-	<td><select name="library_list[]" size="4" multiple>
-	<?
-	foreach($library_list as $library)
-	{
-		if (in_array($library["id"], $template->info("library_list")))
-			print "<option value=\"$library[id]\" selected>$library[label]</option>";
-		else
-			print "<option value=\"$library[id]\">$library[label]</option>";
-	}
-	?>
-	</select></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" name="_update" value="Mettre à jour" /></td>
-</tr>
-</table>
-</form>
 
 <h2>Gestion des paramètres</h2>
 <?php
@@ -197,11 +98,9 @@ if (isset($_POST["param_edit"]))
 		echo "<p>Le paramètre $name a bien été mis à jour.</p>\n";
 	}
 }
-?>
 
-<?php
 // Edition
-if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_str="SELECT t1.name, t1.datatype, t1.defaultvalue, t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '".$template->id()."' AND t1.name='$param_edit'") && ($query_params = db()->query($query_str)) && ($param = $query_params->fetch_assoc()))
+if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_str="SELECT t1.name, t1.datatype, t1.defaultvalue, t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$id' AND t1.name='$param_edit'") && ($query_params = db()->query($query_str)) && ($param = $query_params->fetch_assoc()))
 {
 
 $optlist = array();
@@ -312,7 +211,6 @@ if ($query->num_rows())
 </form>
 <?php
 }
-echo mysql_error();
 ?>
 
 <form action="?id=<?=$id?>" method="post">
@@ -383,7 +281,7 @@ while ($param = $query_params->fetch_assoc())
 	<td><select name="param_add[datatype]">
 		<option value="">-- Sélectionner --</option>
 	<?php
-	foreach(data()->list_get() as $datatype)
+	foreach(data()->list_detail_get() as $datatype)
 	{
 		echo "<option value=\"$datatype[name]\">$datatype[title]</option>\n";
 	}
@@ -405,76 +303,11 @@ while ($param = $query_params->fetch_assoc())
 
 }
 
-// INSERTION
 elseif (isset($_GET["add"]))
 {
 
-$object = array
-(
-	"name" => "",
-	"label" => "",
-	"description" => "",
-	"details" => "",
-	"cache_mintime" => TEMPLATE_CACHE_MIN_TIME,
-	"cache_maxtime" => TEMPLATE_CACHE_MAX_TIME,
-	"library" => array(),
-);
-
-foreach ($_POST as $name=>$value)
-	if (isset($object[$name]))
-		$object[$name] = $value;
-
-?>
-<form method="post" style="margin-top: 5px;">
-<table width="100%" cellspacing="0" cellpadding="1">
-<tr>
-	<td class="label">Name</td>
-	<td><input name="name" value="<?=$object["name"]?>" size="32" /></td>
-</tr>
-<tr>
-	<td class="label">Title</td>
-	<td><input name="label" value="<?=$object["label"]?>" size="64" /></td>
-</tr>
-<tr>
-	<td class="label">Description</td>
-	<td><textarea name="description" cols="64" rows="4"><?=$object["description"]?></textarea></td>
-</tr>
-<tr>
-	<td class="label">Details (explicatifs)</td>
-	<td><textarea name="details" cols="64" rows="8"><?=$object["details"]?></textarea></td>
-</tr>
-<tr>
-	<td class="label">Durée mini du cache<br />Attention toutefois</td>
-	<td><input name="cache_mintime" value="<?=$object["cache_mintime"]?>" size="3" maxlength="3" /></td>
-</tr>
-<tr>
-	<td class="label">Durée max du cache<br />(0 = pas de mise en cache)</td>
-	<td><input name="cache_maxtime" value="<?=$object["cache_maxtime"]?>" size="3" maxlength="4" /></td>
-</tr>
-<tr>
-	<td class="label">Libraries</td>
-	<td><select name="library_list[]" size="4" multiple>
-	<?
-	foreach($library_list as $i => $j)
-	{
-		if (in_array($i, $object["library"]))
-			print "<option value=\"$i\" selected>$j[label]</option>";
-		else
-			print "<option value=\"$i\">$j[label]</option>";
-	}
-	?>
-	</select></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" name="_insert" value="Ajouter" /></td>
-</tr>
-</table>
-<p>La gestion des paramètres se fera à la page suivante</p>
-</form>
-
-<?php
-
+$_type()->insert_form();
+	
 }
 
 // LISTE
@@ -510,65 +343,10 @@ foreach($tpl_type_list as $i=>$j)
 ?>
 </select> <input type="submit" value="Filtrer" /></p>
 </form>
-
-<table cellspacing="1" border="1" cellpadding="1">
-<tr style="font-weight:bold;">
-	<td>ID</td>
-	<td>Name</td>
-	<td>Label</td>
-	<td>Description</td>
-</tr>
-<?
-
-if (!isset($_GET["filter"]) || !$_GET["filter"] || !isset($tpl_type_list[$_GET["filter"]]))
-{
-	$query_where = "";
-}
-elseif ($_GET["filter"] == "root")
-{
-	$query_where = "WHERE t1.name NOT LIKE '%/%'";
-}
-else
-{
-	$query_where = "WHERE t1.name LIKE '$_GET[filter]/%'";
-}
-$query = db()->query(" SELECT t1.`id` , t1.`name` , t2.`label` , t2.`description` , t2.`details` FROM `_template` as t1 LEFT JOIN `_template_lang` as t2 ON t1.id=t2.id AND t2.lang_id=".SITE_LANG_DEFAULT_ID." $query_where ORDER BY t1.name ");
-while ($template = $query->fetch_assoc())
-{
-	echo "<tr>\n";
-	echo "<td><a href=\"?id=$template[id]\">$template[id]</a></td>\n";
-	echo "<td><a href=\"?id=$template[id]\">$template[name]</a></td>\n";
-	echo "<td>$template[label]</td>\n";
-	echo "<td>$template[description]</td>\n";
-	echo "</tr>\n";
-}
-
-?>
-</table>
-
 <?php
+
+$_type()->table_list();
+
 }
 ?>
 </div>
-
-<script language="Javascript" type="text/javascript">
-	// initialisation
-	editAreaLoader.init({
-		id: "filecontent"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: true
-		,word_wrap: false
-		,language: "fr"
-		,syntax: "php"	
-	});
-	editAreaLoader.init({
-		id: "script"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: true
-		,word_wrap: false
-		,language: "fr"
-		,syntax: "php"	
-	});
-</script>

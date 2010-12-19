@@ -31,9 +31,9 @@ protected $info_lang_list = array("label", "description"); // Keep at least labe
 protected $info_save_list = array("name", "label");
 protected $info_detail = array
 (
-	"name"=>array("type"=>"string", "size"=>64),
-	"label"=>array("type"=>"string", "size"=>128),
-	"description"=>array("type"=>"text")
+	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
+	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true)
 );
 
 protected $retrieve_all = false;
@@ -48,6 +48,12 @@ public function info_lang_list()
 {
 
 return $this->info_lang_list;
+
+}
+public function info_detail_list()
+{
+
+return $this->info_detail;
 
 }
 
@@ -97,11 +103,22 @@ $this->list = array();
 $this->list_name = array();
 $this->list_detail = array();
 
+$query_objects = array();
 $query_fields = array("`t1`.`id`");
-foreach($this->info_list as $field)
-	$query_fields[] = "`t1`.`$field`";
-foreach($this->info_lang_list as $field)
-	$query_fields[] = "`t2`.`$field`";
+foreach ($this->info_detail as $name=>$field)
+{
+	if (isset($field["lang"]))
+	{
+		if ($field["lang"])
+			$query_fields[] = "`t2`.`$name`";
+		else
+			$query_fields[] = "`t1`.`$name`";
+	}
+	elseif ($field["type"] == "object_list")
+	{
+		$query_objects[] = $name;
+	}
+}
 
 $query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$this->type` as t1 LEFT JOIN `_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`=".SITE_LANG_ID;
 $query = db()->query($query_string);
@@ -109,6 +126,19 @@ while($info = $query->fetch_assoc())
 {
 	$this->list_detail[$info["id"]] = $info;
 	$this->list_name[$info["name"]] = $info["id"];
+	foreach ($query_objects as $name)
+		$this->list_detail[$info["id"]][$name] = array();
+}
+
+foreach ($query_objects as $name)
+{
+	$field = $this->info_detail[$name];
+	$query = db()->query("SELECT `$field[db_id]`, `$field[db_field]` FROM `$field[db_table]`");
+	while (list($id, $object_id)=$query->fetch_row())
+	{
+		if (isset($this->list_detail[$id]))
+			$this->list_detail[$id][$name][] = $object_id;
+	}
 }
 
 $this->query_info_more();
@@ -264,6 +294,19 @@ if (isset($this->list_detail[$id]))
 {
 	db()->query("DELETE FROM `_$this->type` WHERE `id`='$id'");
 	db()->query("DELETE FROM `_".$this->type."_lang` WHERE `id`='$id'");
+	foreach ($this->info_detail as $name=>$info)
+	{
+		if ($info["type"] == "script")
+		{
+			$filename = "$info[folder]/".str_replace("{name}", $this->list_detail[$id]["name"], $info["filename"]);
+			if (file_exists($filename))
+				unlink($filename);
+		}
+		elseif ($info["type"] == "object_list")
+		{
+			db()->query("DELETE FROM `$info[db_table]` WHERE `$info[db_id]`='$id'");
+		}
+	}
 	$this->del_more($id);
 	$this->query_info();
 	return true;
@@ -295,33 +338,49 @@ $query_fields = array();
 $query_values = array();
 $query_fields_lang = array();
 $query_values_lang = array();
+$query_objects = array();
 
-if (!is_array($infos))
+if (!is_array($infos) || !isset($infos["name"]) || !is_string($infos["name"]) || !$infos["name"])
 	die();
-foreach ($this->info_list as $name)
+
+foreach ($this->info_detail as $name=>$field_info)
 {
-	if (!isset($infos[$name]) || !is_string($infos[$name]))
-		die();
-	else
+	if (isset($field_info["lang"]) && !$field_info["lang"] && isset($infos[$name]) && is_string($infos[$name]))
 	{
 		$query_fields[] = "`$name`";
 		$query_values[] = "'".db()->string_escape($infos[$name])."'";
 	}
-}
-foreach ($this->info_lang_list as $name)
-{
-	if (!isset($infos[$name]))
-		die();
-	else
+	elseif (isset($field_info["lang"]) && $field_info["lang"] && isset($infos[$name]) && is_string($infos[$name]))
 	{
 		$query_fields_lang[] = "`$name`";
 		$query_values_lang[] = "'".db()->string_escape($infos[$name])."'";
+	}
+	elseif ($field_info["type"] == "script" && isset($infos[$name]) && is_string($infos[$name]))
+	{
+		$filename = $field_info["folder"]."/".str_replace("{name}", $infos["name"], $field_info["filename"]);
+		fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos[$name]));
+	}
+	elseif ($field_info["type"] == "object_list" && isset($infos[$name]))
+	{
+		$query_objects[] = $name;
 	}
 }
 
 db()->query("INSERT INTO `_".$this->type."` (".implode(", ", $query_fields).") VALUES (".implode(", ", $query_values).")");
 $id = db()->last_id();
 db()->query("INSERT INTO `_".$this->type."_lang` (`id`, `lang_id`, ".implode(", ", $query_fields_lang).") VALUES ('$id', '".SITE_LANG_ID."', ".implode(", ", $query_values_lang).")");
+
+foreach ($query_objects as $name)
+{
+	$field_info = $this->info_detail[$name];
+	$object_type = $field_info["object_type"];
+	db()->query("DELETE FROM `$field_info[db_table]` WHERE `$field_info[db_id]`='$id'");
+	$query_object_list = array();
+	if (is_array($infos[$name])) foreach($infos[$name] as $object_id) if ($object_type()->exists($object_id))
+		$query_object_list[] = "('$object_id', '$id')";
+	if (count($query_object_list)>0)
+		db()->query("INSERT INTO `$field_info[db_table]` (`$field_info[db_field]`, `$field_info[db_id]`) VALUES ".implode(", ", $query_object_list));
+}
 
 $this->add_more($id, $infos);
 
@@ -348,39 +407,131 @@ protected function add_more($id, $infos)
  * @param array params : filtering parameters
  * @param array field_list : fields to display (automatically adds id and name)
  */
-public function table_list($params=array(), $field_list=array())
+public function table_list($params=array(), $field_list=true)
 {
 
-
-
 ?>
-<table width="100%" cellspacing="1" border="1" cellpadding="1">
+<table width="100%" cellspacing="1" border="1" cellpadding="1" class="object_list">
 <tr style="font-weight:bold;">
 	<td>[id] name</td>
 <?
-foreach($field_list as $name)
-	echo "<td>$name</td>\n";
+foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $field_info["type"] != "script")
+	echo "<td>".$field_info["label"]."</td>\n";
 ?>
 </tr>
 <?
-foreach ($this->list_detail as $info)
+foreach ($this->list_detail as $id=>$info) if (true || $params === true)
 {
-
-echo "<tr>\n";
-	print "<td><a href=\"?id=$info[id]\">[$info[id]] $info[name]</a></td>\n";
-foreach($field_list as $name)
-	if (is_string($info[$name]))
-		echo "<td>".$info[$name]."</td>\n";
-	else
-		echo "<td>".json_encode($info[$name])."</td>\n";
-echo "</tr>\n";
-
+	echo "<tr>\n";
+			echo "<td><a href=\"?id=$id\">[$id] $info[name]</a></td>\n";
+	foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $field_info["type"] != "script")
+	{
+		if (in_array($field_info["type"], array("string", "text")))
+		{
+			echo "<td>".$info[$name]."</td>\n";
+		}
+		elseif ($field_info["type"] == "integer")
+		{
+			echo "<td align=\"right\">".$info[$name]."</td>\n";
+		}
+		elseif ($field_info["type"] == "boolean")
+		{
+			if ($info[$name])
+				echo "<td>OUI</td>\n";
+			else
+				echo "<td>NON</td>\n";
+		}
+		elseif ($field_info["type"] == "select")
+		{
+			if ($info[$name])
+				echo "<td>".$field_info["select_list"][$info[$name]]."</td>\n";
+			else
+				echo "<td>".$info[$name]."</td>\n";
+		}
+		elseif ($field_info["type"] == "object")
+		{
+			$object_type = $field_info["object_type"];
+			if ($info[$name])
+				echo "<td>".$object_type($info[$name])->label()."</td>\n";
+			else
+				echo "<td><i>undefined</i></td>\n";
+		}
+		elseif ($field_info["type"] == "object_list")
+		{
+			$object_type = $field_info["object_type"];
+			$object_list = array();
+			if (count($info[$name])) foreach ($info[$name] as $id)
+				$object_list[] = $object_type($id)->label();
+			echo "<td>".implode(", ", $object_list)."</td>\n";
+		}
+		else
+			echo "<td>".json_encode($info[$name])."</td>\n";
+	}
+	echo "</tr>\n";
 }
 ?>
 </table>
 <?
 
 }
+
+public function insert_form($action="")
+{
+
+?>
+<form action="<?php echo $action; ?>" method="post" class="object_form">
+<table cellspacing="0" cellpadding="1">
+<?php
+foreach ($this->info_detail as $name=>$info)
+{
+?>
+<tr>
+	<td class="label"><label for="<?php echo $name; ?>"><?php echo $info["label"]; ?> :</label></td>
+<?php
+	if ($info["type"] == "string") { ?>
+	<td><input name="<?php echo $name; ?>" size="32" maxlength="<?php echo $info["size"]; ?>" value="<?php if (isset($info["default"])) echo $info["default"]; ?>" class="data_string" /></td>
+<?php } elseif ($info["type"] == "text") { ?>
+	<td><textarea name="<?php echo $name; ?>" class="data_text"><?php if (isset($info["default"])) echo $info["default"]; ?></textarea></td>
+<?php } elseif ($info["type"] == "integer") { ?>
+	<td><input name="<?php echo $name; ?>" size="10" maxlength="10" value="<?php if (isset($info["default"])) echo $info["default"]; ?>" class="data_integer" /></td>
+<?php } elseif ($info["type"] == "boolean") { ?>
+	<td><input name="<?php echo $name; ?>" type="radio" value="1"<?php if ($info["default"] == "1") echo " checked"; ?> /> OUI <input name="<?php echo $name; ?>" type="radio" value="0"<?php if ($info["default"] == "0") echo " checked"; ?> /> NON</td>
+<?php } elseif ($info["type"] == "select") { ?>
+	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
+	foreach($info["select_list"] as $i=>$j)
+		if ($info["default"] == $i)
+			echo "<option value=\"$i\" selected>$j</option>";
+		else
+			echo "<option value=\"$i\">$j</option>";
+	?></select></td>
+<?php } elseif ($info["type"] == "script") { ?>
+	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php if (isset($info["default"])) echo $info["default"]; ?></textarea></td>
+<?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; ?>
+	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
+	foreach($object_type()->list_detail_get() as $i=>$j)
+		echo "<option value=\"$i\">$j[label]</option>";
+	?></select></td>
+<?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
+	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" size="10" multiple class="data_fromlist"><?
+	foreach($object_type()->list_detail_get() as $i=>$j)
+		echo "<option value=\"$i\">$j[label]</option>";
+	?></select></td>
+<?php } else { ?>
+	<td><textarea name="<?php echo $name; ?>" style="width:100%;" rows="5"></textarea></td>
+<?php } ?>
+</tr>
+<?php
+}
+?>
+<tr>
+	<td>&nbsp;</td>
+	<td><input type="submit" name="_insert" value="Ajouter" /></td>
+</tr>
+</table>
+</form>
+<?php
+}
+
 
 }
 
@@ -463,35 +614,65 @@ public function update($infos)
 
 if (!is_array($infos))
 	$infos = array();
+
 $type = $this->_type;
-$info_list = $type()->info_list();
-$info_lang_list = $type()->info_lang_list();
+$info_detail = $type()->info_detail_list();
 
 $query_info = array();
 $query_info_lang = array();
-foreach ($info_list as $name)
-	if (isset($infos[$name]))
+$query_objects = array();
+
+foreach ($info_detail as $name=>$field_info)
+{
+	if (isset($field_info["lang"]) && !$field_info["lang"] && isset($infos[$name]))
+	{
 		$query_info[] = "`$name`='".db()->string_escape($infos[$name])."'";
-foreach ($info_lang_list as $name)
-	if (isset($infos[$name]))
+	}
+	elseif (isset($field_info["lang"]) && $field_info["lang"] && isset($infos[$name]))
+	{
 		$query_info_lang[] = "`$name`='".db()->string_escape($infos[$name])."'";
+	}
+	elseif ($field_info["type"] == "script" && isset($infos[$name]))
+	{
+		$filename = $field_info["folder"]."/".str_replace("{name}", $this->name, $field_info["filename"]);
+		if (file_exists($filename))
+			unset($filename);
+		if ($infos[$name])
+		{
+			if (isset($infos["name"]))
+				$filename = $field_info["folder"]."/".str_replace("{name}", $infos["name"], $field_info["filename"]);
+			fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos[$name]));
+		}
+	}
+	elseif ($field_info["type"] == "object_list" && isset($infos[$name]))
+	{
+		$query_objects[] = $name;
+	}
+}
 
 if (count($query_info))
 	db()->query("UPDATE `_$type` SET ".implode(", ",$query_info)." WHERE `id`='$this->id'");
 if (count($query_info_lang))
 	db()->query("UPDATE `_".$type."_lang` SET ".implode(", ",$query_info_lang)." WHERE `id`='$this->id' AND `lang_id`='".SITE_LANG_ID."'");
 
+foreach ($query_objects as $name)
+{
+	$field_info = $info_detail[$name];
+	$object_type = $field_info["object_type"];
+	db()->query("DELETE FROM `$field_info[db_table]` WHERE `$field_info[db_id]`='$this->id'");
+	$query_object_list = array();
+	if (is_array($infos[$name])) foreach($infos[$name] as $object_id) if ($object_type()->exists($object_id))
+		$query_object_list[] = "('$object_id', '$this->id')";
+	if (count($query_object_list)>0)
+		db()->query("INSERT INTO `$field_info[db_table]` (`$field_info[db_field]`, `$field_info[db_id]`) VALUES ".implode(", ", $query_object_list));
+}
+	
+
 $this->update_more($infos);
 
-$this->query_info();
+//$this->query_info();
 $type()->query_info();
 
-if (APC_CACHE)
-{
-	if (defined(strtoupper($type."_AUTOLOADALL")))
-		apc_store($type."_gestion", $type(), APC_CACHE_GESTION_TTL);
-	apc_store($type."_$this->id", $this, APC_CACHE_GESTION_TTL);
-}
 
 }
 protected function update_more($infos)
@@ -533,22 +714,73 @@ if (isset($this->{$name}))
 
 }
 
-public function update_form()
+public function update_form($action="")
 {
+
+$_type = $this->_type;
 ?>
-<form action="?id=<?=$id?>" method="post">
-<table width="100%">
+<form action="<?php echo $action; ?>" method="post" class="object_form">
+<table cellspacing="0" cellpadding="1">
+<tr>
+	<td class="label"><label for="id">ID :</label></td>
+	<td><input name="id" size="10" readonly value="<?php echo $this->id; ?>" /></td>
+</tr>
 <?php
-foreach (array_merge($type()->info_list(), $type()->info_lang_list()) as $name)
+foreach ($_type()->info_detail_list() as $name=>$info)
 {
 ?>
 <tr>
-	<td class="label"><label for="<?php echo $name; ?>"><?php echo $name; ?> :</label></td>
-	<td><textarea name="<?php echo $name; ?>" style="width:100%;" rows="10"><?php echo $this->$name; ?></textarea></td>
+	<td class="label"><label for="<?php echo $name; ?>"><?php echo $info["label"]; ?> :</label></td>
+<?php
+	if ($info["type"] == "string") { ?>
+	<td><input name="<?php echo $name; ?>" size="32" maxlength="<?php echo $info["size"]; ?>" value="<?php echo $this->{$name}; ?>" class="data_string" /></td>
+<?php } elseif ($info["type"] == "text") { ?>
+	<td><textarea name="<?php echo $name; ?>" class="data_text"><?php echo $this->{$name}; ?></textarea></td>
+<?php } elseif ($info["type"] == "integer") { ?>
+	<td><input name="<?php echo $name; ?>" size="10" maxlength="10" value="<?php echo $this->{$name}; ?>" class="data_integer" /></td>
+<?php } elseif ($info["type"] == "boolean") { ?>
+	<td><input name="<?php echo $name; ?>" type="radio" value="1"<?php if ($this->{$name}) echo " checked"; ?> /> OUI <input name="<?php echo $name; ?>" type="radio" value="0"<?php if (!$this->{$name}) echo " checked"; ?> /> NON</td>
+<?php } elseif ($info["type"] == "select") { ?>
+	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
+	foreach($info["select_list"] as $i=>$j)
+		if ($i == $this->{$name})
+			echo "<option value=\"$i\" selected>$j</option>";
+		else
+			echo "<option value=\"$i\">$j</option>";
+	?></select></td>
+<?php } elseif ($info["type"] == "script") { ?>
+	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php
+	$filename =  $info["folder"]."/".str_replace("{name}", $this->name, $info["filename"]);
+	if (file_exists($filename))
+		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
+	?></textarea></td>
+<?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
+	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" title="<?php echo $info["label"]; ?>" size="10" multiple class="data_fromlist"><?
+	foreach($object_type()->list_detail_get() as $i=>$j)
+		if (in_array($i, $this->{$name}))
+			echo "<option value=\"$i\" selected>$j[label]</option>";
+		else
+			echo "<option value=\"$i\">$j[label]</option>";
+	?></select></td>
+<?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; ?>
+	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
+	foreach($object_type()->list_detail_get() as $i=>$j)
+		if ($i == $this->{$name})
+			echo "<option value=\"$i\" selected>$j[label]</option>";
+		else
+			echo "<option value=\"$i\">$j[label]</option>";
+	?></select></td>
+<?php } else { ?>
+	<td><textarea name="<?php echo $name; ?>" style="width:100%;"><?php echo $this->{$name}; ?></textarea></td>
+<?php } ?>
 </tr>
 <?php
 }
 ?>
+<tr>
+	<td>&nbsp;</td>
+	<td><input type="submit" name="_update" value="Mettre à jour" /></td>
+</tr>
 </table>
 </form>
 <?php

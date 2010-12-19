@@ -30,8 +30,6 @@ if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
 	$_type()->del($_POST["_delete"]);
 }
 
-$_type_list = $_type()->list_detail_get();
-
 ?>
 <form method="get" class="page_form">
 <input type="submit" value="<?php echo $_label; ?>" />
@@ -45,7 +43,8 @@ foreach ($_type()->list_detail_get() as $id=>$info)
 	else
 		echo "	<option value=\"$id\">[$id] $info[name]</option>\n";
 }
-?></select>
+?>
+</select>
 <a href="?add">Ajouter</a>
 <a href="?list">Retour à la liste</a>
 </form>
@@ -56,75 +55,21 @@ foreach ($_type()->list_detail_get() as $id=>$info)
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
-$object = $_type($id);
-
-?>
-<form action="?id=<?=$id?>" method="post">
-<table width="100%">
-<tr>
-	<td class="label"><label for="id">ID :</label></td>
-	<td><input name="id" value="<?=$id?>" readonly /></td>
-</tr>
-<tr>
-	<td class="label"><label for="name">Name :</label></td>
-	<td><input name="name" value="<?=$object->info("name")?>" maxlength="64" size="64" /></td>
-</tr>
-<tr>
-	<td class="label"><label for="label">Nom complet :</label></td>
-	<td><input name="label" value="<?=$object->info("label")?>" maxlength="128" size="64" /></td>
-</tr>
-<tr>
-	<td class="label"><label for="description">Description :</label></td>
-	<td><textarea name="description" style="width:100%;" rows="10"><?=$object->info("description")?></textarea></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" name="_update" value="Mettre à jour" /></td>
-</tr>
-</table>
-</form>
-<?php
+$_type($id)->update_form();
 
 }
 
 elseif (isset($_GET["add"]))
 {
 
-$object = array
-(
-	"name"=>"",
-	"label"=>"",
-	"description"=>""
-);
-?>
-<form action="?list" method="post">
-<table width="100%">
-<tr>
-	<td class="label"><label for="name">Name :</label></td>
-	<td><input name="name" value="<?=$object["name"]?>" maxlength="64" size="64" /></td>
-</tr>
-<tr>
-	<td class="label"><label for="label">Nom complet :</label></td>
-	<td><input name="label" value="<?=$object["label"]?>" maxlength="128" size="64" /></td>
-</tr>
-<tr>
-	<td class="label"><label for="description">Description :</label></td>
-	<td><textarea name="description" style="width:100%;" rows="10"><?=$object["description"]?></textarea></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" name="_insert" value="Ajouter" /></td>
-</tr>
-</table>
-</form>
-<?php
-
+$_type()->insert_form();
+	
 }
 
 else
 {
 
-$_type()->table_list(array(), array("label", "description"));
+$_type()->table_list();
 
 }
 

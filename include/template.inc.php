@@ -22,6 +22,20 @@ protected $type = "template";
 
 protected $info_list = array("name", "type", "cache_mintime", "cache_maxtime", "login_dependant");
 
+protected $info_detail = array
+(
+	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
+	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
+	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"page", "select_list"=> array('container'=>"Conteneur principal",'inc'=>"Inclusion fréquente",'page'=>"Contenu de page",'datamodel'=>"Vue de datamodel")),
+	"cache_mintime"=>array("label"=>"Durée minimum du cache", "lang"=>false, "default"=>TEMPLATE_CACHE_MIN_TIME, "type"=>"integer"),
+	"cache_maxtime"=>array("label"=>"Durée maximum du cache", "lang"=>false, "default"=>TEMPLATE_CACHE_MAX_TIME, "type"=>"integer"),
+	"login_dependant"=>array("label"=>"Dépendant du login", "lang"=>false, "default"=>"0", "type"=>"boolean"),
+	"library_list"=>array("label"=>"Librairies", "type"=>"object_list", "object_type"=>"library", "db_table"=>"_template_library_ref", "db_id"=>"template_id", "db_field"=>"library_id"),
+	"tplfile"=>array("label"=>"Template", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.tpl.php"),
+	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.inc.php")
+);
+
 protected $default_id = 0;
 
 public function get($id=0)
@@ -67,9 +81,6 @@ else
 protected function query_info_more()
 {
 
-// Libraries
-// TODO
-
 // Params
 $query = db()->query("SELECT t1.`template_id`, t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
 $param_order = array(); // temp
@@ -90,36 +101,6 @@ while ($opt = $query_opt->fetch_assoc())
 	if (isset($this->list_detail[$opt["template_id"]]))
 		$this->list_detail[$opt["template_id"]]["param_list_detail"][$param_order[$opt["template_id"]][$opt["name"]]][$opt["opttype"]][$opt["optname"]] = json_decode($opt["optvalue"], true);
 }
-
-}
-
-protected function add_more($id, $template)
-{
-
-// Libraries
-if (isset($template["library_list"]) && is_array($template["library_list"]))
-{
-	$query_library_list = array();
-	foreach($template["library_list"] as $library_id)
-	{
-		if (library()->exists($library_id))
-		{
-			$query_library_list[] = "($id, $library_id)";
-		}
-	}
-	if (count($query_library_list)>0)
-	{
-		$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
-		db()->query($query_string);
-	}
-}
-	
-}
-
-protected function del_more($id)
-{
-
-db()->query("DELETE FROM `_template_library_ref` WHERE `template_id` = '$id'");
 
 }
 
@@ -240,59 +221,6 @@ while ($opt = $query_opt->fetch_row())
 }
 $this->construct_params();
 
-// Libraries
-$this->library_list = array();
-$query = db()->query("SELECT `library_id` FROM `_template_library_ref` WHERE `template_id`='".$this->id."'");
-while (list($library_id) = $query->fetch_row())
-{
-	$this->library_list[] = $library_id;
-}
-
-}
-
-protected function update_more($infos)
-{
-
-// Libraries
-if (isset($infos["library_list"]) && is_array($infos["library_list"]))
-{
-	db()->query("DELETE FROM `_template_library_ref` WHERE `template_id`='$this->id'");
-	$query_library_list = array();
-	foreach ($infos["library"] as $library_id)
-	{
-		if (library()->exists($library_id))
-		{
-			$query_library_list[] = "($this->id, $library_id)";
-		}
-	}
-	if (count($query_library_list)>0)
-	{
-		$query_string = "INSERT INTO `_template_library_ref` (`template_id`, `library_id`) VALUES ".implode(" , ",$query_library_list);
-		db()->query($query_string);
-	}
-}
-
-// Template file
-if (isset($infos["filecontent"]))
-{
-	$filename = PATH_TEMPLATE."/$this->name.tpl.php";
-	fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["filecontent"]));
-}
-
-// Template optionnal script file
-if (isset($infos["script"]))
-{
-	$filename = PATH_TEMPLATE."/$this->name.inc.php";
-	if ($infos["script"])
-	{
-		fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["script"]));
-	}
-	elseif (file_exists($filename))
-	{
-		unlink($filename);
-	}
-}
-
 }
 
 /**
@@ -344,14 +272,6 @@ else
 	if (DEBUG_TEMPLATE)
 		echo "<p>DEBUG : TEMPLATE($this->id)->__set NOT DEFINED : $name</p>\n";
 }
-
-}
-
-public function info($name)
-{
-
-if ($name == "library_list" || in_array($name, array_merge(self::$infos, self::$infos_lang)))
-	return $this->{$name};
 
 }
 

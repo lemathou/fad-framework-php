@@ -41,6 +41,15 @@ protected $type = "datamodel";
 
 protected $info_list = array("name", "library_id", "table", "perm");
 
+protected $info_detail = array
+(
+	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
+	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
+	"table"=>array("label"=>"Table (bdd)", "type"=>"string", "size"=>64, "lang"=>false),
+	"library_id"=>array("label"=>"Librairies", "type"=>"object", "object_type"=>"library", "lang"=>false),
+);
+
 function __wakeup()
 {
 

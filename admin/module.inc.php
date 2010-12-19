@@ -2,10 +2,13 @@
 
 /**
   * $Id$
+  * $Rev$:     Revision of last commit
+  * $Date$:    Date of last commit
+  * $Author$:  Author of last commit
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2010 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
   * 
   */
 

@@ -25,16 +25,21 @@ protected $page_id = 0;
 protected $info_list = array("name", "type", "template_id", "redirect_url", "alias_page_id", "perm");
 protected $info_lang_list = array("label", "description", "url", "shortlabel");
 
+protected $info_detail = array
+(
+	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
+	"shortlabel"=>array("label"=>"Titre court (pour liens)", "type"=>"string", "size"=>64, "lang"=>true),
+	"url"=>array("label"=>"URL", "type"=>"string", "size"=>128, "lang"=>true),
+	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
+	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"template", "select_list"=> array("static_html"=>"Page HTML statique", "template"=>"Utilisation d'un template (valeur par défaut)", "redirect"=>"Redirection vers une page extérieure", "alias"=>"Alias d'une autre page du site", "static_html"=>"Page HTML statique", "php"=>"Script PHP")),
+	"template_id"=>array("label"=>"Template", "lang"=>false, "type"=>"object", "object_type"=>"template"),
+	"perm_list"=>array("label"=>"Permissions", "type"=>"object_list", "object_type"=>"permission", "db_table"=>"_page_perm_ref", "db_id"=>"page_id", "db_field"=>"perm_id"),
+	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGE, "filename"=>"{name}.inc.php")
+);
+
 protected function query_info_more()
 {
-
-// Permissions
-$query = db()->query("SELECT `page_id`, `perm_id` FROM `_page_perm_ref`");
-while (list($page_id, $perm_id)=$query->fetch_row())
-{
-	if (isset($this->list_detail[$page_id]))
-		$this->list_detail[$page_id]["perm_list"][] = $perm_id;
-}
 
 // Params
 $this->params_list = array();
@@ -141,34 +146,6 @@ else
 
 }
 
-/**
- * Add a new page
- * 
- * @param $name
- * @param $infos
- */
-function add_more($infos)
-{
-
-$query_perm_list = array();
-if (isset($infos["perm_list"]) && is_array($infos["perm_list"])) foreach($infos["perm_list"] as $perm_id)
-{
-	$query_perm_list[] = "('$id', '$perm_id')";
-}
-if (count($query_perm_list)>0)
-{
-	db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(" , ",$query_perm_list));
-}
-
-}
-
-function del_more($id)
-{
-
-db()->query("DELETE INTO `_page_perm_ref` WHERE `page_id` = '$id'");
-
-}
-
 }
 
 /**
@@ -243,14 +220,6 @@ foreach($this->params_list as $param)
 protected function query_info_more()
 {
 
-// Permissions
-$this->perm_list = array();
-$query = db()->query("SELECT `perm_id` FROM `_page_perm_ref` WHERE `page_id`='$this->id'");
-while (list($perm_id)=$query->fetch_row())
-{
-	$this->perm_list[] = $perm_id;
-}
-
 // Params
 $this->params_list = array();
 $query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
@@ -259,35 +228,6 @@ while ($param = $query->fetch_assoc())
 	$this->params_list[] = array("name"=>$param["name"], "value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
 }
 
-
-}
-
-protected function update_more($infos)
-{
-
-if (isset($infos["perm_list"]) && is_array($infos["perm_list"]))
-{
-	db()->query("DELETE FROM `_page_perm_ref` WHERE `page_id`='$this->id'");
-	$query_perm_list = array();
-	foreach($infos["perm_list"] as $perm_id)
-		$query_perm_list[] = "('$this->id', '$perm_id')";
-	if (count($query_perm_list)>0)
-		db()->query("INSERT INTO `_page_perm_ref` (`page_id`, `perm_id`) VALUES ".implode(", ",$query_perm_list));
-}
-
-// Template optionnal script file
-if (isset($infos["script"]))
-{
-	$filename = "page/$this->name.inc.php";
-	if ($infos["script"])
-	{
-		fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["script"]));
-	}
-	elseif (file_exists($filename))
-	{
-		unlink($filename);
-	}
-}
 
 }
 

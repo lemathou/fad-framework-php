@@ -123,24 +123,31 @@ td.label
 
 /* Types de donnée */
 
-.data_string
+.object_list
 {
+	margin-top: 5px;
+}
+
+.object_form
+{
+	margin-top: 5px;
 	width: 100%;
 }
-.data_name
-{
-	width: 100%;
-}
-.data_text
-{
-	width: 100%;
-}
-.data_richtext
-{
-	width: 100%;
-}
-.data_script_php
+.object_form table
 {
 	width: 100%;
 }
 
+.object_form .label
+{
+	width: 250px;
+}
+
+.data_string, .data_name, .data_text, .data_richtext, .data_script
+{
+	width: 100%;
+}
+.data_script
+{
+	height: 100%;
+}	

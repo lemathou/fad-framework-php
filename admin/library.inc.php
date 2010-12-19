@@ -62,20 +62,16 @@ foreach ($library_list as $id=>$library)
 if (isset($_GET["id"]) && library()->exists($id=$_GET["id"]))
 {
 
-$update = $library_list[$id];
-$update["library_list"]=array();
-$query_library = db()->query(" SELECT parent_id FROM _library_ref WHERE id = '$id' ");
-while (list($library_id) = $query_library->fetch_row())
-	$update["library_list"][] = $library_id;
-	
+$library = $library_list[$id];
+
 ?>
 <form action="?id=<?=$id?>" method="post">
 <table width="100%">
-<tr style="font-weight:bold;">
-	<td width="200">ID :</td>
+<tr>
+	<td class="label">ID :</td>
 	<td><input name="id" value="<?=$id?>" readonly /></td>
 	<td rowspan="6" width="60%"><textarea id="filecontent" name="filecontent" style="width:100%;"><?php 
-	$filename = "library/$update[name].inc.php";
+	$filename = "library/$library[name].inc.php";
 	if (file_exists($filename))
 	{
 		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
@@ -83,23 +79,23 @@ while (list($library_id) = $query_library->fetch_row())
 	?></textarea></td>
 </tr>
 <tr>
-	<td>Name :</td>
-	<td><input name="name" value="<?=$update["name"]?>" maxlength="64" style="width:100%;" /></td>
+	<td class="label">Name :</td>
+	<td><input name="name" value="<?=$library["name"]?>" maxlength="64" size="32" /></td>
 </tr>
 <tr>
-	<td>Nom complet :</td>
-	<td><input name="label" value="<?=$update["label"]?>" maxlength="128" style="width:100%;" /></td>
+	<td class="label">Nom complet :</td>
+	<td><input name="label" value="<?=$library["label"]?>" maxlength="128" size="32" /></td>
 </tr>
 <tr>
-	<td>Description :</td>
-	<td><textarea name="description" style="width:100%;" rows="10"><?=$update["description"]?></textarea></td>
+	<td class="label">Description :</td>
+	<td><textarea name="description" class="data_text" style="width:100%;"><?=$library["description"]?></textarea></td>
 </tr>
 <tr>
-	<td>Dependances :</td>
-	<td><select name="library_list[]" size="10" multiple style="width:100%;">
+	<td class="label">Dependances :</td>
+	<td><select name="library_list[]" size="10" multiple>
 	<?
-	foreach($library_list as $i => $j)
-		if (in_array($i, $update["library_list"]))
+	foreach($library_list as $i=>$j)
+		if (in_array($i, $library["dep_list"]))
 			echo "<option value=\"$i\" selected>$j[label]</option>";
 		elseif ($id != $i)
 			echo "<option value=\"$i\">$j[label]</option>";
@@ -135,27 +131,36 @@ $(document).ready(function(){
 elseif (isset($_GET["add"]))
 {
 
+$info = array
+(
+	"name"=>"",
+	"label"=>"",
+	"description"=>"",
+	"dep_list"=>array(),
+	"filecontent"=>""
+);
+
 ?>
 <form action="?add" method="POST">
 <table width="100%">
-<tr style="font-weight:bold;">
+<tr>
 	<td class="label">Name (unique) :</td>
-	<td><input name="name" value="" maxlength="64" style="width:100%;" /></td>
-	<td rowspan="10" width="60%"><textarea id="filecontent" name="filecontent" style="width:100%;"></textarea></td>
+	<td><input name="name" value="<?php echo $info["name"]; ?>" maxlength="64" size="32" /></td>
+	<td rowspan="10" width="60%"><textarea id="filecontent" name="filecontent" style="width:100%;"><?php echo $info["filecontent"]; ?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Nom complet :</td>
-	<td><input name="label" value="" maxlength="128" style="width:100%;" /></td>
+	<td><input name="label" value="<?php echo $info["label"]; ?>" maxlength="128" size="32" /></td>
 </tr>
 <tr>
 	<td class="label">Description :</td>
-	<td><textarea name="description" style="width:100%;height:100%;" rows="10"></textarea></td>
+	<td><textarea name="description" style="width:100%;" rows="10"><?php echo $info["description"]; ?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Dependances :</td>
-	<td><select name="library_list[]" size="10" multiple style="width:100%;">
+	<td><select name="dep_list[]" size="10" multiple>
 	<?
-	foreach($library_list as $i => $j)
+	foreach($library_list as $i=>$j)
 		echo "<option value=\"$i\">$j[label]</option>";
 	?>
 	</select></td>
@@ -196,44 +201,9 @@ else
 <p>Les principales méthodes seront __tostring() s'agissant de l'affichage par défaut (en général le nom de l'objet).</p>
 <p>On y trouvera parfois des méthodes de calcul faites sur plusieurs champs, des extractions de listes mises en forme, des variables statiques utiles pour l'ensemble des objets, etc.</p>
 
-<table width="100%" cellpadding="2" cellspacing="2" border="1">
-<tr style="font-weight:bold;">
-	<td>&nbsp;</td>
-	<td>ID</td>
-	<td>Name</td>
-	<td>Nom complet</td>
-	<td>Description</td>
-	<td>Dependances</td>
-</tr>
-<?
-foreach ($library_list as $library)
-{
+<?php
 
-$library_library = array();
-$query_library = db()->query(" SELECT parent_id FROM _library_ref WHERE id = '$library[id]' ");
-while (list($id) = $query_library->fetch_row())
-	$library_library[] = $id;
-?>
-<tr>
-	<td><a href="" onclick="return(confirm('Êtes vous bien certain de vouloir supprimer cette librairie ?'))" style="color:red; border:1px red solid;">X</a></td>
-	<td><a href="?id=<?php echo $library["id"]; ?>"><?php echo $library["id"]; ?></a></td>
-	<td><a href="?id=<?php echo $library["id"]; ?>"><?php echo $library["name"]; ?></a></td>
-	<td><?php echo $library["label"]; ?></td>
-	<td><?php echo $library["description"]; ?></td>
-	<td><?php
-	$library_show = array();
-	foreach($library_list as $i => $j)
-		if (in_array($i, $library_library))
-			$library_show[] = $j["label"];
-	if (count($library_show))
-		echo implode(" , ", $library_show);
-	?></td>
-</tr>
-<?php
-}
-?>
-</table>
-<?php
+library()->table_list(array(), array("label", "description", "dep_list"));
 
 }
 

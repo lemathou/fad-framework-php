@@ -9,42 +9,51 @@
   * 
   */
 
-if (!defined("ADMIN_OK") || !ADMIN_OK)
-{
+if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
+
+$_type = "menu";
+$_label = "Menu";
+
+if (isset($_POST["_insert"]))
+{
+	$_type()->add($_POST);
 }
 
-if (isset($_POST["menu_add"]["name"]) && isset($_POST["menu_add"]["title"]))
+if (isset($_POST["_update"]) && isset($_POST["id"]) && $_type()->exists($_POST["id"]))
 {
-	menu()->add($_POST["menu_add"]["name"], $_POST["menu_add"]["title"]);
+	$_type($_POST["id"])->update($_POST);
 }
+
+if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
+{
+	$_type()->del($_POST["_delete"]);
+}
+
+$_type_list = $_type()->list_detail_get();
 
 ?>
-
-<form method="get">
-<select name="id" onchange="if (this.value) this.form.submit()">
-<option value="0">-- Choisir si besoin --</option>
+<form method="get" class="page_form">
+<input type="submit" value="<?php echo $_label; ?>" />
+<select name="id" onchange="this.form.submit()">
+	<option value=""></option>
 <?php
-foreach (menu()->list_get() as $id=>$name)
+foreach ($_type_list as $id=>$info)
 {
-	if (isset($_GET["id"]) && $_GET["id"]==$id)
-		echo "<option value=\"$id\" selected>$id : $name</option>";
+	if (isset($_GET["id"]) && ($id==$_GET["id"]))
+		echo "	<option value=\"$id\" selected>[$id] $info[name]</option>\n";
 	else
-		echo "<option value=\"$id\">$id : $name</option>";
+		echo "	<option value=\"$id\">[$id] $info[name]</option>\n";
 }
 ?></select>
-<input type="submit" value="GO" />
+<a href="?add">Ajouter</a>
+<a href="?list">Retour à la liste</a>
 </form>
 
-<form action="?add" method="POST">
-<p>Name : <input name="menu_add[name]" /> Title : <input name="menu_add[title]" /> <input type="submit" value="Ajouter" /></p>
-</form>
-
-<hr />
-
+<div style="padding-top: 30px">
 <?php
 
-if (isset($_GET["id"]) && menu()->exists($id=$_GET["id"]))
+if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
 $menu = menu($id);
@@ -67,6 +76,31 @@ if (isset($_POST["pos_del"]) && $_POST["pos_del"])
 	$menu->del($_POST["pos_del"]);
 }
 ?>
+<form action="?id=<?=$id?>" method="post">
+<table width="100%">
+<tr>
+	<td class="label"><label for="id">ID :</label></td>
+	<td><input name="id" value="<?=$id?>" readonly /></td>
+</tr>
+<tr>
+	<td class="label"><label for="name">Name :</label></td>
+	<td><input name="name" value="<?=$object["name"]?>" maxlength="64" size="64" /></td>
+</tr>
+<tr>
+	<td class="label"><label for="label">Nom complet :</label></td>
+	<td><input name="label" value="<?=$object["label"]?>" maxlength="128" size="64" /></td>
+</tr>
+<tr>
+	<td class="label"><label for="description">Description :</label></td>
+	<td><textarea name="description" style="width:100%;" rows="10"><?=$object["description"]?></textarea></td>
+</tr>
+<tr>
+	<td>&nbsp;</td>
+	<td><input type="submit" name="_update" value="Mettre à jour" /></td>
+</tr>
+</table>
+</form>
+
 <form method="post" id="menu_form">
 <input id="pos_del" name="pos_del" type="hidden" value="0" />
 <p><select name="page_add"><option value="0">Sélectionnez une page à ajouter</option><?php
@@ -109,4 +143,46 @@ foreach($list as $i=>$page_id)
 	
 }
 
+elseif (isset($_GET["add"]))
+{
+
+$object = array
+(
+	"name"=>"",
+	"label"=>"",
+	"description"=>""
+);
 ?>
+<form action="?list" method="post">
+<table width="100%">
+<tr>
+	<td class="label"><label for="name">Name :</label></td>
+	<td><input name="name" value="<?=$object["name"]?>" maxlength="64" size="64" /></td>
+</tr>
+<tr>
+	<td class="label"><label for="label">Nom complet :</label></td>
+	<td><input name="label" value="<?=$object["label"]?>" maxlength="128" size="64" /></td>
+</tr>
+<tr>
+	<td class="label"><label for="description">Description :</label></td>
+	<td><textarea name="description" style="width:100%;" rows="10"><?=$object["description"]?></textarea></td>
+</tr>
+<tr>
+	<td>&nbsp;</td>
+	<td><input type="submit" name="_insert" value="Ajouter" /></td>
+</tr>
+</table>
+</form>
+<?php
+
+}
+
+else
+{
+
+$_type()->table_list(array(), array("label", "description"));
+
+}
+
+?>
+</div>

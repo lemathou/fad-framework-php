@@ -9,33 +9,41 @@
   * 
   */
 
-
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 
-if (isset($_POST["_datamodel_insert"]))
+$_type = "datamodel";
+$_label = "Datamodel";
+
+if (isset($_POST["_insert"]))
 {
-	datamodel()->add($_POST);
+	$_type()->add($_POST);
 }
 
-if (isset($_POST["_datamodel_delete"]))
+if (isset($_POST["_update"]) && isset($_POST["id"]) && $_type()->exists($_POST["id"]))
 {
-	datamodel()->del($_POST["_datamodel_delete"]);
+	$_type($_POST["id"])->update($_POST);
 }
+
+if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
+{
+	$_type()->del($_POST["_delete"]);
+}
+
+$_type_list = $_type()->list_detail_get();
 
 ?>
-
 <form method="get" class="page_form">
-<input type="submit" value="Editer le Datamodel" />
+<input type="submit" value="<?php echo $_label; ?>" />
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach (datamodel()->list_name_get() as $name=>$id)
+foreach ($_type_list as $id=>$info)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] $name</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] $info[name]</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $name</option>\n";
+		echo "	<option value=\"$id\">[$id] $info[name]</option>\n";
 }
 ?>
 </select>
@@ -46,60 +54,56 @@ foreach (datamodel()->list_name_get() as $name=>$id)
 <div style="padding-top: 30px">
 <?php
 
-if (isset($_GET["id"]) && datamodel()->exists($id=$_GET["id"]))
+$library_list = library()->list_detail_get();
+
+if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
-$datamodel = datamodel($id);
+$object = $_type($id);
 
 list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$id'")->fetch_row();
-
-// Datamodel update
-if (isset($_POST["_datamodel_update"]))
-{
-	$datamodel->update($_POST);
-}
 
 // Datamodel field add
 if (isset($_POST["_field_add"]))
 {
-	$datamodel->field_add($_POST);
+	$object->field_add($_POST);
 }
 
 // Datamodel field update
 if (isset($_POST["_field_update"]))
 {
-	$datamodel->field_update($_POST["name_orig"], $_POST);
+	$object->field_update($_POST["name_orig"], $_POST);
 }
 
 // Datamodel field delete
 if (isset($_GET["field_delete"]))
 {
-	$datamodel->field_delete($_GET["field_delete"]);
+	$object->field_delete($_GET["field_delete"]);
 }
 
 // Datamodel db create
 if (isset($_POST["_db_create"]))
 {
-	echo "<p>Création de la structure de base de données pour le datamodel \"<b>".$datamodel->name()."</b>\"</p>\n";
-	$datamodel->db_create();
+	echo "<p>Création de la structure de base de données pour le datamodel \"<b>".$object->name()."</b>\"</p>\n";
+	$object->db_create();
 }
 
 // Position maximale
-list($pos_max)=db()->query("SELECT MAX(`pos`) FROM `_datamodel_fields` WHERE `datamodel_id`='".$datamodel->id()."'")->fetch_row();
+list($pos_max)=db()->query("SELECT MAX(`pos`) FROM `_datamodel_fields` WHERE `datamodel_id`='$id'")->fetch_row();
 
 if (empty($_GET["field_edit"])) { ?>
 <form method="post"><table>
 <tr>
 	<td>ID :</td>
-	<td><input name="id" value="<?=$datamodel->id()?>" size="6" readonly /></td>
+	<td><input name="id" value="<?=$id?>" size="6" readonly /></td>
 </tr>
 <tr>
 	<td>Librairie :</td>
 	<td><select name="library_id">
 	<?php
-	foreach (library()->list_detail_get() as $library)
+	foreach ($library_list as $library)
 	{
-		if(is_a($datamodel->library(), "library") && $library["id"] == $datamodel->library()->id())
+		if(is_a($object->library(), "library") && $library["id"] == $object->library()->id())
 			echo "<option value=\"$library[id]\" selected>$library[name]</option>\n";
 		else
 			echo "<option value=\"$library[id]\">$library[name]</option>\n";
@@ -109,28 +113,28 @@ if (empty($_GET["field_edit"])) { ?>
 </tr>
 <tr>
 	<td>Name :</td>
-	<td><input name="name" value="<?=$datamodel->name()?>" /></td>
+	<td><input name="name" value="<?=$object->name()?>" /></td>
 </tr>
 <tr>
 	<td>Label :</td>
-	<td><input name="label" value="<?=$datamodel->label()?>" size="64" /></td>
+	<td><input name="label" value="<?=$object->label()?>" size="64" /></td>
 </tr>
 <tr>
 	<td>Description :</td>
-	<td><textarea name="description" style="width:100%;" rows="10"><?=$datamodel->info("description")?></textarea></td>
+	<td><textarea name="description" style="width:100%;" rows="10"><?=$object->info("description")?></textarea></td>
 </tr>
 <tr>
 	<td>Table (en BDD) :</td>
-	<td><input name="table" value="<?=$datamodel->db_opt("table")?>" /></td>
+	<td><input name="table" value="<?=$object->db_opt("table")?>" /></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input type="submit" name="_datamodel_update" value="Mettre à jour" onclick="return(confirm('Êtes-vous certain de vouloir mettre à jour ce datamodel ?'))" /></td>
+	<td><input type="submit" name="_update" value="Mettre à jour" onclick="return(confirm('Êtes-vous certain de vouloir mettre à jour ce datamodel ?'))" /></td>
 </tr>
 </table></form>
 <?php } ?>
 
-<form method="post" action="?id=<?=$datamodel->id()?>">
+<form method="post" action="?id=<?=$id?>">
 <h3>Liste des champs :</h3>
 <table border="0" cellspacing="2" cellpadding="2">
 	<tr style="font-weight: bold;">
@@ -147,8 +151,8 @@ if (empty($_GET["field_edit"])) { ?>
 <?php
 $field_opt_list = array("" , "key" , "required" , "calculated");
 
-list($pos_max) = db()->query("SELECT MAX(t1.`pos`) FROM `_datamodel_fields` as t1 WHERE t1.`datamodel_id`='".$datamodel->id()."'")->fetch_row();
-$query = db()->query("SELECT t1.`pos` , t1.`name` , t2.`label` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`query` , t1.`lang` , t1.`db_sync` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` AND t2.`lang_id`=".SITE_LANG_ID." WHERE t1.`datamodel_id`='".$datamodel->id()."' ORDER BY t1.`pos`");
+list($pos_max) = db()->query("SELECT MAX(t1.`pos`) FROM `_datamodel_fields` as t1 WHERE t1.`datamodel_id`='$id'")->fetch_row();
+$query = db()->query("SELECT t1.`pos` , t1.`name` , t2.`label` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`query` , t1.`lang` , t1.`db_sync` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` AND t2.`lang_id`=".SITE_LANG_ID." WHERE t1.`datamodel_id`='$id' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
 	//print_r($field);
@@ -156,7 +160,7 @@ while ($field=$query->fetch_assoc())
 	{
 		$datatype = "data_$field[type]";
 		$datafield = new $datatype($field["name"], $field["defaultvalue"], $field["label"]);
-		$query_opt = db()->query("SELECT opt_type, opt_name, opt_value FROM _datamodel_fields_opt WHERE datamodel_id='".$datamodel->id()."' AND fieldname='$field[name]'");
+		$query_opt = db()->query("SELECT opt_type, opt_name, opt_value FROM _datamodel_fields_opt WHERE datamodel_id='$id' AND fieldname='$field[name]'");
 		while ($opt=$query_opt->fetch_assoc())
 		{
 			$method="$opt[opt_type]_opt_set";
@@ -267,9 +271,9 @@ while ($field=$query->fetch_assoc())
 	{
 	?>
 	<tr>
-		<td><a href="?id=<?=$datamodel->id()?>&field_delete=<?=$field["name"]?>" onclick="return(confirm('Êtes-vous certain de vouloir supprimer ce champ ?'))" style="color:red;border:1px red solid;">X</a><?php if (false && $field["pos"]>1) { ?> <a href="?id=<?=$datamodel->id()?>&field_move_up=<?=$field["pos"]?>">U</a><?} ?></td>
+		<td><a href="?id=<?=$id?>&field_delete=<?=$field["name"]?>" onclick="return(confirm('Êtes-vous certain de vouloir supprimer ce champ ?'))" style="color:red;border:1px red solid;">X</a><?php if (false && $field["pos"]>1) { ?> <a href="?id=<?=$id?>&field_move_up=<?=$field["pos"]?>">U</a><?} ?></td>
 		<td><?=$field["pos"]?></td>
-		<td><a href="?id=<?=$datamodel->id()?>&field_edit=<?=$field["name"]?>"><?=$field["name"]?></a></td>
+		<td><a href="?id=<?=$id?>&field_edit=<?=$field["name"]?>"><?=$field["name"]?></a></td>
 		<td><input readonly value="<?=$field["label"]?>" /></td>
 		<td><input readonly value="<?=$field["type"]?>" /></td>
 		<td><?php if ($field["defaultvalue"] === null) { ?><i>NULL</i><?php } else { ?><textarea readonly rows="1"><?=$field["defaultvalue"]?></textarea><?php } ?></td>
@@ -291,7 +295,7 @@ if (!isset($_GET["field_edit"])) {
 		}
 		echo "<option value=\"".($pos_max+1)."\" selected>".($pos_max+1)."</option>\n";
 		?></select></td>
-		<td><input name="name" value="" /><input type="hidden" name="id" value="<?=$datamodel->id()?>" /></td>
+		<td><input name="name" value="" /><input type="hidden" name="id" value="<?=$id?>" /></td>
 		<td><input name="label" value="" /></td>
 		<td><select name="type"><?php
 		foreach (data()->list_detail_get() as $j)
@@ -319,14 +323,16 @@ if (!isset($_GET["field_edit"])) {
 </table></form>
 
 <hr />
-<form method="post" action="?id=<?=$datamodel->id()?>">
+<form method="post" action="?id=<?=$id?>">
 <p><input type="submit" name="_db_create" value="Créer les tables associées en base de donnée" /></p>
 </form>
 
 <?php
 }
-else
+
+elseif (isset($_GET["add"]))
 {
+
 ?>
 
 <form method="post" action="?add">
@@ -343,7 +349,7 @@ else
 <tr>
 	<td>Librairie :</td>
 	<td><select name="library_id"><?php
-	foreach (library()->list_detail_get() as $id=>$library)
+	foreach ($library_list as $id=>$library)
 	{
 		echo "<option value=\"$id\">$library[name]</option>";
 	}
@@ -359,12 +365,21 @@ else
 </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input name="_datamodel_insert" "type="submit" value="Ajouter" /></td>
+	<td><input name="_insert" "type="submit" value="Ajouter" /></td>
 </tr>
 </table>
 </form>
 <?php
+
 }
+
+else
+{
+
+$_type()->table_list(array(), array("label", "description"));
+
+}
+
 ?>
 </div>
 

@@ -88,12 +88,10 @@ protected $template_perm = array();
 protected $page_perm = array();
 protected $menu_perm = array();
 
-protected static $serialize_list = array("id", "name", "label", "description", "library_perm", "datamodel_perm", "dataobject_perm", "template_perm", "page_perm", "menu_perm");
-
 function __sleep()
 {
 
-return session_select::__sleep(self::$serialize_list);
+return array("id", "name", "label", "description", "library_perm", "datamodel_perm", "dataobject_perm", "template_perm", "page_perm", "menu_perm");
 
 }
 

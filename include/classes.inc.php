@@ -29,6 +29,12 @@ protected $list_name = array();
 protected $info_list = array("name"); // Keep at least name !
 protected $info_lang_list = array("label", "description"); // Keep at least label !
 protected $info_save_list = array("name", "label");
+protected $info_detail = array
+(
+	"name"=>array("type"=>"string", "size"=>64),
+	"label"=>array("type"=>"string", "size"=>128),
+	"description"=>array("type"=>"text")
+);
 
 protected $retrieve_all = false;
 
@@ -299,7 +305,7 @@ foreach ($this->info_list as $name)
 	else
 	{
 		$query_fields[] = "`$name`";
-		$query_values[] = "`".db()->string_escape($infos[$name])."`";
+		$query_values[] = "'".db()->string_escape($infos[$name])."'";
 	}
 }
 foreach ($this->info_lang_list as $name)
@@ -309,7 +315,7 @@ foreach ($this->info_lang_list as $name)
 	else
 	{
 		$query_fields_lang[] = "`$name`";
-		$query_values_lang[] = "`".db()->string_escape($infos[$name])."`";
+		$query_values_lang[] = "'".db()->string_escape($infos[$name])."'";
 	}
 }
 
@@ -319,7 +325,7 @@ db()->query("INSERT INTO `_".$this->type."_lang` (`id`, `lang_id`, ".implode(", 
 
 $this->add_more($id, $infos);
 
-$this->query_infos();
+$this->query_info();
 
 if (APC_CACHE)
 	apc_store($this->type."_gestion", $this, APC_CACHE_GESTION_TTL);
@@ -363,7 +369,10 @@ foreach ($this->list_detail as $info)
 echo "<tr>\n";
 	print "<td><a href=\"?id=$info[id]\">[$info[id]] $info[name]</a></td>\n";
 foreach($field_list as $name)
-	echo "<td>".$info[$name]."</td>\n";
+	if (is_string($info[$name]))
+		echo "<td>".$info[$name]."</td>\n";
+	else
+		echo "<td>".json_encode($info[$name])."</td>\n";
 echo "</tr>\n";
 
 }
@@ -462,10 +471,10 @@ $query_info = array();
 $query_info_lang = array();
 foreach ($info_list as $name)
 	if (isset($infos[$name]))
-		$query_info[] = "`$name`='".db()->escape_string($infos[$name])."'";
+		$query_info[] = "`$name`='".db()->string_escape($infos[$name])."'";
 foreach ($info_lang_list as $name)
 	if (isset($infos[$name]))
-		$query_info_lang[] = "`$name`='".db()->escape_string($infos[$name])."'";
+		$query_info_lang[] = "`$name`='".db()->string_escape($infos[$name])."'";
 
 if (count($query_info))
 	db()->query("UPDATE `_$type` SET ".implode(", ",$query_info)." WHERE `id`='$this->id'");
@@ -522,6 +531,27 @@ public function info($name)
 if (isset($this->{$name}))
 	return $this->{$name};
 
+}
+
+public function update_form()
+{
+?>
+<form action="?id=<?=$id?>" method="post">
+<table width="100%">
+<?php
+foreach (array_merge($type()->info_list(), $type()->info_lang_list()) as $name)
+{
+?>
+<tr>
+	<td class="label"><label for="<?php echo $name; ?>"><?php echo $name; ?> :</label></td>
+	<td><textarea name="<?php echo $name; ?>" style="width:100%;" rows="10"><?php echo $this->$name; ?></textarea></td>
+</tr>
+<?php
+}
+?>
+</table>
+</form>
+<?php
 }
 
 }

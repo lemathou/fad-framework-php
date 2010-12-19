@@ -278,7 +278,7 @@ if (isset($infos["perm_list"]) && is_array($infos["perm_list"]))
 // Template optionnal script file
 if (isset($infos["script"]))
 {
-	$filename = "page/scripts/$this->name.inc.php";
+	$filename = "page/$this->name.inc.php";
 	if ($infos["script"])
 	{
 		fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos["script"]));
@@ -598,15 +598,10 @@ return $this->template();
 public function action()
 {
 
-if (file_exists("page/scripts/$this->name.inc.php"))
+if (file_exists("page/$this->name.inc.php"))
 {
-	foreach($this->params as $_name=>&$_value)
-	{
-		//echo "<p>Param $_name : $_value</p>\n";
-
-		${$_name} = $_value;
-	}
-	include "page/scripts/$this->name.inc.php";
+	extract($this->params);
+	include "page/$this->name.inc.php";
 }
 
 }

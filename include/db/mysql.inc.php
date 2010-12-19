@@ -524,48 +524,27 @@ if ($this->id)
 class db_query_select
 {
 
-protected $query;
-
-function __construct($select, $where, $order, $limit, $db_id)
+function __construct($db_id, $select, $where, $order, $limit)
 {
 
-$from_querystr = array();
-$select_querystr = array();
+$select_list = array();
+$from_list = array();
 foreach($select as $table=>$fields)
 {
 	foreach($fields as $field)
-		$select_querystr[] = "$table.$field";
-	if (!in_array($table, $from_querystr))
-		$from_querystr[] = "$table";
+		$select_list[] = "`$table`.`$field`";
+	if (!in_array($table, $from_list))
+		$from_list[] = "`$table`";
 }
-print $query_string = "SELECT ".implode(" , ",$select_querystr)." FROM ".implode(" , ",$from_querystr);
-$this->query = new db_query($query_string, $db_id);
-
-}
-
-function __get($name)
+$where_list = array();
+foreach ($where as $w=>$l)
 {
-
-return $this->query->{$name};
-
+	
 }
 
-function __set($name, $value)
-{
+$this->query_string = "SELECT ".implode(" , ",$select_list)." FROM ".implode(" , ",$from_list)." WHERE ";
 
-$this->query->{$name} = $value;
-
-}
-
-function __call($name, $arguments)
-{
-
-// A AMELIORER !!
-$args = array();
-for ($i=0;$i<count($arguments);$i++)
-	$args[] = "\$arguments[\$i]";
-$str = "return \$this->query->".$name."(".implode(" , ",$args).");";
-eval ($str);
+$this->execute();
 
 }
 

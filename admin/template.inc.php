@@ -9,25 +9,41 @@
   * 
   */
 
-
 if (!defined("ADMIN_OK"))
-{
 	die("ACCES NON AUTORISE");
+
+$_type = "template";
+$_label = "Template";
+
+if (isset($_POST["_insert"]))
+{
+	$_type()->add($_POST);
 }
 
-?>
+if (isset($_POST["_update"]) && isset($_POST["id"]) && $_type()->exists($_POST["id"]))
+{
+	$_type($_POST["id"])->update($_POST);
+}
 
+if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
+{
+	$_type()->del($_POST["_delete"]);
+}
+
+$_type_list = $_type()->list_detail_get();
+
+?>
 <form method="get" class="page_form">
-<input type="submit" value="Editer le template" />
+<input type="submit" value="<?php echo $_label; ?>" />
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach (template()->list_detail_get() as $id=>$template)
+foreach ($_type()->list_detail_get() as $id=>$info)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] $template[name]</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] $info[label]</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $template[name]</option>\n";
+		echo "	<option value=\"$id\">[$id] $info[label]</option>\n";
 }
 ?></select>
 <a href="?add">Ajouter</a>
@@ -36,67 +52,24 @@ foreach (template()->list_detail_get() as $id=>$template)
 
 <div style="padding-top: 30px">
 <?php
-// Insert
-if (isset($_POST["insert"]))
-{
 
-if ($id=$_GET["id"]=template()->add($_POST["insert"]))
-{
-	echo "<p>Le template a été ajouté avec succès (ID#$id), vous pouvez le modifier ci-dessous.</p>\n";
-}
-else
-{
-	echo "<p>Erreur à la création du template...</p>\n";
-}
-
-}
-
-// Update
-if (isset($_POST["update"]) && is_array($_POST["update"]) && isset($_POST["update"]["id"]) && template()->exists($_POST["update"]["id"]))
-{
-
-$template = template($_POST["update"]["id"]);
-$template->update($_POST["update"]);
-
-}
+$library_list = library()->list_detail_get();
 
 // EDITION
-if (isset($_GET["id"]) && template()->exists($id=$_GET["id"]))
+if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
 $template = template($id);
 
 ?>
-<script language="Javascript" type="text/javascript">
-	// initialisation
-	editAreaLoader.init({
-		id: "update[filecontent]"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: true
-		,word_wrap: false
-		,language: "fr"
-		,syntax: "php"	
-	});
-	editAreaLoader.init({
-		id: "update[script]"	// id of the textarea to transform		
-		,start_highlight: true	// if start with highlight
-		,allow_resize: "both"
-		,allow_toggle: true
-		,word_wrap: false
-		,language: "fr"
-		,syntax: "php"	
-	});
-</script>
-
-<form action="?id=<?=$id?>" method="POST">
-<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
+<form action="?id=<?=$id?>" method="post" style="margin-top: 5px;">
+<table width="100%" cellspacing="0" cellpadding="1">
 <tr>
 	<td class="label" width="200">ID</td>
-	<td width="300"><input name="update[id]" value="<?=$id?>" readonly /></td>
+	<td width="300"><input name="id" value="<?=$id?>" readonly /></td>
 	<td rowspan="11">
 	<h3 style="margin-bottom: 0px;">TEMPLATE</h3>
-	<textarea id="update[filecontent]" name="update[filecontent]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
+	<textarea id="filecontent" name="filecontent" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
 	$filename = "template/".$template->info("name").".tpl.php";
 	if (file_exists($filename) && filesize($filename))
 	{
@@ -108,7 +81,7 @@ $template = template($id);
 	}
 	?></textarea>
 	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle / Modification / Mise à jour (optionnel)</h3>
-	<textarea id="update[script]" name="update[script]" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
+	<textarea id="script" name="script" onclick="this.style.backgroundColor='#fff';" style="width: 100%;background-color:#eee;" rows="20"><?php
 	$filename = "template/".$template->info("name").".inc.php";
 	if (file_exists($filename) && filesize($filename))
 	{
@@ -123,7 +96,7 @@ $template = template($id);
 </tr>
 <tr>
 	<td class="label">Type</td>
-	<td><select name="update[type]"><?php
+	<td><select name="type"><?php
 	$type_list = array
 	(
 		"container"=>"Conteneur (passage de variables)",
@@ -140,37 +113,37 @@ $template = template($id);
 </tr>
 <tr>
 	<td class="label">Name</td>
-	<td><input name="update[name]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("name")?>" style="background-color:#eee;width:100%;" /></td>
+	<td><input name="name" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("name")?>" style="background-color:#eee;width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Title</td>
-	<td><input name="update[label]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("label")?>" style="background-color:#eee;width:100%;" /></td>
+	<td><input name="label" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("label")?>" style="background-color:#eee;width:100%;" /></td>
 </tr>
 <tr>
 	<td class="label">Description</td>
-	<td><textarea name="update[description]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("description")?></textarea></td>
+	<td><textarea name="description" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("description")?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Details</td>
-	<td><textarea name="update[details]" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("details")?></textarea></td>
+	<td><textarea name="details" onclick="this.style.backgroundColor='#fff';" rows="4" style="background-color:#eee;width:100%;"><?=$template->info("details")?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Durée Min du cache<br /><span style="color:#400">Attention avec ce paramètre !!</span></td>
-	<td><input name="update[cache_mintime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_mintime")?>" style="background-color:#eee;" size="3" maxlength="3" /></td>
+	<td><input name="cache_mintime" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_mintime")?>" style="background-color:#eee;" size="3" maxlength="3" /></td>
 </tr>
 <tr>
 	<td class="label">Durée Max du cache<br />(0 = pas de cache)</td>
-	<td><input name="update[cache_maxtime]" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_maxtime")?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
+	<td><input name="cache_maxtime" onclick="this.style.backgroundColor='#fff';" value="<?=$template->info("cache_maxtime")?>" style="background-color:#eee;" size="3" maxlength="4" /></td>
 </tr>
 <tr>
 	<td class="label">Dépendant du login</td>
-	<td><input name="update[login_dependant]" value="0" type="radio"<?php if (!$template->info("login_dependant")) echo " checked"; ?> /> NON <input name="update[login_dependant]" value="1" type="radio"<?php if ($template->info("login_dependant")) echo " checked"; ?> /> OUI</td>
+	<td><input name="login_dependant" value="0" type="radio"<?php if (!$template->info("login_dependant")) echo " checked"; ?> /> NON <input name="update[login_dependant]" value="1" type="radio"<?php if ($template->info("login_dependant")) echo " checked"; ?> /> OUI</td>
 </tr>
 <tr>
 	<td class="label">Libraries</td>
-	<td><select name="update[library][]" size="4" multiple>
+	<td><select name="library_list[]" size="4" multiple>
 	<?
-	foreach(library()->list_detail_get() as $library)
+	foreach($library_list as $library)
 	{
 		if (in_array($library["id"], $template->info("library_list")))
 			print "<option value=\"$library[id]\" selected>$library[label]</option>";
@@ -182,7 +155,7 @@ $template = template($id);
 </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input type="submit" value="Mettre à jour" /></td>
+	<td><input type="submit" name="_update" value="Mettre à jour" /></td>
 </tr>
 </table>
 </form>
@@ -436,7 +409,7 @@ while ($param = $query_params->fetch_assoc())
 elseif (isset($_GET["add"]))
 {
 
-$template = array
+$object = array
 (
 	"name" => "",
 	"label" => "",
@@ -447,47 +420,44 @@ $template = array
 	"library" => array(),
 );
 
-if (isset($_POST["insert"]))
-{
-	foreach ($_POST["insert"] as $name=>$value)
-		if (isset($template[$name]))
-			$template[$name] = $value;
-}
+foreach ($_POST as $name=>$value)
+	if (isset($object[$name]))
+		$object[$name] = $value;
 
 ?>
-<form action="" method="POST">
-<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
+<form method="post" style="margin-top: 5px;">
+<table width="100%" cellspacing="0" cellpadding="1">
 <tr>
 	<td class="label">Name</td>
-	<td><input name="insert[name]" value="<?=$template["name"]?>" size="32" /></td>
+	<td><input name="name" value="<?=$object["name"]?>" size="32" /></td>
 </tr>
 <tr>
 	<td class="label">Title</td>
-	<td><input name="insert[label]" value="<?=$template["label"]?>" size="64" /></td>
+	<td><input name="label" value="<?=$object["label"]?>" size="64" /></td>
 </tr>
 <tr>
 	<td class="label">Description</td>
-	<td><textarea name="insert[description]" cols="64" rows="4"><?=$template["description"]?></textarea></td>
+	<td><textarea name="description" cols="64" rows="4"><?=$object["description"]?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Details (explicatifs)</td>
-	<td><textarea name="insert[details]" cols="64" rows="8"><?=$template["details"]?></textarea></td>
+	<td><textarea name="details" cols="64" rows="8"><?=$object["details"]?></textarea></td>
 </tr>
 <tr>
 	<td class="label">Durée mini du cache<br />Attention toutefois</td>
-	<td><input name="insert[cache_mintime]" value="<?=$template["cache_mintime"]?>" size="3" maxlength="3" /></td>
+	<td><input name="cache_mintime" value="<?=$object["cache_mintime"]?>" size="3" maxlength="3" /></td>
 </tr>
 <tr>
 	<td class="label">Durée max du cache<br />(0 = pas de mise en cache)</td>
-	<td><input name="insert[cache_maxtime]" value="<?=$template["cache_maxtime"]?>" size="3" maxlength="4" /></td>
+	<td><input name="cache_maxtime" value="<?=$object["cache_maxtime"]?>" size="3" maxlength="4" /></td>
 </tr>
 <tr>
 	<td class="label">Libraries</td>
-	<td><select name="insert[library][]" size="4" multiple>
+	<td><select name="library_list[]" size="4" multiple>
 	<?
-	foreach(library()->list_detail_get() as $i => $j)
+	foreach($library_list as $i => $j)
 	{
-		if (in_array($i, $template["library"]))
+		if (in_array($i, $object["library"]))
 			print "<option value=\"$i\" selected>$j[label]</option>";
 		else
 			print "<option value=\"$i\">$j[label]</option>";
@@ -497,7 +467,7 @@ if (isset($_POST["insert"]))
 </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input type="submit" value="Ajouter" /></td>
+	<td><input type="submit" name="_insert" value="Ajouter" /></td>
 </tr>
 </table>
 <p>La gestion des paramètres se fera à la page suivante</p>
@@ -580,3 +550,25 @@ while ($template = $query->fetch_assoc())
 }
 ?>
 </div>
+
+<script language="Javascript" type="text/javascript">
+	// initialisation
+	editAreaLoader.init({
+		id: "filecontent"	// id of the textarea to transform		
+		,start_highlight: true	// if start with highlight
+		,allow_resize: "both"
+		,allow_toggle: true
+		,word_wrap: false
+		,language: "fr"
+		,syntax: "php"	
+	});
+	editAreaLoader.init({
+		id: "script"	// id of the textarea to transform		
+		,start_highlight: true	// if start with highlight
+		,allow_resize: "both"
+		,allow_toggle: true
+		,word_wrap: false
+		,language: "fr"
+		,syntax: "php"	
+	});
+</script>

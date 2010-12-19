@@ -10,72 +10,54 @@
   */
 
 if (!defined("ADMIN_OK"))
-{
 	die("ACCES NON AUTORISE");
+
+$_type = "page";
+$_label = "Page";
+
+if (isset($_POST["_insert"]))
+{
+	$_type()->add($_POST);
 }
+
+if (isset($_POST["_update"]) && isset($_POST["id"]) && $_type()->exists($_POST["id"]))
+{
+	$_type($_POST["id"])->update($_POST);
+}
+
+if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
+{
+	$_type()->del($_POST["_delete"]);
+}
+
+$_type_list = $_type()->list_detail_get();
 
 ?>
-<style type="text/css">
-table.tpl_params td
-{
-	padding: 0px 1px;
-	border: 1px #ccc solid;
-}
-table.tpl_params tr.separator td
-{
-	border: 0px;
-}
-table.tpl_params tr.tpl_name td
-{
-	font-weight: bold;
-	border: 0px;
-	font-size: 1em;
-} 
-table.tpl_params tr.title td
-{
-	font-weight: bold;
-	background-color: #ffa;
-}
-</style>
-
-<script type="text/javascript">
-function param_update(name)
-{
-	var element = document.getElementById('param['+name+'][value]');
-	element.name = element.id;
-	element = document.getElementById('param['+name+'][update_pos]');
-	element.name = element.id;
-}
-// initialisation
-editAreaLoader.init({
-	id: "update[script]"	// id of the textarea to transform		
-	,start_highlight: true	// if start with highlight
-	,allow_resize: "both"
-	,allow_toggle: true
-	,word_wrap: false
-	,language: "fr"
-	,syntax: "php"	
-});
-</script>
 <form method="get" class="page_form">
-<input type="submit" value="Editer la page" />
+<input type="submit" value="<?php echo $_label; ?>" />
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach (page()->list_detail_get() as $id=>$page)
+foreach ($_type_list as $id=>$info)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] $page[name]</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] $info[name]</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $page[name]</option>\n";
+		echo "	<option value=\"$id\">[$id] $info[name]</option>\n";
 }
-?></select>
+?>
+</select>
+<a href="?list">Liste</a>
 <a href="?add">Ajouter</a>
-<a href="?list">Retour à la liste</a>
 </form>
 
 <div style="padding-top: 30px">
 <?
+
+// Permissions
+$permission_list = permission()->list_detail_get();
+// Permissions
+$template_list = template()->list_detail_get();
 // Types
 $type_list = array
 (
@@ -87,44 +69,23 @@ $type_list = array
 	"php" => "Script PHP"
 );
 
-// ACTIONS
-
-// Insert
-if (isset($_POST["insert"]) && is_array($_POST["insert"]))
-{
-
-page()->add($_POST["insert"]["name"], $_POST["insert"]);
-
-}
-
-// Update
-if (isset($_POST["_update"]) && is_array($_POST["_update"]) && isset($_POST["id"]) && page()->exists($id=$_POST["id"]))
-{
-
-page($id)->update($_POST["update"]);
-echo "<p>Page mise à jour</p>";
-
-}
-
-// Permissions
-$perm_list = permission()->list_detail_get();
-
 // ACTION
 
-if (isset($_GET["id"]) && page()->exists($id=$_GET["id"]))
+if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
-$page = page()->list_detail_get($id);
+$page = $_type()->list_detail_get($id);
 
 ?>
-<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
+<form method="post" style="margin-top: 5px;">
+<table width="100%" cellspacing="0" cellpadding="0">
 <tr>
-	<td width="200" class="label"><label for="id">ID</label> :</td>
-	<td width="300"><input name="id" value="<?php echo $page["id"]; ?>" readonly /></td>
+	<td class="label"><label for="id">ID</label> :</td>
+	<td ><input name="id" value="<?php echo $id; ?>" readonly /></td>
 	<td rowspan="8">
 	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle (optionnel)</h3>
 	<textarea id="script" name="script" class="data_script data_script_php" rows="20"><?php
-	$filename = "page/scripts/$page[name].inc.php";
+	$filename = "page/$page[name].inc.php";
 	if (file_exists($filename) && filesize($filename))
 	{
 		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
@@ -139,6 +100,17 @@ $page = page()->list_detail_get($id);
 <tr>
 	<td class="label"><label for="name">Name</label> :</td>
 	<td><input name="name" value="<?php echo $page["name"]; ?>" /></td>
+</tr>
+<tr>
+	<td class="label">Type :</td>
+	<td><select name="type">
+	<?php
+	foreach ($type_list as $type=>$label)
+		if ($page["type"] == $type)
+			echo "<option value=\"$type\" selected>$label</option>";
+		else
+			echo "<option value=\"$type\">$label</option>";
+	?></select></td>
 </tr>
 <tr>
 	<td class="label"><label for="template_id">Template associé</label> :</td>
@@ -158,7 +130,7 @@ $page = page()->list_detail_get($id);
 </tr>
 <tr>
 	<td class="label"><label for="titre_court">Titre court (lien)</label> :</td>
-	<td><input name="titre_court" value="<?php echo $page["titre_court"]; ?>" /></td>
+	<td><input name="shortlabel" value="<?php echo $page["shortlabel"]; ?>" /></td>
 </tr>
 <tr>
 	<td class="label"><label for="label">Label/Titre (header de page)</label> :</td>
@@ -168,7 +140,7 @@ $page = page()->list_detail_get($id);
 	<td class="label"><label for="perm_list">Permissions</label> :</td>
 	<td><select name="perm_list[]" size="4" multiple>
 	<?
-	foreach(permission()->list_detail_get() as $perm)
+	foreach($permission_list as $perm)
 	{
 		if (in_array($perm["id"], $page["perm_list"]))
 			print "<option value=\"$perm[id]\" selected>$perm[label]</option>";
@@ -351,38 +323,40 @@ if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]
 elseif (isset($_GET["add"]))
 {
 
-$page = array
+$object = array
 (
 	"name" => "",
 	"type" => "template",
 	"template_id" => "0",
 	"url" => "",
-	"titre_court" => "",
-	"titre" => "",
+	"shortlabel" => "",
+	"label" => "",
 	"description" => "",
 	"perm" => array(),
+	"script" => ""
 );
 
-if (isset($_POST["insert"]))
-{
-	foreach ($page as $i=>$j)
-		if (isset($_POST["insert"][$i]))
-			$page[$i] = $_POST["insert"][$i];
-}
+foreach ($object as $i=>$j)
+	if (isset($_POST[$i]))
+		$object[$i] = $_POST[$i];
 
 ?>
 <form action="" method="POST">
-<table>
+<table width="100%">
 <tr>
-	<td class="label">Name</td>
-	<td><input name="insert[name]" value="<?=$page["name"]?>" size="32" /></td>
+	<td class="label">Name :</td>
+	<td><input name="name" value="<?=$object["name"]?>" size="32" /></td>
+	<td width="50%" rowspan="9">
+	<h3 style="margin-bottom: 0px;">SCRIPT de contrôle (optionnel)</h3>
+	<textarea id="script" name="script" class="data_script data_script_php" style="width:100%;" rows="25"><?php echo $object["script"]; ?></textarea>
+	</td>
 </tr>
 <tr>
-	<td class="label">Type</td>
-	<td><select name="insert[type]">
+	<td class="label">Type :</td>
+	<td><select name="type">
 	<?php
 	foreach ($type_list as $type=>$label)
-		if ($page["type"] == $type)
+		if ($object["type"] == $type)
 			echo "<option value=\"$type\" selected>$label</option>";
 		else
 			echo "<option value=\"$type\">$label</option>";
@@ -390,41 +364,41 @@ if (isset($_POST["insert"]))
 </tr>
 <tr>
 	<td class="label">Template :</td>
-	<td><select name="insert[template_id]"><?php
-	foreach ($template_list as $id=>$name)
+	<td><select name="template_id"><?php
+	foreach ($template_list as $id=>$info)
 	{
-		if ($page["template_id"] == $id)
-			echo "<option value=\"$id\" selected>$name</option>";
+		if ($object["template_id"] == $id)
+			echo "<option value=\"$id\" selected>$info[label]</option>";
 		else
-			echo "<option value=\"$id\">$name</option>";
+			echo "<option value=\"$id\">$info[label]</option>";
 	}
 	?></select></td>
 </tr>
 <tr>
-	<td class="label">URL (rewriting)</td>
-	<td><input name="insert[url]" value="<?=$page["url"]?>" size="64" /></td>
+	<td class="label">URL (rewriting) :</td>
+	<td><input name="url" value="<?=$object["url"]?>" size="32" /></td>
 </tr>
 <tr>
-	<td class="label">Titre court (lien)</td>
-	<td><input name="insert[titre_court]" value="<?=$page["titre_court"]?>" size="64" /></td>
+	<td class="label">Titre court (lien) :</td>
+	<td><input name="shortlabel" value="<?=$object["shortlabel"]?>" size="32" /></td>
 </tr>
 <tr>
-	<td class="label">Titre (header de page)</td>
-	<td><input name="insert[titre]" value="<?=$page["titre"]?>" size="64" /></td>
+	<td class="label">Titre (header de page) :</td>
+	<td><input name="label" value="<?=$object["label"]?>" size="32" /></td>
 </tr>
 <tr>
-	<td class="label">Description</td>
-	<td><textarea name="insert[description]" cols="64" rows="4"><?=$page["description"]?></textarea></td>
+	<td class="label">Description :</td>
+	<td><textarea name="description" cols="32" rows="4"><?=$object["description"]?></textarea></td>
 </tr>
 <tr>
-	<td class="label">Permissions</td>
-	<td><select name="insert[perm][]" size="4" multiple><?
-	foreach($perm_list as $i=>$j)
+	<td class="label">Permissions :</td>
+	<td><select name="perm[]" size="4" multiple><?
+	foreach($permission_list as $perm)
 	{
-		if (in_array($i, $page["perm"]))
-			print "<option value=\"$i\" selected>$j</option>";
+		if (in_array($i, $object["perm"]))
+			print "<option value=\"$perm[id]\" selected>$perm[label]</option>";
 		else
-			print "<option value=\"$i\">$j</option>";
+			print "<option value=\"$perm[id]\">$perm[label]</option>";
 	}
 	?></select></td>
 </tr>
@@ -435,11 +409,13 @@ if (isset($_POST["insert"]))
 </table>
 </form>
 <?php
+
 }
 
 // LISTE
 else
 {
+
 ?>
 
 <h2>Liste et paramétrage des pages disponibles</h2>
@@ -453,35 +429,49 @@ else
 
 page()->table_list(array(), array("label", "description", "type", "template_id", "perm"));
 
-/*
-$template_list = template()->list_detail_get();
-foreach (page()->list_detail_get() as $page)
+}
+
+?>
+</div>
+<style type="text/css">
+table.tpl_params td
 {
-
-if (template()->exists($page["template_id"]))
-	$page["template"] = $template_list[$page["template_id"]]["label"];
-else
-	$page["template"] = "";
-
-print "<tr>\n";
-print "<td><a href=\"?id=$page[id]\">$page[id]</a></td>\n";
-print "<td><a href=\"?id=$page[id]\">$page[name]</a></td>\n";
-print "<td>$page[template]</td>\n";
-print "<td>$page[label]</td>\n";
-print "<td>$page[url]</td>\n";
-print "<td>";
-$query_perm = db()->query("SELECT t1.name FROM _permission as t1 , _page_perm_ref as t2 WHERE t2.page_id = $page[id] AND t1.id=t2.perm_id");
-while (list($perm)=$query_perm->fetch_row())
-	echo "<p>$perm</p>\n";
-echo "</td>\n";
-print "</tr>\n";
-
+	padding: 0px 1px;
+	border: 1px #ccc solid;
 }
-?>
-</table>
-
-<?php
-*/
-
+table.tpl_params tr.separator td
+{
+	border: 0px;
 }
-?>
+table.tpl_params tr.tpl_name td
+{
+	font-weight: bold;
+	border: 0px;
+	font-size: 1em;
+} 
+table.tpl_params tr.title td
+{
+	font-weight: bold;
+	background-color: #ffa;
+}
+</style>
+
+<script type="text/javascript">
+function param_update(name)
+{
+	var element = document.getElementById('param['+name+'][value]');
+	element.name = element.id;
+	element = document.getElementById('param['+name+'][update_pos]');
+	element.name = element.id;
+}
+// initialisation
+editAreaLoader.init({
+	id: "script"	// id of the textarea to transform		
+	,start_highlight: true	// if start with highlight
+	,allow_resize: "both"
+	,allow_toggle: true
+	,word_wrap: false
+	,language: "fr"
+	,syntax: "php"	
+});
+</script>

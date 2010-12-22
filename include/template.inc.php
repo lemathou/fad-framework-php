@@ -82,8 +82,8 @@ protected function query_info_more()
 {
 
 // Params
-$query = db()->query("SELECT t1.`template_id`, t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
 $param_order = array(); // temp
+$query = db()->query("SELECT t1.`template_id`, t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
 while ($param = $query->fetch_assoc())
 {
 	$this->list_detail[$param["template_id"]]["param_list_detail"][$param["order"]] = array
@@ -282,6 +282,12 @@ public function param_list()
 {
 
 return $this->param_list;
+
+}
+public function param_list_detail()
+{
+
+return $this->param_list_detail;
 
 }
 
@@ -755,7 +761,7 @@ class template_datamodel extends template
 
 protected $object = null;
 
-function object_set(agregat $object)
+function object_set(data_bank_agregat $object)
 {
 
 $this->object = $object;

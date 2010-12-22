@@ -11,8 +11,8 @@
   * 
   * Types de données & conteneurs
   * 
-  * Agrégats de données de base pour les databank, les formulaires,
-  * les méthodes de mise en page, la partie CMS, etc. f
+  * Agrégats de données de base pour les datamodels, les formulaires,
+  * les méthodes de mise en page, la partie CMS, etc.
   * 
   */
 
@@ -138,7 +138,8 @@ protected $value=null;
  */
 protected $required=false;
 
-protected $option_list = array();
+protected $opt = array();
+protected static $opt_list = array("size", "ereg" , "integer" , "float" , "array" , "boolean", "percent", "compare" , "count" , "select" , "fromlist" , "date" , "time" , "datetime" , "object" , "datamodel", "databank", "databank_select", "email", "url");
 
 /**
  * Options de structure et par extension de Verification & Conversion (Voir les classes de conversion associées)
@@ -171,21 +172,13 @@ protected $disp_opt = array();
 public static $disp_opt_list = array("mime_type", "ref_field_disp", "preg_replace", "template_datamodel", "");
 
 /**
- * Précisions pour les formulaires, tout sera généré via la classe form (à voir)
- *
- * @var array
- */
-protected $form_opt = array();
-public static $form_opt_list = array("type", "tabindex", "accesskey", "size", "cols", "rows", "width", "height");
-
-/**
  * Constructor
  *
  * @param string $name
  * @param mixed $value
  * @param array $options
  */
-public function __construct($name, $value, $label, $structure_opt=array(), $db_opt=array(), $disp_opt=array(), $form_opt=array())
+public function __construct($name, $value, $label, $structure_opt=array(), $db_opt=array(), $disp_opt=array())
 {
 
 $this->name = $name;
@@ -209,12 +202,6 @@ if (is_array($disp_opt))
 		$this->disp_opt_set($i,$j);
 		//$this->opt_set($i,$j);
 	}
-if (is_array($form_opt))
-	foreach ($form_opt as $i=>$j)
-	{
-		$this->form_opt_set($i,$j);
-		//$this->opt_set($i,$j);
-	}
 
 // Par défaut on force la valeur à l'initialisation
 $this->value_set($value, true);
@@ -227,7 +214,7 @@ $this->value_set($value, true);
 public function __get($name)
 {
 
-if (is_string($name) && in_array($name, array("name", "type", "label", "value", "opt_list", "datamodel_id", "structure_opt", "db_opt", "disp_opt", "form_opt")) && isset($this->{$name}))
+if (is_string($name) && in_array($name, array("name", "type", "label", "value", "opt_list", "datamodel_id", "structure_opt", "db_opt", "disp_opt")) && isset($this->{$name}))
 	return $this->{$name};
 elseif ($name == "datamodel")
 	return datamodel($this->datamodel_id);
@@ -256,15 +243,17 @@ return datamodel($this->datamodel_id);
 public function opt_set($name, $value)
 {
 
+// TODO : verify the type of the value given in each case, using data verify
+
 if (isset(self::$opt_list[$name]))
-	$this->opt_list[$name] = $value;
+	$this->opt[$name] = $value;
 
 }
 public function opt_get($name)
 {
 
-if (isset($this->opt_list[$name]))
-	return $this->opt_list[$name];
+if (isset($this->opt[$name]))
+	return $this->opt[$name];
 elseif (isset(self::$opt_list[$name]))
 	return self::$opt_list[$name];
 
@@ -272,11 +261,8 @@ elseif (isset(self::$opt_list[$name]))
 public function structure_opt_set($name, $value)
 {
 
-// TODO : verify the type of the value given in each case, using data verify
 if (in_array($name, self::$structure_opt_list))
 {
-	//echo "<br />DATA field $this->name, DATAMODEL #ID$this->datamodel_id, structure_opt : #$name";
-	//print_r($value);
 	$this->structure_opt[$name] = $value;
 	return true;
 }
@@ -353,33 +339,6 @@ public function disp_opt_list_get()
 return $this->disp_opt;
 
 }
-public function form_opt_set($name, $value)
-{
-
-if (in_array($name,self::$form_opt_list))
-{
-	$this->form_opt[$name] = $value;
-	return true;
-}
-else
-	return false;
-
-}
-public function form_opt($name)
-{
-
-if (isset($this->form_opt[$name]))
-{
-	return $this->form_opt[$name];
-}
-
-}
-public function form_opt_list_get()
-{
-
-return $this->form_opt;
-
-}
 
 
 /**
@@ -402,19 +361,13 @@ return array
 public function null()
 {
 
-if ($this->value === null)
-	return false;
-else
-	return true;
+return ($this->value === null);
 
 }
 public function nonempty()
 {
 
-if ($this->value)
-	return true;
-else
-	return false;
+return (boolean) $this->value;
 
 }
 
@@ -464,9 +417,9 @@ else
 
 }
 /**
- * Verify a potential value
+ * Verify the structure of the value
  * 
- * @param mixed verify
+ * @param mixed value
  * @return boolean
  */
 public function verify($value, $options=array())
@@ -500,7 +453,6 @@ public function value_from_db($value)
 $this->value = $value;
 
 }
-
 public function value_to_db()
 {
 
@@ -591,33 +543,32 @@ return $this->__tostring();
  * Return the associated form field
  *
  * @param array $options
- * @return unknown
+ * @return string
  */
-public function form_field($options=array())
-{
-
-$form_field = "form_field_".$this->form_opt["type"];
-return new $form_field($this->name, $this->value, array_merge($this->disp_opt, $this->form_opt, $options));
-
-}
-
 public function form_field_disp($print=true, $options=array())
 {
 
 if ($print)
-	print "";
+	echo "";
 else
 	return "";
 
 }
-
-public function form_field_select_disp($options=array(), $print=true)
+/**
+ * Return the associated form field for a selection
+ *
+ * @param array $options
+ * @return string
+ */
+public function form_field_select_disp($print=true, $options=array())
 {
 
+$return = $this->form_field_disp(false, $options);
+	
 if ($print)
-	print "";
+	echo $return;
 else
-	return "";
+	return $return;
 
 }
 
@@ -635,8 +586,6 @@ else
 class data_string extends data
 {
 
-protected static $id = 1;
-
 protected $type = "string";
 
 protected $structure_opt = array
@@ -648,30 +597,18 @@ public function form_field_disp($print=true, $options=array())
 {
 
 $attrib_size = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 && $this->structure_opt["size"] < 32 )
-	? " size=\"".$this->form_opt["size"]."\""
+	? " size=\"".$this->structure_opt["size"]."\""
 	: "";
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 )
 	? " maxlength=\"".$this->structure_opt["size"]."\""
 	: "";
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
-	? " readonly"
-	: "";
-$attrib_class_list = array(get_called_class());
-if (is_array($options) && isset($options["required"]))
-{
-	$attrib_class_list[] = "required";
-}
-if (count($attrib_class_list))
-	$attrib_class = " class=\"".implode(" ", $attrib_class_list)."\"";
-else
-	$attrib_class = "";
 
 if ($this->type == "password")
 	$type = "password";
 else
 	$type = "text";
 
-$return = "<input type=\"$type\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
+$return = "<input type=\"$type\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -698,7 +635,7 @@ if (isset($this->disp_opt["preg_replace"]) && is_array($opt=$this->disp_opt["pre
 	return preg_replace($opt["pattern"], $opt["replace"], $this->value);
 }
 else
-	return data::__tostring();
+	return $this->value;
 
 }
 
@@ -736,8 +673,6 @@ return true;
 class data_password extends data_string
 {
 
-protected static $id = 2;
-
 protected $type = "password";
 
 protected $structure_opt = array
@@ -760,8 +695,6 @@ protected $structure_opt = array
 class data_integer extends data_string
 {
 
-protected static $id = 3;
-
 protected $type = "integer";
 
 protected $structure_opt = array
@@ -772,17 +705,10 @@ protected $structure_opt = array
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_size = $attrib_maxlength = " maxlength=\"".($this->structure_opt["integer"]["size"]+1)."\"";
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
-	? " readonly"
-	: "";
-$attrib_class_list = array(get_called_class());
-if (count($attrib_class_list))
-	$attrib_class = " class=\"".implode(" ", $attrib_class_list)."\"";
-else
-	$attrib_class = "";
+$attrib_size = " size=\"".($this->structure_opt["integer"]["size"]+1)."\"";
+$attrib_maxlength = " maxlength=\"".($this->structure_opt["integer"]["size"]+1)."\"";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
+$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -838,35 +764,20 @@ else
 class data_float extends data_string
 {
 
-protected static $id = 4;
-
 protected $type = "float";
 
 protected $structure_opt = array
 (
-	"float" => array( "signed" => true , "size" => 11 , "precision" => 2 ),
+	"float" => array("signed"=>true, "size"=>11, "precision"=>2)
 );
 
 public function form_field_disp($print=true, $options=array())
 {
 
-// ($this->structure_opt["float"]["size"]+2) en prenant en compte "-" et "."
-
-$attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] <= $this->structure_opt["float"]["size"]+1 )
-	? " size=\"".$this->form_opt["size"]."\""
-	: " size=\"".($this->structure_opt["float"]["size"]+2)."\"";
+$attrib_size = " size=\"".($this->structure_opt["float"]["size"]+2)."\"";
 $attrib_maxlength = " maxlength=\"".($this->structure_opt["float"]["size"]+2)."\"";
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
-	? " readonly"
-	: "";
-$attrib_class_list = array(get_called_class());
 
-if (count($attrib_class_list))
-	$attrib_class = " class=\"".implode(" ", $attrib_class_list)."\"";
-else
-	$attrib_class = "";
-
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly$attrib_class />";
+$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -928,8 +839,6 @@ else
 class data_text extends data_string
 {
 
-protected static $id = 5;
-
 protected $type = "text";
 
 protected $structure_opt = array ();
@@ -938,9 +847,8 @@ public function form_field_disp($print=true, $options=array())
 {
 
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
-$attrib_class = " class=\"".get_called_class()."\"";
 
-$return = "<textarea name=\"$this->name\"$attrib_maxlength$attrib_class>$this->value</textarea>";
+$return = "<textarea name=\"$this->name\"$attrib_maxlength class=\"".get_called_class()."\">$this->value</textarea>";
 
 if ($print)
 	print $return;
@@ -948,6 +856,19 @@ else
 	return $return;
 
 }
+
+public function form_field_select_disp($print=true, $options=array())
+{
+
+$return = data_string::form_field_disp();
+
+if ($print)
+	print $return;
+else
+	return $return;
+
+}
+
 
 public function db_field_create()
 {
@@ -974,10 +895,7 @@ return str_replace("\n", "\n<br />", $this->value);
 class data_richtext extends data_text
 {
 
-protected static $id = 6;
-
 protected $type = "richtext";
-protected $mime_type = "text/html";
 
 protected $structure_opt = array
 (
@@ -1024,22 +942,12 @@ return $this->value;
 class data_select extends data_string
 {
 
-protected static $id = 7;
-
 protected $type = "select";
 
 protected $structure_opt = array
 (
 	"select" => array(),
 );
-
-public function form_field($options=array())
-{
-
-$form_field = "form_field_".$this->form_opt["type"];
-return new $form_field($this->name, $this->value, array_merge($this->form_opt,$this->disp_opt,array("value_list"=>$this->structure_opt["select"])));
-
-}
 
 public function form_field_disp($print=true, $options=array())
 {
@@ -1063,7 +971,7 @@ else
 public function form_field_select_disp($print=true, $options=array())
 {
 
-$return = "<select id=\"params[$this->name]\" name=\"params[$this->name]\">";
+$return = "<select name=\"$this->name\">";
 $return .= "<option value=\"\"></option>";
 foreach ($this->structure_opt["select"] as $i=>$j)
 	if ($options == $i)
@@ -1085,7 +993,7 @@ function __tostring()
 if (isset($this->structure_opt["select"][$this->value]))
 	return "".$this->structure_opt["select"][$this->value];
 else
-	return "<i>undefined</i>";
+	return "";
 
 }
 
@@ -1122,8 +1030,6 @@ else
 class data_date extends data_string
 {
 
-protected static $id = 8;
-
 protected $type = "date";
 
 protected $structure_opt = array
@@ -1139,19 +1045,13 @@ protected $db_opt = array
 	"type" => "date",
 );
 
-protected $form_opt = array
-(
-	"type" => "text",
-	"size" => 10,
-);
-
 public function __tostring()
 {
 
 if ($this->value && $this->value != "00/00/0000")
 	return strftime($this->structure_opt["date"], $this->timestamp());
 else
-	return "<i>undefined</i>";
+	return "";
 
 }
 
@@ -1171,18 +1071,17 @@ function view($style="%A %d %B %G")
 if ($this->value && $this->value != "00/00/0000")
 	return strftime($style, $this->timestamp());
 else
-	return "<i>undefined</i>";
+	return "";
 
 }
 
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] > 0 ) ? " size=\"".$this->form_opt["size"]."\"" : "";
+$attrib_size = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " size=\"".$this->structure_opt["size"]."\"" : "";
 $attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" class=\"".get_called_class()."\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly />";
+$return = "<input type=\"text\" name=\"$this->name\" class=\"".get_called_class()."\" value=\"$this->value\"$attrib_size$attrib_maxlength />";
 
 if ($print)
 	print $return;
@@ -1300,8 +1199,6 @@ else
 class data_year extends data_string
 {
 
-protected static $id = 9;
-
 protected $type = "year";
 
 protected $structure_opt = array
@@ -1334,9 +1231,7 @@ else
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
-
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\" size=\"4\" maxlength=\"4\"$attrib_readonly class=\"".get_called_class()."\" />";
+$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\" size=\"4\" maxlength=\"4\" class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -1372,8 +1267,6 @@ else
 class data_time extends data_string
 {
 
-protected static $id = 10;
-
 protected $type = "time";
 
 protected $structure_opt = array
@@ -1392,11 +1285,7 @@ protected $db_opt = array
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
-	? " readonly"
-	: "";
-
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"".$this->name."[time]\" value=\"$this->value\" size=\"8\" maxlength=\"8\"$attrib_readonly class=\"".get_called_class()."\" />";
+$return = "<input type=\"text\" name=\"".$this->name."[time]\" value=\"$this->value\" size=\"8\" maxlength=\"8\" class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -1461,16 +1350,12 @@ else
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
-	? " readonly"
-	: "";
-
 if ($this->value)
 	$value = date("d/m/Y H:i:s", $this->value);
 else
 	$value = "";
 
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"".$this->name."\" value=\"$value\" size=\"19\" maxlength=\"19\"$attrib_readonly class=\"".get_called_class()."\" />";
+$return = "<input type=\"text\" name=\"".$this->name."\" value=\"$value\" size=\"19\" maxlength=\"19\" class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -1560,8 +1445,6 @@ class data_list extends data
 
 protected $type = "list";
 
-protected $value = array();
-
 protected $structure_opt = array
 (
 	"list" => array("datatype"=>"string"),
@@ -1635,17 +1518,10 @@ class data_fromlist extends data_list
 {
 
 protected $type = "fromlist";
-protected $value = array();
 
 protected $structure_opt = array
 (
 	"fromlist" => array(),
-);
-
-protected $form_opt = array
-(
-	"type" => "select",
-	"multiple" => "true",
 );
 
 public function __tostring()
@@ -1736,8 +1612,6 @@ class data_table extends data
 
 // Type
 protected $type = "table";
-
-protected $value = array();
 
 protected $structure_opt = array
 (
@@ -1886,13 +1760,6 @@ class data_file extends data
 
 protected $type = "file";
 
-protected $value = array
-(
-	"location" => "",
-	"name" => "", // Nom sans extension
-	"mime_type"=> "", // Pour le chargement, voir si �a peut suffir pour d�finir le filetype
-);
-
 protected $disp_opt = array
 (
 	//"mime_type"=> "", // On doit pouvoir forcer la visualisation dans un autre format...
@@ -2024,10 +1891,10 @@ if (isset(self::$format_list[$format]))
 class data_number extends data_integer
 {
 
-function __construct($name, $value, $label="Number", $size="10", $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Number", $size="10", $db_opt=array(), $disp_opt=array())
 {
 
-data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size), "size"=>$size), $db_opt, $disp_opt, $form_opt);
+data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size), "size"=>$size), $db_opt, $disp_opt);
 
 }
 
@@ -2040,9 +1907,8 @@ class data_percent extends data_float
 {
 
 protected $structure_opt = array("percent"=>array());
-protected $form_opt = array("size"=>5);
 
-function __construct($name, $value=0, $label="Percent", $options=array())
+function __construct($name, $value, $label="Percent", $options=array())
 {
 
 data::__construct($name, $value, $label, $options);
@@ -2070,11 +1936,8 @@ $this->value = $value/100;
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true )
-	? " readonly"
-	: "";
 
-$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\"$attrib_readonly class=\"".get_called_class()."\" />";
+$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\" class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
@@ -2127,7 +1990,7 @@ else
 class data_priority extends data_number
 {
 
-function __construct($name, $value=0, $label="Priority", $size=1)
+function __construct($name, $value, $label="Priority", $size=1)
 {
 
 data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size)), array(), array(), array("size"=>$size));
@@ -2149,7 +2012,7 @@ class data_boolean extends data_number
 
 protected $structure_opt = array("boolean"=>array("NO","YES"));
 
-function __construct($name, $value=0, $label="Boolean")
+function __construct($name, $value, $label="Boolean")
 {
 
 data::__construct($name, $value, $label);
@@ -2255,10 +2118,10 @@ $this->value++;
 class data_measure extends data_float
 {
 
-function __construct($name, $value, $label="Measure", $precision=4, $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Measure", $precision=4, $db_opt=array(), $disp_opt=array())
 {
 
-data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>10, "precision"=>$precision)), $db_opt, $disp_opt, $form_opt);
+data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>10, "precision"=>$precision)), $db_opt, $disp_opt);
 
 }
 
@@ -2309,33 +2172,10 @@ protected $db_opt = array
 	"auto_increment"=>true,
 );
 
-protected $form_opt = array
-(
-	"type" => "text",
-	"size" => 6,
-	"readonly" => true,
-);
-	
 function __construct()
 {
 
-data_number::__construct("id", 0, "ID", 6, array("auto_increment"=>true));
-
-}
-
-public function form_field_disp($print=true, $options=array())
-{
-
-$attrib_size = ( isset($this->form_opt["size"]) && $this->form_opt["size"] > 0 ) ? " size=\"".$this->form_opt["size"]."\"" : "";
-$attrib_maxlength = ( isset($this->structure_opt["size"]) && $this->structure_opt["size"] > 0 ) ? " maxlength=\"".$this->structure_opt["size"]."\"" : "";
-$attrib_readonly = ( isset($this->form_opt["readonly"]) && $this->form_opt["readonly"] == true ) ? " readonly" : "";
-
-$return = "<input type=\"".$this->form_opt["type"]."\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength$attrib_readonly class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
+data_number::__construct("id", null, "ID", 6, array("auto_increment"=>true));
 
 }
 
@@ -2369,10 +2209,10 @@ return $return;
 class data_name extends data_string
 {
 
-function __construct($name, $value, $label="Name", $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Name", $db_opt=array(), $disp_opt=array())
 {
 
-data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $disp_opt, $form_opt);
+data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $disp_opt);
 
 }
 
@@ -2388,10 +2228,10 @@ data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $dis
 class data_email extends data_string
 {
 
-function __construct($name, $value, $label="Email", $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Email", $db_opt=array(), $disp_opt=array())
 {
 
-data_string::__construct($name, $value, $label, array("email"=>array("strict"=>false), "size"=>128), $db_opt, $disp_opt, $form_opt);
+data_string::__construct($name, $value, $label, array("email"=>array("strict"=>false), "size"=>128), $db_opt, $disp_opt);
 
 }
 
@@ -2438,10 +2278,10 @@ else
 class data_url extends data_string
 {
 
-function __construct($name, $value, $label="URL", $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="URL", $db_opt=array(), $disp_opt=array())
 {
 
-data_string::__construct($name, $value, $label, array("url"=>array()), $db_opt, $disp_opt, $form_opt);
+data_string::__construct($name, $value, $label, array("url"=>array()), $db_opt, $disp_opt);
 
 }
 
@@ -2476,10 +2316,10 @@ else
 class data_description extends data_text
 {
 
-function __construct($name, $value, $label="Description", $size=256, $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Description", $size=256, $db_opt=array(), $disp_opt=array())
 {
 
-data_text::__construct($name, $value, $label, array("size"=>$size), $db_opt=array(), $disp_opt=array(), $form_opt=array());
+data_text::__construct($name, $value, $label, array("size"=>$size), $db_opt=array(), $disp_opt=array());
 
 }
 
@@ -2504,11 +2344,6 @@ protected $db_opt = array
 	"tablename" => "",
 	"fieldname" => "",
 	"type" => "blob",
-);
-
-protected $form_opt = array
-(
-	"type" => "text",
 );
 
 /* Dire qu'on veut en entr�e un objet r�pondant � une interface donn�e
@@ -2571,10 +2406,10 @@ protected $disp_opt = array
 	"ref_field_disp" => "", // field to display if needed
 );
 
-function __construct($name, $value, $label="Name", $databank=0, $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Name", $databank=0, $db_opt=array(), $disp_opt=array())
 {
 
-data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, $disp_opt, $form_opt=array());
+data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, $disp_opt);
 
 }
 
@@ -2719,8 +2554,6 @@ class data_dataobject_select extends data_agregat
 
 protected $type = "dataobject_select";
 
-protected $value = array(0, 0);
-
 protected $structure_opt = array
 (
 	"databank_select" => array(), // liste des databank concern�es
@@ -2836,8 +2669,6 @@ class data_dataobject_list extends data_list
 
 protected $type = "dataobject_list";
 
-protected $value = array();
-
 protected $structure_opt = array
 (
 	"databank" => "databank_name",
@@ -2856,10 +2687,10 @@ protected $disp_opt = array
 	"ref_field_disp" => "", // field to display if needed
 );
 
-function __construct($name, $value, $label="Name", $databank=0, $db_opt=array(), $disp_opt=array(), $form_opt=array())
+function __construct($name, $value, $label="Name", $databank=0, $db_opt=array(), $disp_opt=array())
 {
 
-data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, $disp_opt, $form_opt);
+data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, $disp_opt);
 
 }
 

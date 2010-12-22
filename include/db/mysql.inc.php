@@ -337,6 +337,7 @@ function __construct($query_string, $db_id)
 
 $this->db_id = $db_id;
 $this->query_string = $query_string;
+//echo "<p>$query_string</p>\n";
 
 if (!$this->id)
 	$this->execute();

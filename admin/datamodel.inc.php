@@ -49,7 +49,6 @@ foreach ($_type()->list_detail_get() as $id=>$info)
 <a href="?add">Ajouter</a>
 </form>
 
-<div style="padding-top: 30px">
 <?php
 
 $_type_list = $_type()->list_detail_get();
@@ -59,11 +58,20 @@ $library_list = library()->list_detail_get();
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
-if (empty($_GET["field_edit"]))
-{
-	$_type($id)->update_form();
-}
-	
+?>
+<div class="admin_menu admin_submenu">
+	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" <?php if (empty($_GET["field_edit"])) echo "class=\"selected\""; ?>>Formulaire</a>
+	<a href="javascript:;" name="field_list" onclick="admin_submenu(this.name)" <?php if (!empty($_GET["field_edit"])) echo "class=\"selected\""; ?>>Champs de donnée</a>
+</div>
+
+<div id="update_form" class="subcontents"<?php if (!empty($_GET["field_edit"])) echo " style=\"display:none;\""; ?>>
+<?php
+$_type($id)->update_form();
+?>
+</div>
+
+<div id="field_list" class="subcontents"<?php if (empty($_GET["field_edit"])) echo " style=\"display:none;\""; ?>>
+<?php
 $object = $_type($id);
 
 list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$id'")->fetch_row();
@@ -290,6 +298,7 @@ if (!isset($_GET["field_edit"])) {
 <form method="post" action="?id=<?=$id?>">
 <p><input type="submit" name="_db_create" value="Créer les tables associées en base de donnée" /></p>
 </form>
+</div>
 
 <?php
 }
@@ -309,8 +318,6 @@ $_type()->table_list();
 }
 
 ?>
-</div>
-
 <script type="text/javascript">
 function opt_add(type, name)
 {

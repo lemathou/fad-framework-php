@@ -97,20 +97,15 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 
 <body>
 
-<div class="menu">
-<ul>
-<?php
+<div class="admin_menu"><?php
 foreach ($admin_menu as $_page => $_name)
 {
 	if ($admin_page == $_page)
-		echo "	<li class=\"selected\"><a href=\"/admin/$_page\">$_name</a></li>\n";
+		echo "<a href=\"/admin/$_page\" class=\"selected\">$_name</a>";
 	else
-		echo "	<li><a href=\"/admin/$_page\">$_name</a></li>\n";
+		echo "<a href=\"/admin/$_page\">$_name</a>";
 }
-?>
-<li style="clear: both;"></li>
-</ul>
-</div>
+?></div>
 
 <div class="page_content">
 <?php admin_disp(); ?>

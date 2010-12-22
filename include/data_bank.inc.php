@@ -1,16 +1,22 @@
 <?
 
 /**
- * Data Objects (agregat)
- * 
- * Object corresponding to a given Datamodel specification.
- * Contains the data fields of the datamodel.
- * Can be
- * - upgraded,
- * - displayed,
- * - etc.
- * 
- */
+  * $Id$
+  * 
+  * Copyright 2010 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  * 
+  * Data Objects (agregat)
+  * 
+  * Object corresponding to a given Datamodel specification.
+  * Contains the data fields of the datamodel.
+  * Can be
+  * - upgraded,
+  * - displayed,
+  * - etc.
+  * 
+  */
 
 if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [begin]");
@@ -19,13 +25,14 @@ if (DEBUG_GENTIME ==  true)
  * Agrégats de données
  *
  */
-class agregat
+class data_bank_agregat
 {
 
 /**
  * Datamodel specifications
+ * NEEDS to be overloaded !!
  * 
- * @var array
+ * @var integer
  */
 protected $datamodel_id=0;
 
@@ -34,6 +41,7 @@ protected $datamodel_id=0;
  * 
  * @var array
  */
+//protected $id = 0; TODO : change field[id] to a simple id var... lot of things to do !!
 protected $fields = array();
 protected $field_values = array();
 
@@ -47,17 +55,15 @@ protected $options = array();
 public function __sleep()
 {
 
-$this->field_values = array();
-foreach($this->fields as $name=>$field)
-	$this->field_values[$name] = $field->value;
-
-return array("datamodel_id", "field_values");
+return array("field_values");
 
 }
 public function __wakeup()
 {
 
-foreach($this->field_values as $name=>$value)
+$this->datamodel_find();
+
+foreach ($this->field_values as $name=>$value)
 {
 	$this->fields[$name] = clone datamodel($this->datamodel_id)->{$name};
 	$this->fields[$name]->value = $value;
@@ -65,28 +71,57 @@ foreach($this->field_values as $name=>$value)
 
 }
 
-public function __construct($datamodel=null, $fields=array())
+/**
+ * 
+ * @param $id
+ * @param $fields
+ */
+function __construct($id=null, $fields=array())
 {
 
-if ($datamodel !== null && is_a($datamodel, "datamodel"))
-	$this->datamodel_set($datamodel);
+$this->datamodel_find();
+$this->datamodel_set();
+if (is_numeric($id) && $id>0)
+{
+	$this->db_retrieve(array("id"=>$id), $fields);
+}
 
 }
 
-public function datamodel_set(datamodel $datamodel)
+/**
+ * Retrieve the datamodel id from the class name
+ */
+protected function datamodel_find()
 {
 
-$this->datamodel_id = $datamodel->id();
+$datamodel_name = substr(get_called_class(),0,-8);
+if (datamodel()->exists_name($datamodel_name))
+{
+	$this->datamodel_id = datamodel()->get_name($datamodel_name)->id();
+}
+
+}
+/**
+ * Sets required fields of the object from the datamodel informations
+ */
+public function datamodel_set()
+{
 
 $this->fields = array();
+$this->field_values = array();
 // Champs par défaut :
 foreach($this->datamodel()->fields_key() as $name)
+{
 	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->field_values[$name] = $this->fields[$name]->value;
+}
 foreach($this->datamodel()->fields_required() as $name)
+{
 	$this->fields[$name] = clone $this->datamodel()->{$name};
-
+	$this->field_values[$name] = $this->fields[$name]->value;
 }
 
+}
 public function datamodel()
 {
 
@@ -114,9 +149,18 @@ elseif (isset($this->field_values[$name]))
 	$this->fields[$name]->value = $this->field_values[$name];
 	return $this->fields[$name];
 }
+/* Cas où l'object est en bdd => aller chercher la valeur !
+elseif (isset($this->datamodel()->{$name}) && isset($this->fields["id"]))
+{
+	$this->db_retrieve($name);
+	return $this->fields[$name];
+}
+*/
 elseif (isset($this->datamodel()->{$name}))
 {
-	return $this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->field_values[$name] = $this->fields[$name]->value;
+	return $this->fields[$name];
 }
 elseif (DEBUG_DATAMODEL)
 {
@@ -127,13 +171,19 @@ elseif (DEBUG_DATAMODEL)
 
 /**
  * Default disp value
- *
+ * Can (and SHOULD) be overloaded in datamodel library
+ * 
  * @return string
  */
-public function __tostring()
+
+/**
+ * Returns the ID
+ * MUST be overloaded in datamodel library
+ */
+function __tostring()
 {
 
-return $this->datamodel()->label();
+return $this->datamodel()->label()." ID#".$this->fields["id"];
 
 }
 
@@ -143,12 +193,19 @@ return $this->datamodel()->label();
 public function __set($name, $value)
 {
 
-if (isset($this->datamodel()->{$name}))
+if (isset($this->fields[$name]))
 {
-	if (!isset($this->fields[$name]))
-	{
-		$this->fields[$name] = clone $this->datamodel()->{$name};
-	}
+	$this->fields[$name]->value = $value;
+}
+elseif (isset($this->field_values[$name]))
+{
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name]->value = $value;
+}
+elseif (isset($this->datamodel()->{$name}))
+{
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->field_values[$name] = $this->fields[$name]->value;
 	$this->fields[$name]->value = $value;
 }
 elseif (DEBUG_DATAMODEL)
@@ -169,7 +226,7 @@ foreach ($this->fields as $name=>$field)
 
 /**
  * Returns defined field list (eventually not complete !)
- * TODO : find a solution
+ * TODO : find a solution to SIMPLY (db_retrieve_all() ??) complete the list !
  */
 public function field_list()
 {
@@ -186,7 +243,86 @@ public function init()
 {
 
 foreach ($this->datamodel()->fields() as $name=>$field)
+{
 	$this->fields[$name] = clone $field;
+	$this->field_values[$name] = $field->value;
+}
+
+}
+/**
+ * Retrieve fields from database
+ *
+ * @param array $fields
+ * @param boolean $force
+ * @return boolean
+ */
+public function db_retrieve($fields, $force=false)
+{
+
+$query_ok = true;
+$params = array();
+if (!is_array($fields))
+	$fields = array($fields);
+// Verify params
+foreach ($this->datamodel()->fields_key() as $name)
+	if (!isset($this->fields[$name]))
+	{
+		if (DEBUG_DATAMODEL)
+			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : missing key '$name' to retrieve fields");
+		$query_ok = false;
+	}
+	else
+		$params[] = array( "name"=>$name, "type"=>"=", "value"=> $this->fields[$name]->value_to_db());
+
+// Delete the fields we already have
+if (!$force) foreach ($fields as $i=>$name)
+	if (isset($this->fields[$name]))
+		unset($fields[$i]);
+
+// Effective Query
+if ($query_ok && count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
+{
+	if (count($list) == 1)
+	{
+		foreach($list[0] as $name=>$field)
+		{
+			$this->fields[$name] = $field;
+			$this->field_values[$name] = $field->value;
+		}
+		if (APC_CACHE)
+			apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
+		return true;
+	}
+	else
+	{
+		if (DEBUG_DATAMODEL)
+			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : too many objects resulting from query params");
+		return false;
+	}
+}
+else
+	return false;
+
+}
+/**
+ * Retrieve all data fields from database
+ *
+ * @return unknown
+ */
+public function db_retrieve_all()
+{
+
+$fields = array();
+foreach ($this->datamodel()->fields() as $name=>$field)
+	if (!isset($this->field_values[$name]) && !isset($this->fields[$name]))
+		$fields[]=$name;
+
+if (count($fields)>0)
+{
+	return $this->db_retrieve($fields);
+}
+else
+	return false;
 
 }
 
@@ -262,6 +398,7 @@ else
 return $view;
 
 }
+
 /**
  * Return the default form view
  *
@@ -289,6 +426,135 @@ else
 return $view;
 
 }
+/**
+ * Insert new data into database
+ *
+ * @param unknown_type $options
+ */
+public function db_insert($options=array())
+{
+
+if ($id = $this->datamodel()->db_insert($this->fields))
+{
+	$this->fields["id"]->value_from_form($id);
+	return true;
+}
+else
+{
+	return false;
+}
+
+}
+
+/**
+ * Update the object from a form
+ * @param unknown_type $fields
+ */
+public function update_from_form($fields=array())
+{
+
+if (count($fields) > 0)
+{
+	foreach($fields as $name=>$value)
+	{
+		if ($field=$this->__get($name))
+		{
+			$field->value_from_form($value);
+		}
+	}
+	// Champs calculés
+	if (count($this->datamodel()->fields_calculated()))
+	{
+		$calculate = array();
+		$retrieve = array();
+		foreach($this->datamodel()->fields_calculated() as $name=>$list)
+		{
+			// On parcours les champs utiles dans un calcul
+			foreach($list as $value)
+				// Si le champ a �t� modifi� on doit le mettre � jour
+				if (isset($fields[$value]))
+					if (!isset($calculate[$name]))
+						$calculate[$name] = $list;
+		}
+		// Récupération des champs manquant
+		foreach($calculate as $name=>$list)
+		{
+			foreach ($list as $value)
+				if (!isset($fields[$value]) && !in_array($value, $retrieve))
+					$retrieve[] = $value;
+			if (!isset($fields[$value]) && !in_array($name, $retrieve))
+				$retrieve[] = $name;
+		}
+		if (count($retrieve)>0)
+		{
+			//print_r($retrieve);
+			$this->db_retrieve($retrieve);
+		}
+		// Calculs
+		foreach($calculate as $name=>$list)
+		{
+			$function = "calculate_$name";
+			$this->$function();
+		}
+	}
+	// Mise à jour en base de donnée
+	//$this->db_update();
+}
+//$this->form()->disp();
+	
+}
+/**
+ * Update data fields from database
+ *
+ * @return unknown
+ */
+public function update_from_db($fields=array())
+{
+
+foreach ($fields as $name=>$value)
+{
+	if (isset($this->fields[$name]))
+	{
+		$this->fields[$name]->value_from_db($value);
+		$this->field_values[$name] = $this->fields[$name]->value;
+	}
+	elseif (isset($this->field_values[$name]) || isset($this->datamodel()->{$name}))
+	{
+		$this->fields[$name] = clone $this->datamodel()->{$name};
+		$this->fields[$name]->value_from_db($value);
+		$this->field_values[$name] = $this->fields[$name]->value;
+	}
+}
+
+}
+/**
+ * Update data into database
+ *
+ * @param unknown_type $options
+ */
+public function db_update($options=array())
+{
+
+$fields = array("id"=>$this->fields["id"]);
+foreach ($this->fields as $name=>$field)
+{
+	if ($this->field_values[$name] !== $field->value)
+		$fields[$name] = $field;
+}
+
+if ($result = $this->datamodel()->db_update($fields))
+{
+	//echo "INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )";
+	foreach ($fields as $name=>$field)
+		$this->field_values[$name] = $field->value;
+	db()->query("INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel()->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )");
+	if (APC_CACHE)
+		apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
+}
+
+return $result;
+
+}
 
 /**
  * Returns the datamodel action list
@@ -312,216 +578,6 @@ $action_list = &$this->datamodel()->action_list();
 if (isset($action_list[$method]) && $action=$action_list[$method]["method"])
 {
 	$this->$action($params);
-}
-
-}
-
-/**
- * Update the object from a form
- * @param unknown_type $fields
- */
-public function update_from_form($fields=array())
-{
-
-if (count($fields) > 0)
-{
-	foreach($fields as $name=>$value)
-	{
-		if ($this->__get($name))
-		{
-			$this->__get($name)->value_from_form($value);
-		}
-	}
-	// Champs calculés
-	$calculate = array();
-	$retrieve = array();
-	foreach($this->datamodel()->fields_calculated() as $name=>$list)
-	{
-		// On parcours les champs utiles dans un calcul
-		foreach($list as $value)
-			// Si le champ a �t� modifi� on doit le mettre � jour
-			if (isset($fields[$value]))
-				if (!isset($calculate[$name]))
-					$calculate[$name] = $list;
-	}
-	// Récupération des champs manquant
-	foreach($calculate as $name=>$list)
-	{
-		foreach ($list as $value)
-			if (!isset($fields[$value]) && !in_array($value, $retrieve))
-				$retrieve[] = $value;
-		if (!isset($fields[$value]) && !in_array($name, $retrieve))
-			$retrieve[] = $name;
-	}
-	if (count($retrieve)>0)
-	{
-		//print_r($retrieve);
-		$this->db_retrieve($retrieve);
-	}
-	// Calculs
-	foreach($calculate as $name=>$list)
-	{
-		$function = "calculate_$name";
-		$this->$function();
-	}
-	// Mise à jour en base de donnée
-	//$this->db_update();
-}
-//$this->form()->disp();
-	
-}
-
-}
-
-/**
- * Agregat pour databank
- *
- */
-abstract class data_bank_agregat extends agregat
-{
-
-protected $datamodel_id = 0; // NEEDS to be overloaded !!
-
-/**
- * 
- * @param $id
- * @param $fields
- */
-function __construct($id=null, $fields=array())
-{
-
-agregat::__construct(datamodel($this->datamodel_id));
-if (is_numeric($id) && $id>0)
-{
-	$this->db_retrieve(array("id"=>$id), $fields);
-}
-
-}
-
-/**
- * Returns the ID
- * MUST be overloaded in datamodel library
- */
-function __tostring()
-{
-
-return (string)$this->fields["id"];
-
-}
-
-/**
- * Retrieve fields from database
- *
- * @param array $fields
- * @param boolean $force
- * @return boolean
- */
-public function db_retrieve($fields, $force=false)
-{
-
-$query_ok = true;
-$params = array();
-if (!is_array($fields))
-	$fields = array($fields);
-// Verify params
-foreach ($this->datamodel()->fields_key() as $name)
-	if (!isset($this->fields[$name]))
-	{
-		if (DEBUG_DATAMODEL)
-			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : missing key '$name' to retrieve fields");
-		$query_ok = false;
-	}
-	else
-		$params[] = array( "name"=>$name, "type"=>"=", "value"=> $this->fields[$name]->value_to_db());
-
-// Delete the fields we already have
-if (!$force) foreach ($fields as $i=>$name)
-	if (isset($this->fields[$name]))
-		unset($fields[$i]);
-
-// Effective Query
-if ($query_ok && count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
-{
-	if (count($list) == 1)
-	{
-		foreach($list[0] as $name=>$field)
-		{
-			$this->fields[$name] = $field;
-		}
-		if (APC_CACHE)
-			apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
-		return true;
-	}
-	else
-	{
-		if (DEBUG_DATAMODEL)
-			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : too many objects resulting from query params");
-		return false;
-	}
-}
-else
-	return false;
-
-}
-
-/**
- * Retrieve all data fields from database
- *
- * @return unknown
- */
-public function db_retrieve_all()
-{
-
-$fields = array();
-foreach ($this->datamodel()->fields() as $name=>$field)
-	if (!isset($this->fields[$name]))
-		$fields[]=$name;
-
-if (count($fields)>0)
-{
-	return $this->db_retrieve($fields);
-}
-else
-	return false;
-
-}
-
-/**
- * Update data into database
- *
- * @param unknown_type $options
- */
-public function db_update($options=array())
-{
-
-if ($result = $this->datamodel()->db_update($this->fields))
-{
-	//echo "INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )";
-	db()->query("INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel()->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )");
-	if (APC_CACHE)
-		apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
-}
-
-return $result;
-
-}
-
-/**
- * Insert new data into database
- *
- * @param unknown_type $options
- */
-public function db_insert($options=array())
-{
-
-if ($id = $this->datamodel()->db_insert($this->fields))
-{
-	$this->fields["id"]->value_from_form($id);
-	return true;
-}
-else
-{
-	return false;
 }
 
 }

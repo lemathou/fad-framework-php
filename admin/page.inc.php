@@ -49,8 +49,9 @@ foreach ($_type()->list_detail_get() as $id=>$info)
 <a href="?add">Ajouter</a>
 </form>
 
-<div style="padding-top: 30px">
 <?
+
+//var_dump(data()->list_name_get());
 
 // Permissions
 $permission_list = permission()->list_detail_get();
@@ -62,7 +63,19 @@ $template_list = template()->list_detail_get();
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
+?>
+<div class="admin_menu admin_submenu">
+	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" class="selected">Formulaire</a>
+	<a href="javascript:;" name="param_list" onclick="admin_submenu(this.name)">Paramètres</a>
+</div>
+<div id="update_form" class="subcontents">
+<?
 $_type($id)->update_form();
+?>
+</div>
+
+<div id="param_list" class="subcontents" style="display:none;">
+<?php
 
 $page = $_type()->list_detail_get($id);
 
@@ -105,7 +118,7 @@ if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]
 	if (count($template->param_list()))
 	{
 		?>
-		<tr class="title header"> <td colspan="5"><?=$template->title()?> : template ID#<?=$template->id()?></td> </tr>
+		<tr class="title header"> <td colspan="5"><?=$template->label()?> : template ID#<?=$template->id()?></td> </tr>
 		<?php
 		foreach ($template->param_list() as $name=>$param)
 		{
@@ -124,7 +137,7 @@ if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]
 		$template = template($tpl["id"]);
 		?>
 		<tr class="separator"> <td>&nbsp;</td> </tr>
-		<tr class="tpl_name"> <td colspan="5"><?=$template->title()?> (sub-template ID#<?=$template->id()?>)</td> </tr>
+		<tr class="tpl_name"> <td colspan="5"><?=$template->label()?> (sub-template ID#<?=$template->id()?>)</td> </tr>
 		<tr class="separator"> <td>&nbsp;</td> </tr>
 		<tr class="title">
 			<td>Name (in template)</td>
@@ -134,8 +147,9 @@ if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]
 			<td>Surcharged value (by page)</td>
 		</tr>
 		<?php
-		foreach ($template->param_list() as $name=>$param)
+		foreach ($template->param_list_detail() as $nb=>$param)
 		{
+			$name = $param["name"];
 		?>
 		<tr>
 			<td class="label"><?=$name?></td>
@@ -182,10 +196,10 @@ if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]
 			else
 			{
 			?>
-			Parameter not passed in parent template
+			<td><p>Parameter not passed in parent template</p></td>
 			<?	
 			}
-			?></td>
+			?>
 		</tr>
 		<?php
 		}
@@ -223,6 +237,9 @@ if (isset($page["template_id"]) && (is_a($template=template($page["template_id"]
 	</form>
 	<?php
 }
+?>
+</div>
+<?php
 
 }
 
@@ -254,7 +271,6 @@ page()->table_list();
 }
 
 ?>
-</div>
 <script type="text/javascript">
 function param_update(name)
 {

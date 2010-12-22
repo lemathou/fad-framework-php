@@ -10,11 +10,9 @@
   */
 
 if (!defined("ADMIN_OK"))
-{
 	die("ACCES NON AUTORISE");
-}
 
-if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["add"]) && count($_POST))
+if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]) && isset($_GET["add"]) && count($_POST))
 {
 
 $object = datamodel($_GET["datamodel_id"])->create();
@@ -23,7 +21,7 @@ $object->db_insert();
 
 }
 
-if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["object_id"]) && $_GET["object_id"] && count($_POST))
+if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]) && isset($_GET["object_id"]) && datamodel($_GET["datamodel_id"])->exists($_GET["object_id"]) && count($_POST))
 {
 
 $object = datamodel($_GET["datamodel_id"])->get($_GET["object_id"]);
@@ -33,7 +31,6 @@ $object->db_update();
 }
 
 ?>
-
 <form method="get" class="page_form">
 <input type="submit" value="Donnée" />
 <select id="datamodel_id" name="datamodel_id" onchange="$('#object_id').val('');this.form.submit()">
@@ -77,7 +74,7 @@ if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]))
 		<?
 	}
 }
-if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"])
+if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]))
 {
 ?>
 <div style="display: inline;position: absolute;">
@@ -95,12 +92,14 @@ foreach($opt_list as $i=>$j)
 <a href="?datamodel_id=<?php echo $_GET["datamodel_id"]; ?>&add">Ajouter</a>
 <div id="q_select" class="q_select"></div>
 </div>
-<?php } ?>
+<?php
+}
+?>
 </form>
 
-<div style="padding-top: 30px">
 <?php
 
+// Insert form
 if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["add"]))
 {
 
@@ -108,6 +107,7 @@ datamodel($_GET["datamodel_id"])->create()->insert_form()->disp();
 
 }
 
+// Update form
 elseif (isset($_GET["datamodel_id"]) && isset($_GET["object_id"]) && $_GET["object_id"])
 {
 
@@ -115,35 +115,71 @@ datamodel($_GET["datamodel_id"])->get($_GET["object_id"])->form()->disp();
 
 }
 
+// List
 elseif (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"])
 {
 
-if (!isset($_POST["params"]))
-	$params = array();
-else
-{
-	$params = array();
-	foreach($_POST["params"] as $n=>$v) if ($n)
-		$params[] = array("name"=>$n, "value"=>$v);
-	//print_r($params);
-}
 if (!isset($_POST["fields"]))
 	$fields = array();
 else
-{
 	$fields = $_POST["fields"];
-	//print_r($fields);
-}
-if (!isset($_POST["sort"]))
+
+if (!isset($_POST["sort"]) || !is_array($_POST["sort"]))
 	$sort = array();
 else
-{
 	$sort = array ($_POST["sort"][0]=>$_POST["sort"][1]);
-	//print_r($sort);
+
+$params = array();
+if (isset($_POST["params"]) && is_array($_POST["params"])) foreach($_POST["params"] as $name=>$value)
+{
+	if (isset(datamodel($_GET["datamodel_id"])->{$name}))
+	{
+		$field = datamodel($_GET["datamodel_id"])->{$name};
+		if (is_a($field, "data_integer"))
+			$params[$name] = array("name"=>$name, "value"=>$value);
+		elseif (is_a($field, "data_string"))
+			$params[$name] = array("name"=>$name, "value"=>"%$value%", "type"=>"LIKE");
+		else
+			$params[$name] = array("name"=>$name, "value"=>$value);
+	}
 }
+
 datamodel($_GET["datamodel_id"])->table_list($params, $fields, $sort);
 
 }
 
 ?>
-</div>
+<script type="text/javascript">
+function databank_list_sort(form, field)
+{
+	document.zeform['sort[0]'].value = field;
+	databank_form_submit();
+}
+function databank_params_aff()
+{
+	element = document.getElementById('databank_select_form');
+	if (element.style.display == 'block')
+		element.style.display = 'none';
+	else
+		element.style.display = 'block';
+}
+function databank_form_submit(form)
+{
+	$("[name^='params']").each(function(){
+		if (!$(this).val())
+			$(this).attr("name", "");
+	});
+	document.zeform.submit();
+}
+$(document).ready(function(){
+	$("#databank_params [name]").each(function(){
+		$(this).attr("id", 'params['+$(this).attr("name")+']');
+		$(this).removeAttr("name");
+		$(this).change(function(){
+			$(this).attr("name", $(this).attr("id"));
+		});
+		if ($(this).val())
+			$(this).change();
+	});
+});
+</script>

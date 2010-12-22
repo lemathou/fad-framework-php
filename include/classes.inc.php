@@ -27,9 +27,9 @@ protected $list_detail = array();
 protected $list_name = array();
 
 protected $info_list = array("name"); // Keep at least name !
-protected $info_lang_list = array("label", "description"); // Keep at least label !
-protected $info_save_list = array("name", "label");
-protected $info_detail = array
+protected $info_lang_list = array("label", "description"); // Keep at least label
+protected $info_save_list = array("name", "label"); // Keep at least name and label !
+protected $info_detail = array // Keep at least name and label !
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
@@ -57,7 +57,7 @@ return $this->info_detail;
 
 }
 
-/*
+/**
  * Sauvegarde/Restauration de la session
  */
 function __sleep()
@@ -67,6 +67,7 @@ if ($this->retrieve_all)
 	return array("list_detail", "list");
 else
 	return array("list_detail");
+
 }
 function __wakeup()
 {
@@ -248,7 +249,7 @@ return isset($this->list_name[$name]);
 function exists_name($name)
 {
 
-return isset($this->list_name[$name]);
+return $this->__isset($name);
 
 }
 
@@ -288,7 +289,7 @@ public function del($id)
 {
 
 if (!login()->perm(6)) // TODO : send email to admin
-	die("ONLY ADMIN CAN DELETE DATAMODEL");
+	die("ONLY ADMIN CAN DELETE $this->type");
 
 if (isset($this->list_detail[$id]))
 {
@@ -410,6 +411,9 @@ protected function add_more($id, $infos)
 public function table_list($params=array(), $field_list=true)
 {
 
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN SHOW LIST OF $this->type");
+
 ?>
 <table width="100%" cellspacing="1" border="1" cellpadding="1" class="object_list">
 <tr style="font-weight:bold;">
@@ -477,6 +481,9 @@ foreach ($this->list_detail as $id=>$info) if (true || $params === true)
 
 public function insert_form($action="")
 {
+
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN ADD $this->type");
 
 ?>
 <form action="<?php echo $action; ?>" method="post" class="object_form">
@@ -612,6 +619,9 @@ protected function query_info_more()
 public function update($infos)
 {
 
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN UPDATE $this->_type");
+
 if (!is_array($infos))
 	$infos = array();
 
@@ -621,6 +631,10 @@ $info_detail = $type()->info_detail_list();
 $query_info = array();
 $query_info_lang = array();
 $query_objects = array();
+
+// unique name
+if (isset($infos["name"]) && (!is_string($infos["name"]) || !$infos["name"] || $type()->exists($infos["name"])))
+	unset($infos["name"]);
 
 foreach ($info_detail as $name=>$field_info)
 {
@@ -632,16 +646,20 @@ foreach ($info_detail as $name=>$field_info)
 	{
 		$query_info_lang[] = "`$name`='".db()->string_escape($infos[$name])."'";
 	}
-	elseif ($field_info["type"] == "script" && isset($infos[$name]))
+	elseif ($field_info["type"] == "script")
 	{
 		$filename = $field_info["folder"]."/".str_replace("{name}", $this->name, $field_info["filename"]);
-		if (file_exists($filename))
-			unset($filename);
-		if ($infos[$name])
+		if (isset($infos[$name]))
 		{
-			if (isset($infos["name"]))
-				$filename = $field_info["folder"]."/".str_replace("{name}", $infos["name"], $field_info["filename"]);
-			fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos[$name]));
+			if ($infos[$name] && file_exists($filename))
+				fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos[$name]));
+			else
+				unset($filename);
+		}
+		if (isset($infos["name"]) && ($this->name != $infos["name"]) && file_exists($filename))
+		{
+			$filename_new = $field_info["folder"]."/".str_replace("{name}", $infos["name"], $field_info["filename"]);
+			rename($filename, $filename_new);
 		}
 	}
 	elseif ($field_info["type"] == "object_list" && isset($infos[$name]))
@@ -670,7 +688,7 @@ foreach ($query_objects as $name)
 
 $this->update_more($infos);
 
-//$this->query_info();
+$this->query_info();
 $type()->query_info();
 
 
@@ -717,6 +735,9 @@ if (isset($this->{$name}))
 public function update_form($action="")
 {
 
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN UPDATE $this->_type");
+
 $_type = $this->_type;
 ?>
 <form action="<?php echo $action; ?>" method="post" class="object_form">
@@ -751,8 +772,8 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 <?php } elseif ($info["type"] == "script") { ?>
 	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php
 	$filename =  $info["folder"]."/".str_replace("{name}", $this->name, $info["filename"]);
-	if (file_exists($filename))
-		echo $content = htmlspecialchars(fread(fopen($filename,"r"),filesize($filename)));
+	if (file_exists($filename) && ($filesize=filesize($filename)))
+		echo $content = htmlspecialchars(fread(fopen($filename,"r"),$filesize));
 	?></textarea></td>
 <?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
 	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" title="<?php echo $info["label"]; ?>" size="10" multiple class="data_fromlist"><?

@@ -48,7 +48,6 @@ foreach ($_type()->list_detail_get() as $id=>$info)
 <a href="?list">Retour à la liste</a>
 </form>
 
-<div style="padding-top: 30px">
 <?php
 
 $library_list = library()->list_detail_get();
@@ -57,10 +56,18 @@ $library_list = library()->list_detail_get();
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
-$_type($id)->update_form();
-
 ?>
+<div class="admin_menu admin_submenu">
+	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" class="selected">Formulaire</a>
+	<a href="javascript:;" name="param_list" onclick="admin_submenu(this.name)">Paramètres</a>
+</div>
+<div id="update_form" class="subcontents">
+<?
+$_type($id)->update_form();
+?>
+</div>
 
+<div id="param_list" class="subcontents" style="display:none;">
 <h2>Gestion des paramètres</h2>
 <?php
 // Ajout
@@ -115,7 +122,7 @@ if ($query->num_rows())
 
 ?>
 <form action="?id=<?=$id?>&param_edit=<?=$param_edit?>" method="POST">
-<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
+<table width="100%" cellspacing="1" border="1" cellpadding="1">
 <tr>
 	<td>Name :</td>
 	<td><input name="param_edit[<?=$param["name"]?>][name]" value="<?=$param["name"]?>" /></td>
@@ -139,8 +146,9 @@ if ($query->num_rows())
 <tr>
 	<td>Valeur par défaut :<br />(JSON)</td>
 	<td><?php
-	if ($param["datatype"]=="dataobject" && isset($optlist["structure"]["databank"]) && is_a($databank=databank($optlist["structure"]["databank"]),"data_bank"))
+	if ($param["datatype"]=="dataobject" && isset($optlist["structure"]["databank"]) && datamodel()->exists($optlist["structure"]["databank"]))
 	{
+		$databank = datamodel($optlist["structure"]["databank"]);
 		echo "<select name=\"param_edit[$param[name]][defaultvalue]\">";
 			echo "<option value=\"0\">-- Choisir si besoin --</option>";
 		foreach($databank->query() as $object)
@@ -214,7 +222,7 @@ if ($query->num_rows())
 ?>
 
 <form action="?id=<?=$id?>" method="post">
-<table width="100%" cellspacing="1" border="1" cellpadding="1" style="margin-top: 5px;">
+<table width="100%" cellspacing="1" border="1" cellpadding="1">
 <tr>
 	<td colspan="2">&nbsp;</td>
 	<td>Name</td>
@@ -283,7 +291,7 @@ while ($param = $query_params->fetch_assoc())
 	<?php
 	foreach(data()->list_detail_get() as $datatype)
 	{
-		echo "<option value=\"$datatype[name]\">$datatype[title]</option>\n";
+		echo "<option value=\"$datatype[name]\">$datatype[label]</option>\n";
 	}
 	?>
 	</select></td>
@@ -298,6 +306,7 @@ while ($param = $query_params->fetch_assoc())
 </tr>
 </table>
 </form>
+</div>
 
 <?php
 
@@ -349,4 +358,3 @@ $_type()->table_list();
 
 }
 ?>
-</div>

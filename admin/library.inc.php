@@ -48,7 +48,6 @@ foreach ($_type()->list_detail_get() as $id=>$info)
 <a href="?list">Retour à la liste</a>
 </form>
 
-<div style="padding-top: 30px">
 <?php
 
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
@@ -82,4 +81,3 @@ $_type()->table_list();
 }
 
 ?>
-</div>

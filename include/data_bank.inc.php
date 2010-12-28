@@ -55,6 +55,11 @@ protected $options = array();
 public function __sleep()
 {
 
+// TODO : Find a solution if the update had not to be saved !
+foreach ($this->fields as $name=>$field)
+	if ($field->value !== $this->field_values[$name])
+		$this->field_values[$name] = $field->value;
+
 return array("field_values");
 
 }
@@ -110,6 +115,7 @@ public function datamodel_set()
 $this->fields = array();
 $this->field_values = array();
 // Champs par défaut :
+/*
 foreach($this->datamodel()->fields_key() as $name)
 {
 	$this->fields[$name] = clone $this->datamodel()->{$name};
@@ -120,6 +126,7 @@ foreach($this->datamodel()->fields_required() as $name)
 	$this->fields[$name] = clone $this->datamodel()->{$name};
 	$this->field_values[$name] = $this->fields[$name]->value;
 }
+*/
 
 }
 public function datamodel()
@@ -262,10 +269,14 @@ public function db_retrieve($fields, $force=false)
 $query_ok = true;
 $params = array();
 if (!is_array($fields))
-	$fields = array($fields);
+	if (is_string($fields))
+		$fields = array($fields);
+	else
+		$fields = array();
+
 // Verify params
 foreach ($this->datamodel()->fields_key() as $name)
-	if (!isset($this->fields[$name]))
+	if (!isset($this->fields[$name]) && !isset($this->field_values[$name]))
 	{
 		if (DEBUG_DATAMODEL)
 			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : missing key '$name' to retrieve fields");
@@ -286,8 +297,11 @@ if ($query_ok && count($fields) && ($list = $this->datamodel()->db_fields($param
 	{
 		foreach($list[0] as $name=>$field)
 		{
-			$this->fields[$name] = $field;
-			$this->field_values[$name] = $field->value;
+			if (!isset($this->fields[$name]) && !isset($this->field_values[$name]))
+			{
+				$this->fields[$name] = $field;
+				$this->field_values[$name] = $field->value;
+			}
 		}
 		if (APC_CACHE)
 			apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
@@ -434,9 +448,9 @@ return $view;
 public function db_insert($options=array())
 {
 
-if ($id = $this->datamodel()->db_insert($this->fields))
+if ($id=$this->datamodel()->db_insert($this->fields))
 {
-	$this->fields["id"]->value_from_form($id);
+	$this->__set("id", $id);
 	return true;
 }
 else

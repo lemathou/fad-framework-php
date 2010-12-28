@@ -256,7 +256,7 @@ $query = db()->query("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` ,
 while ($field=$query->fetch_assoc())
 {
 	$datatype = "data_$field[type]";
-	$this->fields[$field["name"]] = new $datatype($field["name"], $field["defaultvalue"], $field["label"]);
+	$this->fields[$field["name"]] = new $datatype($field["name"], json_decode($field["defaultvalue"], true), $field["label"]);
 	$this->fields[$field["name"]]->datamodel_set($this->id);
 	if ($field["opt"] == "key")
 		$this->fields_key[] = $field["name"];
@@ -409,7 +409,7 @@ if (!isset($field["opt"]) || !isset($field["query"]) || !isset($field["lang"]) |
 if (!isset($field["pos"]) || !is_numeric($field["pos"]) || $field["pos"] < 0)
 	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : pos");
 
-if (isset($field["defaultvalue_null"]))
+if (isset($field["defaultvalue_null"]) || $field["defaultvalue"] === null || $field["defaultvalue"] == "")
 	$defaultvalue = "NULL";
 else
 	$defaultvalue = "'".db()->string_escape($field["defaultvalue"])."'";
@@ -508,7 +508,7 @@ $fieldtype = "data_$field[type]";
 $datafield = new $fieldtype("field", null, null);
 
 // Default value
-if (isset($field["defaultvalue_null"]))
+if (isset($field["defaultvalue_null"]) || $field["defaultvalue"] === null || $field["defaultvalue"] == "")
 	$defaultvalue = "NULL";
 elseif (isset($field["defaultvalue"]))
 	$defaultvalue = "'".db()->string_escape($field["defaultvalue"])."'";
@@ -909,13 +909,8 @@ public function create($fields_all_init=false)
 
 $classname = $this->name."_agregat";
 $object = new $classname();
-/*
 if ($fields_all_init) foreach($this->fields as $name=>$field)
-{
-	if (!isset($object->{$name}))
-		$object->{$name} = null;
-}
-*/
+	$object->{$name} = null;
 return $object;
 
 }
@@ -1293,16 +1288,17 @@ elseif (is_numeric($id) && $id>0)
 	// TODO : hack : Retrieve a maximum of data at the first load might be better...
 	if (isset($this->objects[$id]))
 	{
-		//echo "RETRIEVED FROM LIST !";
+		//echo "$this->_type : ID#$id RETRIEVED FROM LIST !";
 		if (count($fields) || $fields === true)
 		{
+			//echo "$this->_type : ID#$id DB_RETRIEVE !";
 			$this->objects[$id]->db_retrieve($fields);
 		}
 		return $this->objects[$id];
 	}
 	elseif (APC_CACHE && ($object=apc_fetch("dataobject_".$this->id."_".$id)))
 	{
-		//echo "RETRIEVED FROM APC !";
+		//echo "$this->_type : ID#$id : RETRIEVED FROM APC !";
 		$this->objects[$id] = $object;
 		if (count($fields) || $fields === true)
 		{
@@ -1312,8 +1308,11 @@ elseif (is_numeric($id) && $id>0)
 	}
 	elseif (is_array($object_list=$this->db_get(array(array("name"=>"id", "value"=>$id)), $fields)) && count($object_list)==1)
 	{
-		//echo "RETRIEVED FROM DB !";
-		return $this->objects[$id] = array_pop($object_list);
+		//echo "$this->_type : ID#$id RETRIEVED FROM DB !";
+		$object = array_pop($object_list);
+		if (APC_CACHE) // TODO : bidouiller pour utiliser pleinement APC !
+			apc_store("dataobject_".$this->id."_".$object->id->value, $object, APC_CACHE_DATAOBJECT_TTL);
+		return $this->objects[$object->id->value] = $object;
 	}
 	// Retrieve error
 	else
@@ -1352,8 +1351,6 @@ if (is_array($result = $this->db_select($params, $fields, $sort, $limit, $start)
 		}
 		else
 			$objects[] = $this->objects[$o["id"]];
-		if (false && APC_CACHE) // TODO : bidouiller pour utiliser pleinement APC !
-			apc_store("dataobject_".$this->id."_".$object->id, $object, APC_CACHE_DATAOBJECT_TTL);
 	}
 	return $objects;
 }

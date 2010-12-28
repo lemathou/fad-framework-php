@@ -14,76 +14,54 @@
   * Agrégats de données de base pour les datamodels, les formulaires,
   * les méthodes de mise en page, la partie CMS, etc.
   * 
+  * Types de données gérés au niveau du framework.
+  * Vous pourrez en ajouter s'il en manque mais j'essayerais d'être exhaustif.
+  * 
+  * - Dans l'idée, chaque donnée est fortement typée.
+  * - Ce sont les briques du "modèle" en MVC.
+  * - Les controlleurs sont des méthodes associées à des instances de classe form pour l'utilisateur,
+  *   permettant de définir différents formulaires suivant le contexte.
+  * - Les vues sont des méthodes associées à des instances de classe data_display (quoi que j'évolue
+  *   vers une classe fille de la classe template, ce qui serait plus judicieux et permerrait de tout sauvegarder
+  *   en cache).
+  * - On dispose aussi de contraintes (regexp, maxlength, compare, etc.) utilisables via des méthodes de vérification
+  *   et de conversion au plus juste (dans certains cas) associées à des instances de classes de conversion
+  *   Des méthodes de vérification et de conversion seront aussi définies dans la classe form,
+  *   en javascript (et ajax si besoin), au niveau utilisateur
+  * 
+  * On peut aussi utiliser indépendamment les classes datamodel, agregat, display, form, conversion et conteneur.
   */
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 /**
- * Types de données gérés au niveau du framework.
- * Vous pourrez en ajouter s'il en manque mais j'essayerais d'être exhaustif.
- * 
- * - Dans l'idée, chaque donnée est fortement typée.
- * - Ce sont les briques du "modèle" en MVC.
- * - Les controlleurs sont des méthodes associées à des instances de classe form pour l'utilisateur,
- *   permettant de définir différents formulaires suivant le contexte.
- * - Les vues sont des méthodes associées à des instances de classe data_display (quoi que j'évolue
- *   vers une classe fille de la classe template, ce qui serait plus judicieux et permerrait de tout sauvegarder
- *   en cache).
- * - On dispose aussi de contraintes (regexp, maxlength, compare, etc.) utilisables via des méthodes de vérification
- *   et de conversion au plus juste (dans certains cas) associées à des instances de classes de conversion
- *   Des méthodes de vérification et de conversion seront aussi définies dans la classe form,
- *   en javascript (et ajax si besoin), au niveau utilisateur
- * 
- * On peut aussi utiliser indépendamment les classes datamodel, agregat, display, form, conversion et conteneur.
- * 
- * Liste des types data de base :
- * - string
- * - integer
- * - float
- * - date
- * - time
- * - datetime
- * - list
- * - fromlist
- * 
- * Liste des types data enrichis :
- * - number : integer
- * - measure : float
- * - id : number
- * - name : string
- * - richtext (html) : string
- * 
- * Liste des types médias :
- * - file
- * - stream
- * - audio
- * - video
- * 
- * Liste des types complexes :
- * - object
- * - agregat
- * - dataobject
- * - dataobject_list
- * 
+ * Data types global container class
  */
+class data_gestion extends gestion
+{
+
+protected $type = "datatype";
+
+public function get($id)
+{
+
+if ($this->exists($id))
+{
+	$datatype = "data_".$this->list_detail[$id]["name"];
+	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
+}
+else
+	return null;
+
+}
+
+}
 
 /**
  * "Abstract" base datatype
  * 
  * This is the main datatype, from which we will create the others :
- * - String (with maxlength)
- * - Rich text (HTML)
- * - Numbers : Integer, Float, etc.
- * - Date/Time
- * - Lists (width single or multiple selection)
- * - Tables (complex arrays)
- * - Binary and executables
- * - Word, Excel, Openoffice, etc. files
- * - Pictures, Photos, etc.
- * - Videos
- * - Sounds
- * - etc.
  * 
  * L'intérêt de spécifier chaque donnée entrée est aussi de s'abstraire du moteur de stockage (MySQL pour l'instant).
  * Chaque donnée dispose :
@@ -139,7 +117,17 @@ protected $value=null;
 protected $required=false;
 
 protected $opt = array();
-protected static $opt_list = array("size", "ereg" , "integer" , "float" , "array" , "boolean", "percent", "compare" , "count" , "select" , "fromlist" , "date" , "time" , "datetime" , "object" , "datamodel", "databank", "databank_select", "email", "url");
+protected static $opt_list = array
+(
+	// structure
+	"size", "ereg" , "numeric" , "array" , "boolean", "percent", "select" , "fromlist" , "date" , "time" , "datetime" , "object" , "databank", "databank_list", "email", "url",
+	// db
+	"table", "field" , "type" , "ref_table" , "ref_field" , "ref_id", "order_field" , "databank_field" , "select_params" , "lang" , "auto_increment",
+	// disp
+	"mime_type", "ref_field_disp", "preg_replace", "template_datamodel",
+	// form
+	
+);
 
 /**
  * Options de structure et par extension de Verification & Conversion (Voir les classes de conversion associées)
@@ -208,21 +196,6 @@ $this->value_set($value, true);
 
 }
 
-/**
- * Read access to data
- */
-public function __get($name)
-{
-
-if (is_string($name) && in_array($name, array("name", "type", "label", "value", "opt_list", "datamodel_id", "structure_opt", "db_opt", "disp_opt")) && isset($this->{$name}))
-	return $this->{$name};
-elseif ($name == "datamodel")
-	return datamodel($this->datamodel_id);
-else
-	return null;
-
-}
-
 public function datamodel_set($datamodel_id)
 {
 
@@ -238,7 +211,7 @@ return datamodel($this->datamodel_id);
 }
 
 /**
- * Define options
+ * Options
  */
 public function opt_set($name, $value)
 {
@@ -340,21 +313,68 @@ return $this->disp_opt;
 
 }
 
+/* SET */
 
 /**
- * Defines the table field that would be created by a db::table_create invoqued from datamodel.
- *  
+ * Only the value can be updated, the other properties are too complex
+ *
+ * @param unknown_type $name
+ * @param unknown_type $value
+ * @return unknown
  */
-public function db_field_create()
+public function __set($name, $value)
 {
 
-return array
-(
-	"type"=>"string"
-);
+if ($name == "value")
+	$this->value = $value;
+
+}
+/**
+ * Update the value and force conversion if needed
+ * 
+ * @param mixed value
+ * @param boolean force
+ * @return boolean
+ */
+public function value_set($value, $force=false)
+{
+
+$this->value = &$value;
+
+// Verify and update
+if ($value !== null)
+{
+	$this->convert_before($value);
+	if (!$this->verify($value) && $force)
+		$this->convert($value);
+	$this->convert_after($value);
+}
 
 }
 
+/* VERIFY / CONVERT */
+
+/**
+ * Verify the structure of the value
+ * 
+ * @param mixed value
+ * @return boolean
+ */
+public function verify(&$value, $convert=false)
+{
+
+return true;
+
+}
+public function convert(&$value, $options=array())
+{
+}
+public function convert_after(&$value)
+{
+}
+public function convert_before(&$value)
+{
+}
 /**
  * Returns if the value is empty (or not set)
  */
@@ -371,75 +391,46 @@ return (boolean) $this->value;
 
 }
 
-/**
- * Only the value can be updated, the other properties are too complex
- *
- * @param unknown_type $name
- * @param unknown_type $value
- * @return unknown
- */
-public function __set($name, $value)
-{
-
-if ($name == "value")
-	$this->value = $value;
-
-}
+/* GET */
 
 /**
- * Update the value and force conversion if needed
+ * Returns a reference to the value (use with caution)
  * 
- * @param mixed value
- * @param boolean force
- * @return boolean
- */
-public function value_set($value, $force=false)
-{
-
-// Verify and update
-if ($this->verify($value))
-{
-	//echo "<p>Mise à jour OK pour valeur : $value</p>";
-	$this->value = $value;
-	return true;
-}
-// Convert
-elseif ($force)
-{
-	$this->value = $this->convert($value);
-	return true;
-}
-// Verification failure
-else
-{
-	return false;
-}
-
-}
-/**
- * Verify the structure of the value
- * 
- * @param mixed value
- * @return boolean
- */
-public function verify($value, $options=array())
-{
-
-return true;
-
-}
-/**
- * Convert a value with the structure options
- * 
- * @param mixed value
  * @return mixed
  */
-public function convert($value, $options=array())
+public function &value_ref()
 {
 
-return $value;
+return $this->value;
 
 }
+/**
+ * Read access to data
+ */
+public function __get($name)
+{
+
+if (is_string($name) && in_array($name, array("name", "type", "label", "value", "opt_list", "datamodel_id", "structure_opt", "db_opt", "disp_opt")) && isset($this->{$name}))
+	return $this->{$name};
+elseif ($name == "datamodel")
+	return datamodel($this->datamodel_id);
+else
+	return null;
+
+}
+/**
+ * Returns value
+ *
+ * @return string
+ */
+public function __tostring()
+{
+
+return (string)$this->value;
+
+}
+
+/* DB */
 
 /**
  * Convert the value in database format
@@ -462,12 +453,11 @@ else
 	return "$this->value";
 
 }
-
 /**
  * Return the query string for the datamodel
  * 
  * @param $value
- * @return unknown_type
+ * @return array
  */
 public function db_query_param($value, $type="=")
 {
@@ -475,7 +465,7 @@ public function db_query_param($value, $type="=")
 if (!in_array($type, array("=", "<", ">", "<=", ">=", "<>", "LIKE", "NOT LIKE")))
 	$type = "=";
 
-if (!isset($this->db_opt["field"]) || !($fieldname = $this->db_opt["field"]))
+if (!isset($this->db_opt["field"]) || !($fieldname=$this->db_opt["field"]))
 	$fieldname = $this->name;
 
 if (is_array($value))
@@ -494,11 +484,26 @@ else
 	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
 
 }
+/**
+ * Defines the table field that would be created by a db::table_create invoqued from datamodel.
+ *  
+ */
+public function db_field_create()
+{
+
+return array
+(
+	"type"=>"string"
+);
+
+}
+
+/* FORMS */
 
 /**
  * Convert the value from the appripriate format used in the form_field() view in an HTML form 
  *
- * @param unknown_type $value
+ * @param mixed $value
  */
 public function value_from_form($value)
 {
@@ -511,7 +516,7 @@ $this->value_set($value, true);
  * TODO : Is this really usefull ..?
  * 
  * @param unknown_type $value
- * @return unknown
+ * @return mixed
  */
 public function value_to_form()
 {
@@ -519,26 +524,6 @@ public function value_to_form()
 return $this->value;
 
 }
-
-/**
- * Return value
- *
- * @return string
- */
-public function __tostring()
-{
-
-return (string)$this->value;
-
-}
-
-function disp_url() // TODO : is this usefull ? if not destroy ! (see in data_display)
-{
-	
-return $this->__tostring();
-
-}
-
 /**
  * Return the associated form field
  *
@@ -574,7 +559,17 @@ else
 
 }
 
-/* BASE DATA TYPES */
+
+/** 
+  * Base data types
+  * 
+  * - String (with maxlength)
+  * - Numbers : Integer, Float, etc.
+  * - Date/Time
+  * - Lists (width single or multiple selection)
+  * - Boolean
+  */
+
 
 /**
  * String
@@ -632,32 +627,36 @@ public function __tostring()
 
 if (isset($this->disp_opt["preg_replace"]) && is_array($opt=$this->disp_opt["preg_replace"]) && isset($opt["pattern"]) && isset($opt["replace"]) && preg_match($opt["pattern"], $this->value))
 {
-	return preg_replace($opt["pattern"], $opt["replace"], $this->value);
+	return preg_replace($opt["pattern"], $opt["replace"], (string)$this->value);
 }
 else
-	return $this->value;
+	return (string)$this->value;
 
 }
 
-function verify($value)
+public function verify(&$value)
 {
 
-if (isset($this->structure_opt["size"]))
-{
-	$maxlength = $this->structure_opt["size"];
-	if (!is_string($value) || !is_numeric($value))
-		return false;
-	elseif (is_numeric($maxlength) && $maxlength > 0 && strlen((string)$value) > $maxlength)
-		return false;
-}
-if (isset($this->structure_opt["ereg"]))
-{
-	$ereg = $this->structure_opt["ereg"];
-	if (!preg_match($ereg,$value))
-		return false;
-}
+if (!is_string($value))
+	return false;
+if (isset($this->structure_opt["size"]) && ($maxlength=$this->structure_opt["size"]) && strlen($value) > $maxlength)
+	return false;
+if (isset($this->structure_opt["ereg"]) && ($ereg=$this->structure_opt["ereg"]) && !preg_match($ereg, $value))
+	return false;
 
 return true;
+
+}
+
+public function convert(&$value)
+{
+
+if (!is_string($value))
+	$value = (string)$value;
+if (isset($this->structure_opt["size"]) && ($maxlength=$this->structure_opt["size"]) && strlen($value) > $maxlength)
+	$value = substr($value, 0, $maxlength);
+if (isset($this->structure_opt["ereg"]) && ($ereg=$this->structure_opt["ereg"]) && !preg_match($ereg, $value))
+	$value = null;
 
 }
 
@@ -686,6 +685,13 @@ protected $structure_opt = array
  * pour pouvoir plus aisément comparer... a voir !!
  */
 
+function __tostring()
+{
+
+return (string)$this->value;
+
+}
+
 }
 
 /**
@@ -699,7 +705,7 @@ protected $type = "integer";
 
 protected $structure_opt = array
 (
-	"integer" => array( "signed" => true , "size" => 11 ),
+	"integer" => array( "signed" => true , "size" => 11 ), // TODO : use "numeric" opt name
 );
 
 public function form_field_disp($print=true, $options=array())
@@ -737,21 +743,31 @@ return $return;
 
 }
 
-function verify($value)
+public function verify(&$value)
 {
 
-if (isset($this->structure_opt["integer"]))
-{
-	$param = $this->structure_opt["integer"];
-	if (!is_numeric($value) || ((int)$value != $value) || (isset($param["signed"]) && $param["signed"] == false && $value < 0))
-		return false;
-	else
-		return true;
+if (!is_numeric($value) || (int)$value != $value)
+	return false;
+if (isset($this->structure_opt["integer"]["signed"]) && $this->structure_opt["integer"]["signed"] == false && $value < 0)
+	return false;
+
+return true;
+
 }
-else
+
+public function convert(&$value)
 {
-	return true;
+
+$value = (int)$value;
+if (isset($this->structure_opt["integer"]["signed"]) && $this->structure_opt["integer"]["signed"] == false && $value < 0)
+	$value = -$value;
+
 }
+
+public function __tostring()
+{
+
+return (string)$this->value;
 
 }
 
@@ -768,7 +784,7 @@ protected $type = "float";
 
 protected $structure_opt = array
 (
-	"float" => array("signed"=>true, "size"=>11, "precision"=>2)
+	"float" => array("signed"=>true, "size"=>11, "precision"=>2) // TODO : use "numeric" opt name
 );
 
 public function form_field_disp($print=true, $options=array())
@@ -805,25 +821,119 @@ return $return;
 
 }
 
-function verify($value)
+function verify(&$value)
 {
 
-if (isset($this->structure_opt["float"]))
-{
-	$param = $this->structure_opt["float"];
-	if (!is_numeric($value))
-		return false;
-	elseif ($param["signed"] && !preg_match('/^?[-]?([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($param["precision"]-1).'}[1-9]){0,1}$/', $value))
-		return false;
-	elseif (!$param["signed"] && !preg_match('/^([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($param["precision"]-1).'}[1-9]){0,1}$/', $value))
-		return false;
-	else
-		return true;
+if (!is_numeric($value))
+	return false;
+if (isset($this->structure_opt["float"]["precision"]) && ($precision=$this->structure_opt["float"]["precision"]) && !preg_match('/^?[-]?([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($param["precision"]-1).'}[1-9]){0,1}$/', $value))
+	return false;
+if (isset($this->structure_opt["float"]["signed"]) && $this->structure_opt["float"]["signed"] == false && $value < 0)
+	return false;
+
+return true;
+
 }
+
+function convert(&$value)
+{
+
+if (!preg_match('/^?[-]?([0-9]*)(\.([0-9]*)){0,1}$/', $value))
+	$value = null;
+
+}
+
+function __tostring()
+{
+
+return (string)$this->value;
+
+}
+
+}
+
+/**
+ * Boolean
+ * 
+ * Yes/No field ^^
+ * 
+ * Integer unsigned size 1
+ * 
+ */
+class data_boolean extends data_string
+{
+
+protected $structure_opt = array("boolean"=>array("NO","YES"));
+
+function __construct($name, $value, $label="Boolean")
+{
+
+data::__construct($name, $value, $label);
+
+}
+
+public function verify(&$value)
+{
+
+if ($value !== true || $value !== false)
+	return false;
+
+return true;
+
+}
+public function convert(&$value)
+{
+
+if (empty($value))
+	$value = false;
 else
-{
-	return true;
+	$value = true;
+
 }
+
+public function db_field_create()
+{
+
+return array( "type" => "boolean" );
+
+}
+public function value_from_db($value)
+{
+
+$this->value = ($value) ? true : false;
+
+}
+public function value_to_db()
+{
+
+if ($this->value === null)
+	return null;
+else
+	return ($this->value) ? "1" : "0";
+
+}
+
+public function value_to_form()
+{
+
+if ($this->value === null)
+	return null;
+else
+	return ($this->value == true) ? "1" : "0";
+
+}
+public function form_field_disp($print=true, $options=array())
+{
+
+if ($this->value)
+	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" checked class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
+else
+	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" checked />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
+
+if ($print)
+	print $return;
+else
+	return $return;
 
 }
 
@@ -841,7 +951,7 @@ class data_text extends data_string
 
 protected $type = "text";
 
-protected $structure_opt = array ();
+protected $structure_opt = array();
 
 public function form_field_disp($print=true, $options=array())
 {
@@ -880,140 +990,7 @@ return array( "type" => "string" );
 public function __tostring()
 {
 
-return str_replace("\n", "\n<br />", $this->value);
-
-}
-
-}
-
-/**
- * Rich Text (HTML)
- * 
- * Can limit the use of some tags.
- * 
- */
-class data_richtext extends data_text
-{
-
-protected $type = "richtext";
-
-protected $structure_opt = array
-(
-	"string_tag_authorized" => array ( "b" , "i" , "u" , "font" , "strong" , "a" , "p" ),
-);
-
-public function form_field_disp($print=true, $options=array())
-{
-
-$return = "<textarea name=\"$this->name\" class=\"".get_called_class()."\">$this->value</textarea>";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
-public function db_field_create()
-{
-
-return array( "type" => "richtext" );
-
-}
-
-/**
- * Must put the usual value.
- */
-public function __tostring()
-{
-
-return $this->value;
-
-}
-
-}
-
-/**
- * Select from a list
- * 
- * An element from an exhaustive given list
- *
- */
-class data_select extends data_string
-{
-
-protected $type = "select";
-
-protected $structure_opt = array
-(
-	"select" => array(),
-);
-
-public function form_field_disp($print=true, $options=array())
-{
-
-$return = "<select name=\"$this->name\" class=\"".get_called_class()."\">";
-$return .= "<option value=\"\"></option>";
-foreach ($this->structure_opt("select") as $i=>$j)
-	if ($this->value == $i)
-		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
-	else
-		$return .= "<option value=\"$i\">$j</option>";
-$return .= "</select>";
-
-if ($print)
-	echo $return;
-else
-	return $return;
-
-}
-
-public function form_field_select_disp($print=true, $options=array())
-{
-
-$return = "<select name=\"$this->name\">";
-$return .= "<option value=\"\"></option>";
-foreach ($this->structure_opt["select"] as $i=>$j)
-	if ($options == $i)
-		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
-	else
-		$return .= "<option value=\"$i\">$j</option>";
-$return .= "</select>";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
-function __tostring()
-{
-
-if (isset($this->structure_opt["select"][$this->value]))
-	return "".$this->structure_opt["select"][$this->value];
-else
-	return "";
-
-}
-
-public function db_field_create()
-{
-
-$value_list = array();
-foreach($this->structure_opt["select"] as $name=>$label)
-	$value_list[] = $name;
-return array("type" => "select", "value_list" => $value_list);
-
-}
-
-function verify($value)
-{
-
-if (!isset($this->structure_opt["select"][$value]))
-	return false;
-else
-	return true;
+return nl2br($this->value, true);
 
 }
 
@@ -1093,27 +1070,20 @@ else
 function value_to_db()
 {
 
-if ($this->value)
-	return implode("-",array_reverse(explode("/",$this->value)));
-else
+if ($this->value === null || !$this->value)
 	return null;
-
-}
-
-function value_from_form($value)
-{
-
-$this->value = $value;
+else
+	return implode("-",array_reverse(explode("/",$this->value)));
 
 }
 
 function value_to_form()
 {
 
-if ($this->value && $this->value != "00/00/0000")
-	return $this->value;
+if ($this->value === null || !$this->value)
+	return "";
 else
-	return "00/00/0000";
+	return $this->value;
 	
 }
 
@@ -1178,13 +1148,22 @@ else
 	return false;
 }
 
-function verify($value)
+function verify(&$value)
 {
 
 if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
 	return false;
-else
-	return true;
+
+return true;
+
+}
+
+function convert(&$value)
+{
+
+if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
+	$value = "00/00/0000";
+
 
 }
 
@@ -1211,12 +1190,6 @@ protected $db_opt = array
 	"type" => "year",
 );
 
-public function value_from_form($value)
-{
-
-$this->value = $value;
-
-}
 
 public function __tostring()
 {
@@ -1248,13 +1221,21 @@ return array( "type" => "year" );
 
 }
 
-function verify($value)
+function verify(&$value)
 {
 
-if (!is_string($value) || !preg_match("([0-9]{4})",$value))
+if (!is_string($value) || !preg_match("([0-9]{4})", $value))
 	return false;
-else
-	return true;
+
+return true;
+
+}
+
+function convert(&$value)
+{
+
+if (!is_string($value) || !preg_match("([0-9]{4})", $value))
+	$value = "0000";
 
 }
 
@@ -1301,13 +1282,21 @@ return array( "type" => "time" );
 
 }
 
-public function verify($value)
+public function verify(&$value)
 {
 
 if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
 	return false;
-else
-	return true;
+
+return true;
+
+}
+
+public function convert(&$value)
+{
+
+if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+	$value = "00:00:00";
 
 }
 
@@ -1346,7 +1335,6 @@ else
 	return "";
 
 }
-
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1363,11 +1351,33 @@ else
 	return $return;
 
 }
+public function date($str="")
+{
+
+if (!$this->value)
+	return "";
+elseif (!$str)
+	return date("d/m/Y H:i:s", $this->value);
+else
+	return date($str, $this->value);
+
+}
+public function strftime($str="")
+{
+
+if (!$this->value)
+	return "";
+elseif (!$str)
+	return strftime($this->structure_opt["datetime"], $this->value);
+else
+	return strftime($str, $this->value);
+
+}
 
 public function value_from_db($value)
 {
 
-if ($value == null || $value == "0000-00-00 00:00:00")
+if ($value === null || $value == "0000-00-00 00:00:00")
 	$this->value = null;
 else
 {
@@ -1378,31 +1388,6 @@ else
 }
 
 }
-
-public function value_from_form($value)
-{
-
-if (!is_string($value) || !$value)
-	$this->value = null;
-else
-{
-	$e = explode(" ", $value);
-	$d = explode("/", $e[0]);
-	if (isset($e[1]))
-		$t = explode(":", $e[1]);
-	else
-		$t = array(0, 0, 0);
-	for ($i=0;$i<=2;$i++)
-		if (!isset($d[$i]) || !is_numeric($d[$i]))
-			$d[$i] = 0;
-	for ($i=0;$i<=2;$i++)
-		if (!isset($t[$i]) || !is_numeric($t[$i]))
-			$t[$i] = 0;
-	$this->value = mktime($t[0], $t[1], $t[2], $d[1], $d[0], $d[2]);
-}
-
-}
-
 public function value_to_db()
 {
 
@@ -1417,13 +1402,134 @@ return array( "type" => "datetime" );
 
 }
 
-public function verify($value)
+public function verify(&$value, $convert=false, $options=array())
 {
 
-if (!is_numeric($value))
+if (!is_string($value) || !$value || count($e=explode(" ", $value)) != 2 || count($d=explode("/", $e[0])) != 3 || count($t=explode("/", $e[1])) != 3)
 	return false;
+
+for ($i=0;$i<=2;$i++)
+{
+	if (!is_numeric($d[$i]))
+		return false;
+	if (!is_numeric($t[$i]))
+		return false;
+}
+
+return true;
+
+}
+public function convert(&$value)
+{
+
+if (!is_string($value) || !$value || count($e=explode(" ", $value)) != 2 || count($d=explode("/", $e[0])) != 3 || count($t=explode("/", $e[1])) != 3)
+	$value = null;
+
+}
+public function convert_after(&$value)
+{
+
+if ($value !== null)
+{
+	$e = explode(" ", $value);
+	$d = explode("/", $e[0]);
+	$t = explode("/", $e[1]);
+	$value = mktime($t[0], $t[1], $t[2], $d[1], $d[0], $d[2]);
+}
+
+}
+
+}
+
+/**
+ * Select from a list
+ * 
+ * An element from an exhaustive given list
+ *
+ */
+class data_select extends data_string
+{
+
+protected $type = "select";
+
+protected $structure_opt = array
+(
+	"select" => array(),
+);
+
+public function form_field_disp($print=true, $options=array())
+{
+
+$return = "<select name=\"$this->name\" class=\"".get_called_class()."\">";
+$return .= "<option value=\"\"></option>";
+foreach ($this->structure_opt("select") as $i=>$j)
+	if ($this->value == $i)
+		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
+	else
+		$return .= "<option value=\"$i\">$j</option>";
+$return .= "</select>";
+
+if ($print)
+	echo $return;
 else
-	return true;
+	return $return;
+
+}
+
+public function form_field_select_disp($print=true, $options=array())
+{
+
+$return = "<select name=\"$this->name\">";
+$return .= "<option value=\"\"></option>";
+foreach ($this->structure_opt["select"] as $i=>$j)
+	if ($options == $i)
+		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
+	else
+		$return .= "<option value=\"$i\">$j</option>";
+$return .= "</select>";
+
+if ($print)
+	print $return;
+else
+	return $return;
+
+}
+
+function __tostring()
+{
+
+if ($this->value && isset($this->structure_opt["select"][$this->value]))
+	return "".$this->structure_opt["select"][$this->value];
+else
+	return "";
+
+}
+
+public function db_field_create()
+{
+
+$value_list = array();
+foreach($this->structure_opt["select"] as $name=>$label)
+	$value_list[] = $name;
+return array("type" => "select", "value_list" => $value_list);
+
+}
+
+function verify(&$value, $convert=false)
+{
+
+if (!isset($this->structure_opt["select"][$value]))
+	return false;
+
+return true;
+
+}
+
+function convert(&$value)
+{
+
+if (!isset($this->structure_opt["select"][$value]))
+	$value = "";
 
 }
 
@@ -1491,17 +1597,18 @@ else
 
 }
 
-public function value_to_form()
-{
-
-return $this->value;
-
-}
-
-public function verify($value)
+public function verify(&$value)
 {
 
 return is_array($value);
+
+}
+
+public function convert(&$value)
+{
+
+if (!is_array($value))
+	$value = array();
 
 }
 
@@ -1527,7 +1634,10 @@ protected $structure_opt = array
 public function __tostring()
 {
 
-return implode(", ", $this->value);
+if (is_array($this->value))
+	return implode(", ", $this->value);
+else
+	return "";
 
 }
 
@@ -1559,16 +1669,6 @@ if (is_array($value)) foreach ($value as $i)
 
 }
 
-public function value_from_form($value)
-{
-
-$this->value = array();
-if (is_array($value)) foreach ($value as $i)
-	if (isset($this->structure_opt["fromlist"][$i]))
-		$this->value[] = $i;
-
-}
-
 public function value_to_db()
 {
 
@@ -1586,12 +1686,13 @@ return array( "type" => "fromlist" , "value_list" => array_keys($this->structure
 
 }
 
-public function verify($value)
+public function verify(&$value)
 {
 
 if (!is_array($value))
 	return false;
-else foreach ($value as $i)
+
+foreach ($value as $i)
 	if (!isset($this->structure_opt["fromlist"][$i]))
 		return false;
 
@@ -1599,145 +1700,471 @@ return true;
 
 }
 
+public function convert(&$value)
+{
+
+if (!is_array($value))
+	$value = array();
+
+foreach ($value as $i=>$j)
+	if (!isset($this->structure_opt["fromlist"][$j]))
+		unset($value[$i]);
+
+}
+
+}
+
+
+/**
+  * Extended data types
+  *
+  * - ID (for auto-incremented unique ID's)
+  * - Numbers
+  * - Name (label, title)
+  */
+
+
+/**
+ * Number
+ * 
+ * Used to count objects, with method to help
+ * Integer unsigned
+ * 
+ */
+class data_number extends data_integer
+{
+
+function __construct($name, $value, $label="Number", $size="10", $db_opt=array(), $disp_opt=array())
+{
+
+data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size), "size"=>$size), $db_opt, $disp_opt);
+
+}
+
 }
 
 /**
- * Donnée de type tableau (2 dimensions sinon on va pas s'en sortir hein !)
+ * ID
  * 
- * On commence à s'amuser... pour l'instant le contenu est simplement du texte
- *
+ * ID of a dataobject
+ * 
+ * Field name fixed to id
+ * Label fixed to ID
+ * Integer unsigned
+ * 
  */
-class data_table extends data
+class data_id extends data_number
 {
 
-// Type
-protected $type = "table";
+protected $db_opt = array
+(
+	"auto_increment"=>true,
+);
+
+function __construct()
+{
+
+data_number::__construct("id", null, "ID", 6, array("auto_increment"=>true));
+
+}
+
+public function db_field_create()
+{
+
+$return = array
+(
+	"type" => "integer",
+	"size" => $this->structure_opt["integer"]["size"],
+	
+);
+if (isset($this->db_opt["auto_increment"]))
+{
+	$return["auto_increment"]=true;
+}
+
+return $return;
+
+}
+
+}
+
+/**
+ * Name
+ *
+ * Maxlength fixed to 64
+ * Field size fixed to 20
+ *
+ */
+class data_name extends data_string
+{
+
+function __construct($name, $value, $label="Name", $db_opt=array(), $disp_opt=array())
+{
+
+data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $disp_opt);
+
+}
+
+}
+
+/**
+ * Description (text) field
+ *
+ * Maxlength fixed to 256
+ *
+ */
+class data_description extends data_text
+{
+
+function __construct($name, $value, $label="Description", $size=256, $db_opt=array(), $disp_opt=array())
+{
+
+data_text::__construct($name, $value, $label, array("size"=>$size), $db_opt=array(), $disp_opt=array());
+
+}
+
+}
+
+
+/**
+  * Rich data types
+  * 
+  * - Percentage
+  * - Measure width unit
+  * - Amount of money
+  * - Rich text (HTML)
+  * - URL's
+  * - Email addresses
+
+  */
+
+
+/**
+ * Rich Text (HTML)
+ * 
+ * Can limit the use of some tags.
+ * 
+ */
+class data_richtext extends data_text
+{
+
+protected $type = "richtext";
 
 protected $structure_opt = array
 (
-	"array" => array ( 0, 0 )
+	"string_tag_authorized" => array ( "b" , "i" , "u" , "font" , "strong" , "a" , "p" ),
 );
 
-protected $disp_opt = array
-(
-	"mime_type" => "text/csv",
-	"colnames" => true,
-	"colaltbg" => true,
-	"border" => 1,
-	"cellspacing" => 1,
-	"cellpadding" => 1,
-);
-
-protected $debug = array();
-
-protected function structure_set($name, $value)
+public function form_field_disp($print=true, $options=array())
 {
 
-if ($name == "array")
-{
-	if (is_array($value) && count($value) == 2 && isset($value[0]) && isset($value[1]) && is_numeric($value[0]) && is_numeric($value[1]) && $value[0] >= 0 && $value[1] >= 0)
-	{
-		$this->structure_opt["array"] = $value;
-		return true;
-	}
-	else
-		return false;
-}
+$return = "<textarea name=\"$this->name\" class=\"".get_called_class()."\">$this->value</textarea>";
+
+if ($print)
+	print $return;
 else
-	data::structure_set($name, $value);
+	return $return;
+
+}
+
+public function db_field_create()
+{
+
+return array( "type" => "richtext" );
 
 }
 
 public function __tostring()
 {
 
-return $this->disp();
+return (string)$this->value;
 
 }
 
-public function convert($value, $options)
+}
+
+/**
+ * Priority
+ * 
+ * Integer unsigned
+ * 
+ */
+class data_priority extends data_number
 {
 
-return $value;
+function __construct($name, $value, $label="Priority", $size=1)
+{
+
+data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size)), array(), array(), array("size"=>$size));
 
 }
 
-public function verify($value)
+}
+
+/**
+ * Auto counter (silly..?)
+ */
+class data_meter extends data_integer
 {
 
-// Initialisation de la liste des erreurs
-$this->debug = array();
-// initialisation du tableau de sortie proprement index�
-$return = array();
-// Il reste � traiter les clefs... pfff ! Voir si on peut simplifier
-if (is_array($value))
+public function increment()
 {
-	foreach($value as $n => $row)
-		if (is_array($row))
-		{
-			if ($this->cols && (($m=count($row)) != $this->cols))
-				$this->debug[] = "row n�$n : got $m cols, should have $this->cols";
-			else
-				$return[] = $row;
-		}
-		else
-			$this->debug[] = "row n�$n : not an array";
-	if (count($this->debug) == 0)
-		if (!$this->rows || ($this->rows == ($n=count($value))))
-			return true;
-		else
-		{
-			$this->debug[] = "got $n rows, should have $this->rows";
-			return false;
-		}
-	else
-		return false;
+
+$this->value++;
+
 }
+
+}
+
+/**
+ * Number field to count objects
+ * 
+ * Float unsigned
+ * 
+ */
+class data_measure extends data_float
+{
+
+function __construct($name, $value, $label="Measure", $precision=4, $db_opt=array(), $disp_opt=array())
+{
+
+data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>10, "precision"=>$precision)), $db_opt, $disp_opt);
+
+}
+
+function __tostring()
+{
+
+return (string)$this->value;
+
+}
+
+}
+
+/**
+ * Amount of money
+ * 
+ * Float unsigned
+ * 
+ */
+class data_money extends data_float
+{
+
+function __construct($name, $value, $label="Measure", $type="", $limit=null)
+{
+
+data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>8, "precision"=>2), "size"=>8), array(), array());
+
+}
+
+function __tostring()
+{
+
+return $this->value." &euro;";
+
+}
+
+}
+
+/**
+ * Percent
+ */
+class data_percent extends data_float
+{
+
+protected $structure_opt = array("percent"=>array());
+
+function __construct($name, $value, $label="Percent", $options=array())
+{
+
+data::__construct($name, $value, $label, $options);
+
+}
+
+function __tostring()
+{
+
+if ($this->value === null)
+	return "";
 else
-{
-	$this->debug[] = "not an array";
-	return false;
-}
+	return ($this->value*100)." %";
 
 }
-
-public function debug()
+function value_to_db()
 {
 
-return $this->debug;
+if ($this->value === null)
+	return null;
+else
+	return $this->value*100;
 
 }
-
-public function disp($aff=true)
+function value_from_db($value)
 {
 
-$tableattrib = "";
-$tableattrib .= " cellpadding=\"$this->cellpadding\"";
-$tableattrib .= " cellspacing=\"$this->cellspacing\"";
-$tableattrib .= " border=\"$this->border\"";
-$return = "<table$tableattrib>";
-foreach($this->value as $n => $row)
-{
-	if ($n == 0 && $this->colnames)
-		$return .= "<tr class=\"colnames\">";
-	elseif ($n%2 && $this->colaltbg)
-		$return .= "<tr class=\"colodd\">";
-	else
-		$return .= "<tr>";
-	foreach($row as $m => $cell)
-		$return .= "<td>$cell</td>";
-	$return .= "</tr>";
+if ($value === null)
+	$this->value = null;
+else
+	$this->value = $value/100;
+
 }
-$return .= "</table>";
+public function form_field_disp($print=true, $options=array())
+{
 
-if ($aff)
-	echo $return;
+$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\" class=\"".get_called_class()."\" />";
+
+if ($print)
+	print $return;
 else
 	return $return;
 
 }
 
+public function db_field_create()
+{
+
+return array("type" => "float", "size" => 5, "precision" => 2);
+
 }
+
+public function verify(&$value)
+{
+
+if (!is_numeric($value) || $value < 0 || $value > 1)
+	return false;
+
+return true;
+
+}
+
+public function convert(&$value)
+{
+
+if ($value)
+	$value = 1;
+else
+	$value = 0;
+
+}
+
+}
+
+/**
+ * Email
+ *
+ * Preg verified
+ * Maxlength fixed to 64
+ *
+ */
+class data_email extends data_string
+{
+
+function __construct($name, $value, $label="Email", $db_opt=array(), $disp_opt=array())
+{
+
+data_string::__construct($name, $value, $label, array("email"=>array("strict"=>false), "size"=>128), $db_opt, $disp_opt);
+
+}
+
+function link($protect=false)
+{
+
+if ($protect)
+{
+	$id = rand(1,10000);
+	list($nom, $domain) = explode("@", $this->value);
+	return "<div id=\"id_$id\" style=\"diaplay:inline;\"></div><script type=\"text/javascript\">email_replace('$id', '$domain', '$nom');</script>";
+}
+else
+	return "<a href=\"mailto:$this->value\">$this->value</a>";
+
+}
+
+public function verify(&$value)
+{
+
+$regex = ($this->structure_opt["email"]["strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+
+if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($match[2], "MX"))
+	return false;
+
+return false;
+
+}
+
+public function convert(&$value)
+{
+
+$regex = ($this->structure_opt["email"]["strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+
+if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($match[2], "MX"))
+	$value = "";
+
+}
+
+}
+
+/**
+ * URL
+ * 
+ * Preg verified
+ * Maxlength fixed to the standard data_string size (actually 256)
+ * 
+ */
+class data_url extends data_string
+{
+
+function __construct($name, $value, $label="URL", $db_opt=array(), $disp_opt=array())
+{
+
+data_string::__construct($name, $value, $label, array("url"=>array()), $db_opt, $disp_opt);
+
+}
+
+function link($target="_blank")
+{
+	if ($target)
+		return "<a href=\"$this->value\" target=\"$target\">$this->value</a>";
+	else
+		return "<a href=\"$this->value\">$this->value</a>";
+}
+
+public function verify(&$value, $convert=false)
+{
+
+$regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
+
+if (!is_string($value) || !preg_match($regex, $value))
+	return false;
+
+return true;
+
+}
+
+public function convert(&$value)
+{
+
+$regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
+
+if (!is_string($value) || !preg_match($regex, $value))
+	$value = "";
+
+}
+
+}
+
+
+/** 
+  * Media data types :
+  * 
+  * - file
+  * - stream
+  * - Sounds
+  * - Pictures, Photos, etc.
+  * - Videos
+  * - Word, Excel, Openoffice, etc. files
+  */
+
 
 /**
  * Donnée de type fichier
@@ -1879,451 +2306,14 @@ if (isset(self::$format_list[$format]))
 
 }
 
-/* More complex and specific data fields */
 
 /**
- * Number
- * 
- * Used to count objects, with method to help
- * Integer unsigned
- * 
- */
-class data_number extends data_integer
-{
-
-function __construct($name, $value, $label="Number", $size="10", $db_opt=array(), $disp_opt=array())
-{
-
-data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size), "size"=>$size), $db_opt, $disp_opt);
-
-}
-
-}
-
-/**
- * Percent
- */
-class data_percent extends data_float
-{
-
-protected $structure_opt = array("percent"=>array());
-
-function __construct($name, $value, $label="Percent", $options=array())
-{
-
-data::__construct($name, $value, $label, $options);
-
-}
-
-function __tostring()
-{
-
-return ($this->value*100)." %";
-
-}
-function value_to_db()
-{
-
-return $this->value*100;
-
-}
-function value_from_db($value)
-{
-
-$this->value = $value/100;
-
-}
-public function form_field_disp($print=true, $options=array())
-{
-
-
-$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\" class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
-public function value_from_form($value)
-{
-
-$this->value_set($value/100, true);
-
-}
-
-public function db_field_create()
-{
-
-return array("type" => "float", "size" => 5, "precision" => 2);
-
-}
-
-public function verify($value)
-{
-
-if (!is_numeric($value) || $value < 0 || $value > 1)
-	return false;
-else
-	return true;
-
-}
-
-public function convert($value)
-{
-
-if ($value)
-	return 1;
-else
-	return 0;
-
-}
-
-}
-/**
- * Priority
- * 
- * Integer unsigned
- * 
- */
-class data_priority extends data_number
-{
-
-function __construct($name, $value, $label="Priority", $size=1)
-{
-
-data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size)), array(), array(), array("size"=>$size));
-
-}
-
-}
-
-/**
- * Boolean
- * 
- * Yes/No field ^^
- * 
- * Integer unsigned size 1
- * 
- */
-class data_boolean extends data_number
-{
-
-protected $structure_opt = array("boolean"=>array("NO","YES"));
-
-function __construct($name, $value, $label="Boolean")
-{
-
-data::__construct($name, $value, $label);
-
-}
-
-public function db_field_create()
-{
-
-return array( "type" => "boolean" );
-
-}
-
-public function value_from_db($value)
-{
-
-$this->value = ($value) ? true : false;
-
-}
-public function value_to_db()
-{
-
-if ($this->value === null)
-	return null;
-else
-	return ($this->value) ? "1" : "0";
-
-}
-public function value_from_form($value)
-{
-
-$this->value = ($value) ? true : false;
-
-}
-public function value_to_form()
-{
-
-if ($this->value === null)
-	return null;
-else
-	return ($this->value) ? "1" : "0";
-
-}
-
-public function form_field_disp($print=true, $options=array())
-{
-
-if ($this->value)
-	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" checked class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
-else
-	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" checked />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
-public function verify($value)
-{
-
-if ($value !== true || $value !== false)
-	return false;
-else
-	return true;
-
-}
-
-public function convert($value)
-{
-
-if ($value)
-	return true;
-else
-	return false;
-
-}
-
-}
-
-/**
- *
- */
-class data_meter extends data_integer
-{
-
-public function increment()
-{
-
-$this->value++;
-
-}
-
-}
-
-/**
- * Number field to count objects
- * 
- * Float unsigned
- * 
- */
-class data_measure extends data_float
-{
-
-function __construct($name, $value, $label="Measure", $precision=4, $db_opt=array(), $disp_opt=array())
-{
-
-data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>10, "precision"=>$precision)), $db_opt, $disp_opt);
-
-}
-
-}
-
-
-/**
- * Amount
- * 
- * Used for money 
- * Float unsigned
- * 
- */
-class data_money extends data_float
-{
-
-function __construct($name, $value, $label="Measure", $type="", $limit=null)
-{
-
-data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>8, "precision"=>2), "size"=>8), array(), array());
-
-}
-
-function __tostring()
-{
-
-return $this->value." &euro;";
-
-}
-
-}
-
-/**
- * ID
- * 
- * ID of a dataobject
- * 
- * Field name fixed to id
- * Label fixed to ID
- * Integer unsigned
- * 
- */
-class data_id extends data_number
-{
-
-protected $db_opt = array
-(
-	"auto_increment"=>true,
-);
-
-function __construct()
-{
-
-data_number::__construct("id", null, "ID", 6, array("auto_increment"=>true));
-
-}
-
-public function db_field_create()
-{
-
-$return = array
-(
-	"type" => "integer",
-	"size" => $this->structure_opt["integer"]["size"],
-	
-);
-if (isset($this->db_opt["auto_increment"]))
-{
-	$return["auto_increment"]=true;
-}
-
-return $return;
-
-}
-
-}
-
-/**
- * Name
- *
- * Maxlength fixed to 64
- * Field size fixed to 20
- *
- */
-class data_name extends data_string
-{
-
-function __construct($name, $value, $label="Name", $db_opt=array(), $disp_opt=array())
-{
-
-data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $disp_opt);
-
-}
-
-}
-
-/**
- * Email
- *
- * Preg verified
- * Maxlength fixed to 64
- *
- */
-class data_email extends data_string
-{
-
-function __construct($name, $value, $label="Email", $db_opt=array(), $disp_opt=array())
-{
-
-data_string::__construct($name, $value, $label, array("email"=>array("strict"=>false), "size"=>128), $db_opt, $disp_opt);
-
-}
-
-function link($protect=false)
-{
-
-if ($protect)
-{
-	$id = rand(1,10000);
-	list($nom, $domain) = explode("@", $this->value);
-	return "<div id=\"id_$id\" style=\"diaplay:inline;\"></div><script type=\"text/javascript\">email_replace('$id', '$domain', '$nom');</script>";
-}
-else
-	return "<a href=\"mailto:$this->value\">$this->value</a>";
-
-}
-
-public function verify($value)
-{
-
-$regex = ($this->structure_opt["email"]["strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
-
-if (is_string($value) && preg_match($regex, $value, $match))
-{
-	if (checkdnsrr($match[2], "MX"))
-		return true;
-	else
-		return false;
-}
-else
-	return false;
-
-}
-
-}
-
-/**
- * URL
- * 
- * Preg verified
- * Maxlength fixed to the standard data_string size (actually 256)
- * 
- */
-class data_url extends data_string
-{
-
-function __construct($name, $value, $label="URL", $db_opt=array(), $disp_opt=array())
-{
-
-data_string::__construct($name, $value, $label, array("url"=>array()), $db_opt, $disp_opt);
-
-}
-
-function link($target="_blank")
-{
-	if ($target)
-		return "<a href=\"$this->value\" target=\"$target\">$this->value</a>";
-	else
-		return "<a href=\"$this->value\">$this->value</a>";
-}
-
-public function verify($value)
-{
-
-$regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
-
-if (!is_string($value) || !preg_match($regex, $value))
-	return false;
-else
-	return true;
-
-}
-
-}
-
-/**
- * Description (text) field
- *
- * Maxlength fixed to 256
- *
- */
-class data_description extends data_text
-{
-
-function __construct($name, $value, $label="Description", $size=256, $db_opt=array(), $disp_opt=array())
-{
-
-data_text::__construct($name, $value, $label, array("size"=>$size), $db_opt=array(), $disp_opt=array());
-
-}
-
-}
+  * Complex data types
+  * 
+  * - Object
+  * - Dataobject
+  * - Dataobject list
+  */
 
 /**
  * Object
@@ -2440,29 +2430,27 @@ function object()
 {
 
 if ($this->value)
-	return datamodel($this->structure_opt["databank"], $this->value, true);
+	return datamodel($this->structure_opt["databank"])->get($this->value, true);
 else
 	return null;
 
 }
 
-function verify($value)
+function verify(&$value)
 {
 
 if (!is_numeric($value) || !datamodel($this->structure_opt["databank"])->exists($value))
 	return false;
-else
-	return true;
+
+return true;
 
 }
 
-function value_from_form($value)
+function convert(&$value)
 {
 
-if (is_numeric($value) && datamodel($this->structure_opt["databank"])->exists($value))
-	$this->value = $value;
-else
-	$this->value = null;
+if (!is_numeric($value) || !datamodel($this->structure_opt["databank"])->exists($value))
+	$value = null;
 
 }
 
@@ -2751,41 +2739,32 @@ else
 
 }
 
-function verify($value)
+function verify(&$value)
 {
 
 if (!is_array($value))
-{
 	return false;
-}
-else
+
+foreach($value as $id)
 {
-	foreach($value as $id)
-	{
-		if (!datamodel($this->structure_opt["databank"])->exists($id))
-		{
-			return false;
-		}
-	}
+	if (!datamodel($this->structure_opt["databank"])->exists($id))
+		return false;
 }
 
 return true;
 
 }
 
-function value_from_form($value)
+function convert(&$value)
 {
 
-$this->value = array();
-if (is_array($value))
+if (!is_array($value))
+	$value = array();
+
+foreach($value as $n=>$id)
 {
-	foreach($value as $id)
-	{
-		if (datamodel($this->structure_opt["databank"])->exists($id))
-		{
-			$this->value[] = $id;
-		}
-	}
+	if (!datamodel($this->structure_opt["databank"])->exists($id))
+		unset($value[$n]);
 }
 
 }
@@ -2893,28 +2872,6 @@ return $return;
 
 }
 
-/**
- * Data types global container class
- */
-class data_gestion extends gestion
-{
-
-protected $type = "datatype";
-
-public function get($id)
-{
-
-if ($this->exists($id))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
-
-}
-
-}
 
 /**
  * Data types access function

@@ -103,7 +103,7 @@ foreach($opt_list as $i=>$j)
 if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["add"]))
 {
 
-datamodel($_GET["datamodel_id"])->create()->insert_form()->disp();
+datamodel($_GET["datamodel_id"])->create(true)->insert_form()->disp();
 
 }
 

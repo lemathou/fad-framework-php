@@ -36,12 +36,12 @@ $object->db_update();
 <select id="datamodel_id" name="datamodel_id" onchange="$('#object_id').val('');this.form.submit()">
 	<option value=""></option>
 <?php
-foreach (datamodel()->list_name_get() as $name=>$id)
+foreach (datamodel()->list_detail_get() as $id=>$info)
 {
 	if (isset($_GET["datamodel_id"]) && ($id==$_GET["datamodel_id"]))
-		echo "	<option value=\"$id\" selected>[$id] $name</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] $info[label]</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $name</option>\n";
+		echo "	<option value=\"$id\">[$id] $info[label]</option>\n";
 }
 ?>
 </select>
@@ -80,7 +80,7 @@ if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]))
 <div style="display: inline;position: absolute;">
 Query:
 <select id="q_type" name="q_type"><?php
-$opt_list = array("fulltext"=>"Fulltext", "like"=>"LIKE");
+$opt_list = array("like"=>"LIKE", "fulltext"=>"Fulltext");
 foreach($opt_list as $i=>$j)
 	if (isset($_GET["q_type"]) && $_GET["q_type"] == $i)
 		echo "<option value=\"$i\" selected>$j</option>";
@@ -119,18 +119,18 @@ datamodel($_GET["datamodel_id"])->get($_GET["object_id"])->form()->disp();
 elseif (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"])
 {
 
-if (!isset($_POST["fields"]))
+if (!isset($_GET["_fields"]))
 	$fields = array();
 else
-	$fields = $_POST["fields"];
+	$fields = $_GET["_fields"];
 
-if (!isset($_POST["sort"]) || !is_array($_POST["sort"]))
+if (!isset($_GET["_sort"]) || !is_array($_GET["_sort"]))
 	$sort = array();
 else
-	$sort = array ($_POST["sort"][0]=>$_POST["sort"][1]);
+	$sort = array ($_GET["_sort"][0]=>$_GET["_sort"][1]);
 
 $params = array();
-if (isset($_POST["params"]) && is_array($_POST["params"])) foreach($_POST["params"] as $name=>$value)
+if (isset($_GET["_params"]) && is_array($_GET["_params"])) foreach($_GET["_params"] as $name=>$value)
 {
 	if (isset(datamodel($_GET["datamodel_id"])->{$name}))
 	{
@@ -144,7 +144,12 @@ if (isset($_POST["params"]) && is_array($_POST["params"])) foreach($_POST["param
 	}
 }
 
-datamodel($_GET["datamodel_id"])->table_list($params, $fields, $sort);
+if (!isset($_GET["page"]))
+	$_GET["page"] = 1;
+if (!isset($_GET["page_nb"]))
+	$_GET["page_nb"] = 10;
+	
+datamodel($_GET["datamodel_id"])->table_list($params, $fields, $sort, $_GET["page"], $_GET["page_nb"]);
 
 }
 
@@ -163,23 +168,28 @@ function databank_params_aff()
 	else
 		element.style.display = 'block';
 }
-function databank_form_submit(form)
-{
-	$("[name^='params']").each(function(){
+
+$(document.zeform).submit(function(){
+	$("[name^='_params']", this).each(function(){
 		if (!$(this).val())
-			$(this).attr("name", "");
+			$(this).removeAttr("name");
 	});
-	document.zeform.submit();
-}
+	$(".asmSelect", this).removeAttr("name");
+	return true;
+});
+
 $(document).ready(function(){
-	$("#databank_params [name]").each(function(){
-		$(this).attr("id", 'params['+$(this).attr("name")+']');
-		$(this).removeAttr("name");
-		$(this).change(function(){
-			$(this).attr("name", $(this).attr("id"));
-		});
-		if ($(this).val())
-			$(this).change();
+	$("#databank_params input, #databank_params select", document.zeform).each(function(){
+		if (this.name)
+		{
+			$(this).attr("id", '_params['+$(this).attr("name")+']');
+			$(this).removeAttr("name");
+			$(this).change(function(){
+				$(this).attr("name", $(this).attr("id"));
+			});
+			if ($(this).val())
+				$(this).change();
+		}
 	});
 });
 </script>

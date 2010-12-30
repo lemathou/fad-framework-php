@@ -39,9 +39,9 @@ if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
 foreach ($_type()->list_detail_get() as $id=>$info)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] $info[name]</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] $info[label]</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $info[name]</option>\n";
+		echo "	<option value=\"$id\">[$id] $info[label]</option>\n";
 }
 ?>
 </select>
@@ -159,7 +159,7 @@ while ($field=$query->fetch_assoc())
 		<td><select name="type"><?php
 		foreach (data()->list_detail_get() as $j)
 		{
-			if ($field["type"]==$i)
+			if ($field["type"]==$j["name"])
 				echo "<option value=\"$j[name]\" selected>$j[label]</option>\n";
 			else
 				echo "<option value=\"$j[name]\">$j[label]</option>\n";
@@ -183,18 +183,16 @@ while ($field=$query->fetch_assoc())
 			<option value="0"<?php if (!$field["lang"]) echo " selected"; ?>>NON</option>
 			<option value="1"<?php if ($field["lang"]) echo " selected"; ?>>OUI</option>
 		</select></td>
-		<td><input name="_field_sync" type="submit" onclick="return(confirm('Êtes-vous certain de vouloir mettre à jour ce champ ?'))" value="Sync" /></td>
 	</tr>
-	<tr> <td colspan="8"><hr /></td> </tr>
+	<tr> <td colspan="9"><hr /></td> </tr>
 	<tr>
-		<td colspan="8"><?php
+		<td colspan="9"><?php
 		// Récupération des valeurs des champs par classe défaut puis reparamétrés
 		$opt = array
 		(
 			"structure"=>array(),
 			"db"=>array(),
 			"disp"=>array(),
-			"form"=>array(),
 		);
 		?>
 		<table cellspacing="0" cellpadding="0" width="100%">
@@ -202,7 +200,6 @@ while ($field=$query->fetch_assoc())
 			<td>structure_opt</td>
 			<td>db_opt</td>
 			<td>disp_opt</td>
-			<td>form_opt</td>
 		</tr>
 		<tr>
 		<?php foreach ($opt as $type=>$list) { ?>
@@ -235,7 +232,7 @@ while ($field=$query->fetch_assoc())
 		</td>
 	</tr>
 	<tr>
-		<td colspan="8"><hr /></td>
+		<td colspan="9"><hr /></td>
 	</tr>
 	<?php
 	}

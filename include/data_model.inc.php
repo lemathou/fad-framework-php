@@ -39,14 +39,13 @@ class datamodel_gestion extends gestion
 
 protected $type = "datamodel";
 
-protected $info_list = array("name", "library_id", "table", "perm");
+protected $info_list = array("name", "library_id", "perm");
 
 protected $info_detail = array
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
-	"table"=>array("label"=>"Table (bdd)", "type"=>"string", "size"=>64, "lang"=>false),
 	"library_id"=>array("label"=>"Librairies", "type"=>"object", "object_type"=>"library", "lang"=>false),
 );
 
@@ -106,8 +105,6 @@ class datamodel extends object_gestion
 
 protected $_type = "datamodel";
 
-protected $table = "";
-
 /**
  * Library containing required objects infos
  *
@@ -165,7 +162,6 @@ protected $fields_index = array();
 
 protected $db_opt = array
 (
-	"table" => "",
 	"index" => array(),
 	"key" => array(),
 	"sort" => "",
@@ -205,7 +201,7 @@ protected $objects = array();
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "perm", "library_id", "table", "fields", "fields_key", "fields_required", "fields_calculated", "fields_index");
+return array("id", "name", "label", "description", "perm", "library_id", "fields", "fields_key", "fields_required", "fields_calculated", "fields_index");
 
 }
 function __wakeup()
@@ -437,9 +433,9 @@ list($db_sync) = db()->query("SELECT `db_sync` FROM `_datamodel` WHERE `id`='$th
 if ($db_sync)
 {
 	if (isset($_POST["lang"]) && $_POST["lang"])
-		db()->field_create($this->table."_lang", $field["name"], $this->fields[$field["name"]]->db_field_create());
+		db()->field_create($this->name."_lang", $field["name"], $this->fields[$field["name"]]->db_field_create());
 	else
-		db()->field_create($this->table, $field["name"], $this->fields[$field["name"]]->db_field_create());
+		db()->field_create($this->name, $field["name"], $this->fields[$field["name"]]->db_field_create());
 }
 
 }
@@ -460,7 +456,7 @@ if (!isset($this->fields[$name]))
 db()->query("DELETE FROM `_datamodel_fields` WHERE `name`='$name' AND `datamodel_id`='$this->id'");
 db()->query("DELETE FROM `_datamodel_fields_lang` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
 db()->query("DELETE FROM `_datamodel_fields_opt` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
-db()->field_delete($this->table, $name);
+db()->field_delete($this->name, $name);
 
 $this->query_fields();
 
@@ -572,9 +568,9 @@ if ($db_sync)
 {
 	$this->query_info();
 	if (isset($field["lang"]) && $field["lang"])
-		db()->field_update($this->table."_lang", $name, $field["name"], $datafield->db_field_create());
+		db()->field_update($this->name."_lang", $name, $field["name"], $datafield->db_field_create());
 	else
-		db()->field_update($this->table, $name, $field["name"], $datafield->db_field_create());
+		db()->field_update($this->name, $name, $field["name"], $datafield->db_field_create());
 }
 
 }
@@ -654,7 +650,7 @@ foreach ($this->fields as $name=>$field)
 	}
 }
 
-db()->table_create($this->table, $fields, $options);
+db()->table_create($this->name, $fields, $options);
 
 if (count($fields_lang))
 {
@@ -666,7 +662,7 @@ if (count($fields_lang))
 			$fields_lang[$i] = $j;
 		}
 	$fields_lang["lang_id"] = array ( "type"=>"integer" , "size"=>"3" , "key"=>true );
-	db()->table_create($this->table."_lang", $fields_lang, $options);
+	db()->table_create($this->name."_lang", $fields_lang, $options);
 }
 
 if (count($fields_ref))
@@ -678,10 +674,10 @@ if (count($fields_ref))
 }
 
 
-db()->query("ALTER TABLE `".$this->table."` DROP INDEX `FULLTEXT`");
+db()->query("ALTER TABLE `".$this->name."` DROP INDEX `FULLTEXT`");
 if (count($this->fields_index))
 {
-	db()->query("ALTER TABLE `".$this->table."` ADD FULLTEXT `FULLTEXT` (`".implode("`, `",$this->fields_index)."`)");
+	db()->query("ALTER TABLE `".$this->name."` ADD FULLTEXT `FULLTEXT` (`".implode("`, `",$this->fields_index)."`)");
 }
 
 }
@@ -697,10 +693,10 @@ public function db_alter()
 
 //return db()->table_update("$this->name","");
 
-db()->query("ALTER TABLE `".$this->table."` DROP INDEX `FULLTEXT`");
+db()->query("ALTER TABLE `".$this->name."` DROP INDEX `FULLTEXT`");
 if (count($this->fields_index))
 {
-	db()->query("ALTER TABLE `".$this->table."` ADD FULLTEXT `FULLTEXT` (`".implode("`, `",$this->fields_index)."`)");
+	db()->query("ALTER TABLE `".$this->name."` ADD FULLTEXT `FULLTEXT` (`".implode("`, `",$this->fields_index)."`)");
 }
 
 }
@@ -738,7 +734,7 @@ public function db_empty()
 public function db_field_move($fieldname, $position)
 {
 
-db()->query("ALTER TABLE `".$this->table."` MODIFY COLUMN ".db()->db_field_struct($fieldname, $this->fields[$fieldname]->db_field_create())." AFTER `$position`");
+db()->query("ALTER TABLE `".$this->name."` MODIFY COLUMN ".db()->db_field_struct($fieldname, $this->fields[$fieldname]->db_field_create())." AFTER `$position`");
 
 }
 
@@ -777,11 +773,12 @@ else
 
 }
 
-function table_list($params=array(), $fields=array(), $sort=array())
+function table_list($params=array(), $fields=array(), $sort=array(), $page=1, $page_nb=10)
 {
 
 ?>
-<form name="zeform" action="" method="post" onsubmit="databank_form_submit(this)">
+<form name="zeform" action="" method="get">
+<input name="datamodel_id" value="<?php echo $this->id; ?>" type="hidden" />
 <p style="margin: 5px;"><a href="javascript:;" onclick="databank_params_aff()">Paramètres de sélection</a></p>
 <div id="databank_select_form">
 <table cellspacing="0" cellspacing="0" cellpadding="0" width="100%">
@@ -805,7 +802,7 @@ function table_list($params=array(), $fields=array(), $sort=array())
 <tr> <td colspan="2"><hr /></td> </tr>
 <tr>
 	<td valign="top"><h3>Afficher les colonnes :</h3></td>
-	<td><select name="fields[]" title="Champs" multiple class="data_fromlist"><?php
+	<td><select name="_fields[]" title="Champs" multiple class="data_fromlist"><?php
 	foreach ($this->fields as $name=>$field)
 		if (in_array($name, $this->fields_key))
 		{
@@ -823,20 +820,28 @@ function table_list($params=array(), $fields=array(), $sort=array())
 <tr> <td colspan="2"><hr /></td> </tr>
 <tr>
 	<td valign="top"><h3>Trier par :</h3></td>
-	<td><select name="sort[0]"><?php
+	<td><select name="_sort[0]"><?php
+	$sort_url = "";
 	foreach ($this->fields as $name=>$field)
 	{
 		if (isset($sort[$name]))
+		{
 			echo "<option value=\"$name\" selected>".$field->label."</option>";
+			$sort_url = "&amp;_sort[0]=$name";
+		}
 		else
 			echo "<option value=\"$name\">".$field->label."</option>";
 	}
 	?></select>
-	<select name="sort[1]"><?php
+	<select name="_sort[1]"><?php
 	foreach (array("ASC"=>"Croissant", "DESC"=>"Décroissant") as $name=>$value)
 	{
 		if (is_array($sort) && in_array($name, $sort))
+		{
 			echo "<option value=\"$name\" selected>$value</option>";
+			if ($sort_url)
+				$sort_url .= "&amp;_sort[1]=$name";
+		}
 		else
 			echo "<option value=\"$name\">$value</option>";
 	}
@@ -849,13 +854,16 @@ function table_list($params=array(), $fields=array(), $sort=array())
 </tr>
 </table>
 </div>
+</form>
+<div><?php
+$nbmax = $this->db_count($params);
+$page_list = new page_listing($nbmax, array("10", "20", "50"), $page_nb, $page, "?datamodel_id=$this->id$sort_url");
+echo implode(" ",$page_list->link_list());
+?></div>
 <div><table cellspacing="0" cellpadding="2" border="1" width="100%">
 <?php
-$nbmax = $this->db_count($params);
-$limit = 50;
 
-$start = 0;
-$list = $this->db_get($params, $fields, $sort, $limit, $start);
+$list = $this->db_get($params, $fields, $sort, $page_nb, ($page-1)*$page_nb);
 foreach($list as $nb=>$object)
 {
 	// First line
@@ -894,7 +902,6 @@ foreach($list as $nb=>$object)
 }
 ?>
 </table></div>
-</form>
 <?php
 
 }
@@ -1021,7 +1028,7 @@ foreach ($fields as $name=>$field)
 	}
 }
 
-$query_str = "INSERT INTO ".$this->table." (".implode(",",$query_fields).") VALUES (".implode(",",$query_values).")";
+$query_str = "INSERT INTO ".$this->name." (".implode(",",$query_fields).") VALUES (".implode(",",$query_values).")";
 $query = db()->query($query_str);
 // db()->insert("$this->name","");
 $id = $query->last_id();
@@ -1089,7 +1096,7 @@ if (($list=$this->db_select($params, array("id"))) && is_array($list))
 	$return = array();
 	foreach ($list as $id=>$fields)
 	{
-		db()->query("DELETE FROM `".$this->table."` WHERE `id` = '".db()->string_escape($id)."'");
+		db()->query("DELETE FROM `".$this->name."` WHERE `id` = '".db()->string_escape($id)."'");
 		$return[] = $id;
 	}
 	return $return;
@@ -1214,7 +1221,7 @@ if ($query_ok)
 	$return = false;
 	if (count($update_fields)>0)
 	{
-		$query_string = "UPDATE ".$this->table." SET ".implode(" , ",$update_fields)." WHERE ".implode(" , ",$params);
+		$query_string = "UPDATE ".$this->name." SET ".implode(" , ",$update_fields)." WHERE ".implode(" , ",$params);
 		$query = db()->query($query_string);
 		if ($query->affected_rows())
 		{
@@ -1224,7 +1231,7 @@ if ($query_ok)
 	}
 	if (count($update_fields_lang)>0)
 	{
-		$query_string = "UPDATE ".$this->table."_lang SET ".implode(" , ",$update_fields_lang)." WHERE ".implode(" , ",$params)." AND lang_id='".SITE_LANG_ID."'";
+		$query_string = "UPDATE ".$this->name."_lang SET ".implode(" , ",$update_fields_lang)." WHERE ".implode(" , ",$params)." AND lang_id='".SITE_LANG_ID."'";
 		$query = db()->query($query_string);
 		if ($query->affected_rows())
 		{
@@ -1257,7 +1264,7 @@ else
 }
 
 /**
- * Search objects into the databank
+ * alias of db_get()
  * 
  * @param array $query
  * @return mixed
@@ -1269,7 +1276,89 @@ return $this->db_get($params, $fields, $sort, $limit, $start);
 
 }
 /**
+ * Retrieve a list of objects by giving query params and fields to be retrieved
+ * The function adds the required fields
+ * 
+ * @param unknown_type $query_where
+ */
+public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
+{
+
+if (!is_array($result = $this->db_select($params, "id", $sort, $limit, $start)) || !count($result))
+{
+	return array();
+}
+
+$objects_order = array();
+$objects = array();
+$db_retrieve_list = array();
+$cache_retrieve_list = array();
+//$cache_store_list = array(); // For a future
+
+foreach($result as $nb=>$o)
+{
+	$id = $o["id"];
+	if (isset($this->objects[$id]))
+	{
+		$objects[$nb] = $this->objects[$id];
+	}
+	elseif (APC_CACHE)
+	{
+		$objects[$nb] = null;
+		$cache_retrieve_list[$id] = "dataobject_".$this->id."_".$id;
+	}
+	else
+	{
+		$objects[$nb] = null;
+		$db_retrieve_list[] = $id;
+	}
+	$objects_order[$id] = $nb;
+}
+
+// Retrieve from cache
+if (count($cache_retrieve_list))
+{
+	$cache_list = apc_fetch($cache_retrieve_list);
+	foreach($cache_retrieve_list as $id=>$cache_id)
+	{
+		if (isset($cache_list[$cache_id]))
+		{
+			$objects[$objects_order[$id]] = $this->objects[$id] = $cache_list[$cache_id];
+		}
+		else
+		{
+			$db_retrieve_list[] = $id;
+		}
+	}
+}
+
+// Retrieve from database
+if (count($db_retrieve_list))
+{
+	$params = array( array("name"=>"id", "value"=>$db_retrieve_list) );
+	if (is_array($result = $this->db_select($params, true)))
+	{
+		foreach($result as $o)
+		{
+			$id = $o["id"];
+			$object = $this->create();
+			$object->update_from_db($o);
+			$objects[$objects_order[$id]] = $this->objects[$id] = $object;
+			if (APC_CACHE)
+				apc_store("dataobject_".$this->id."_".$id, $object, APC_CACHE_DATAOBJECT_TTL);
+		}
+	}
+}
+
+if (count($objects))
+	return $objects;
+else
+	return array();
+
+}
+/**
  * Retrieve an objet from the datamodel.
+ * Optimized version of db_get() for only one object
  * 
  * @param integer $id
  * @return mixed 
@@ -1285,90 +1374,44 @@ if (false && !$this->perm("r"))
 }
 elseif (is_numeric($id) && $id>0)
 {
-	// TODO : hack : Retrieve a maximum of data at the first load might be better...
 	if (isset($this->objects[$id]))
 	{
-		//echo "$this->_type : ID#$id RETRIEVED FROM LIST !";
-		if (count($fields) || $fields === true)
-		{
-			//echo "$this->_type : ID#$id DB_RETRIEVE !";
-			$this->objects[$id]->db_retrieve($fields);
-		}
 		return $this->objects[$id];
 	}
 	elseif (APC_CACHE && ($object=apc_fetch("dataobject_".$this->id."_".$id)))
 	{
-		//echo "$this->_type : ID#$id : RETRIEVED FROM APC !";
-		$this->objects[$id] = $object;
-		if (count($fields) || $fields === true)
-		{
-			$this->objects[$id]->db_retrieve($fields);
-		}
-		return $this->objects[$id];
+		return $this->objects[$id] = $object;
 	}
-	elseif (is_array($object_list=$this->db_get(array(array("name"=>"id", "value"=>$id)), $fields)) && count($object_list)==1)
+	elseif (is_array($info_list=$this->db_select(array(array("name"=>"id", "value"=>$id)), true)) && count($info_list)==1)
 	{
-		//echo "$this->_type : ID#$id RETRIEVED FROM DB !";
-		$object = array_pop($object_list);
-		if (APC_CACHE) // TODO : bidouiller pour utiliser pleinement APC !
-			apc_store("dataobject_".$this->id."_".$object->id->value, $object, APC_CACHE_DATAOBJECT_TTL);
-		return $this->objects[$object->id->value] = $object;
+		$o = array_pop($info_list);
+		$id = $o["id"];
+		$object = $this->create();
+		$object->update_from_db($o);
+		if (APC_CACHE)
+			apc_store("dataobject_".$this->id."_".$id, $object, APC_CACHE_DATAOBJECT_TTL);
+		return $this->objects[$id] = $object;
 	}
-	// Retrieve error
 	else
 	{
-		if (DEBUG_DATAMODEL)
-			trigger_error("Databank $this->name : Object id $id does nos exists");
-		return NULL;
+		return null;
 	}
 }
-// $id not ok
 else
-	return false;
+	return null;
 
 }
 /**
- * Retrieve a list of objects by giving query params and fields to be retrieved
- * The function adds the required fields
- *
+ * Retrieve an array containing each the one an array of fields to be retrieved by giving query params
+ * Deprecated ?
+ * 
  * @param unknown_type $query_where
  */
-public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
+public function db_fields($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
 // Retrieve the resulting fields
 if (is_array($result = $this->db_select($params, $fields, $sort, $limit, $start)))
-{
-	// Fields for each object
-	$objects = array();
-	foreach($result as $o)
-	{
-		if (!isset($this->objects[$o["id"]]))
-		{
-			$object = $this->create();
-			$object->update_from_db($o);
-			$objects[] = $this->objects[$o["id"]] = $object;
-		}
-		else
-			$objects[] = $this->objects[$o["id"]];
-	}
-	return $objects;
-}
-else
-	return false;
-
-}
-
-/**
- * Retrieve an array containing each the one an array of fields to be retrieved by giving query params
- *
- * @param unknown_type $query_where
- */
-public function db_fields($params=array(), $fields=array(), $sort=array())
-{
-
-// Retrieve the resulting fields
-if (is_array($result = $this->db_select($params, $fields, $sort)))
 {
 	$return = array();
 	// Fields for each object
@@ -1391,7 +1434,7 @@ else
 
 /**
  * Retrieve a complete field value list by giving query params and fields to be retrieved
- *
+ * 
  * @param unknown_type $query_where
  */
 public function db_select($params=array(), $fields_input=array(), $sort=array(), $limit=0, $start=0)
@@ -1403,291 +1446,280 @@ if (!is_array($params))
 		trigger_error("datamodel '$this->name' : incorrect params.");
 	return false;
 }
-/*
-elseif (!is_array($fields_input) && !isset($this->fields[$fields_input]) && $fields_input !== true)
+
+// Requete sur la table principale
+$query_base = array ( "fields" => array(), "having" => array(), "where" => array(), "from" => array("`".$this->name."`") );
+$query_lang = false;
+// Autres requetes
+$query_list = array();
+// Fields to be retrieved with other queries : A MODIFIER, VERIFIER LA TABLE ! CAR TABLES COMPLEMENTAIRES AUSSI POSSIBLES
+$type_special = array("list", "dataobject_list", "dataobject_select"); // "list" à rajouter !
+// Result
+$return = array();
+// Result params mapping
+$return_params = array();
+
+$fields = array();
+// Verify fields to be retrieved :
+foreach($this->fields as $name=>$field)
 {
-	if (DEBUG_DATAMODEL)
-		trigger_error("datamodel '$this->name' : incorrect field param.");
-	return false;
+	// Add key & required fields if needed
+	if (in_array($name, $this->fields_key) || $fields_input === true || (is_array($fields_input) && in_array($name, $fields_input)) || (is_string($fields_input) && $name == $fields_input))
+	{
+		$fields[] = $name;
+		if (!in_array($field->type, $type_special))
+		{
+			if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
+				$tablename = $this->name;
+			else
+				$query_base["join"][] = $tablename;
+			if (!isset($field->db_opt["field"]) || !($fieldname = $field->db_opt["field"]))
+				$fieldname = $name;
+			if (isset($field->db_opt["lang"]))
+			{
+				$query_lang = true;
+				$query_base["fields"][] = "`".$tablename."_lang`.`$fieldname` as `$name`";
+			}
+			else
+				$query_base["fields"][] = "`$tablename`.`$fieldname` as `$name`";
+		}
+		elseif ($field->type == "dataobject_select")
+		{
+			$tablename = $this->name;
+			$fieldname_1 = $field->db_opt["databank_field"];
+			$fieldname_2 = $field->db_opt["field"];
+			$query_base["fields"][] = "CONCAT(`$tablename`.`$fieldname_1`,',',`$tablename`.`$fieldname_2`) as $name";
+		}
+		elseif ($field->type == "dataobject_list")
+		{
+			//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
+			$query_list[$name] = array( "field" => $name , "table" => $this->fields[$name]->db_opt("ref_table") );
+		}
+		elseif ($field->type == "list")
+		{
+			//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
+			$query_list[$name] = array( "field" => $this->fields[$name]->db_opt("ref_field") , "table" => $this->fields[$name]->db_opt("ref_table") );
+		}
+	}
 }
-*/
+
+// Verify query params
+foreach($params as $param_nb=>$param)
+{
+	if (isset($param["name"]) && isset($this->fields[$param["name"]]))
+	{
+		if (!isset($param["type"]))
+			$param["type"] = "";
+		$field = $this->fields[$param["name"]];
+		// Champ "standard"
+		if (!in_array($field->type, $type_special))
+		{
+			if (isset($field->db_opt["lang"]))
+			{
+				$query_lang = true;
+				$query_base["where"][] = "`".$this->name."_lang`.".$field->db_query_param($param["value"], $param["type"]);
+			}
+			else
+				$query_base["where"][] = "`".$this->name."`.".$field->db_query_param($param["value"], $param["type"]);
+			// mapping for other queries
+			foreach($query_list as $i=>$j)
+			{
+				if ($this->fields[$i]->type == "dataobject_list")
+				{
+					$query_list[$i]["where"][] = "`".$this->name."`.".$field->db_query_param($param["value"], $param["type"]);
+				}
+				else
+				{
+					//echo "<br />BUG";
+				}
+			}
+		}
+		elseif ($field->type == "dataobject_select")
+		{
+			$query_base["where"][] = "`".$field->db_opt["databank_field"]."` = '".db()->string_escape($param["value"])."'";
+		}
+		elseif ($field->type == "dataobject_list")
+		{
+			$query_base["from"][] = "`".$field->db_opt["ref_table"]."`";
+			$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_field"]."` = '".db()->string_escape($param["value"])."'";
+			$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_id"]."` = `".$this->name."`.`id`";
+			// FAIRE UN JOIN CAR CONDITIONS PARAMS AVEC AUTRES TABLES : genre entreprise qui embauche 
+		}
+	}
+	// Query using fulltext index
+	elseif (isset($param["type"]) && isset($param["value"]) && count($this->fields_index))
+	{
+		if ($param["type"] == "fulltext")
+		{
+			$query_base["fields"][] = "MATCH(`".implode("`, `", $this->fields_index)."`) AGAINST('".db()->string_escape($param["value"])."') as `relevance`";
+			$query_base["having"][] = "relevance > 0";
+		}
+		else //if ($param["type"] == "like")
+		{
+			$l = array();
+			foreach($this->fields_index as $i)
+				$l[] = "`$i` LIKE '%".db()->string_escape($param["value"])."%'";
+			$query_base["where"][] = "(".implode(" OR ", $l).")";
+		}
+	}
+	// PAS DEFINI
+	else
+	{
+		unset($params[$param_nb]);
+	}
+}
+
+// Primary query
+
+// Lang
+if ($query_lang)
+{
+	$query_base["from"][] = "`".$this->name."_lang`";
+	$query_base["where"][] = "`".$this->name."`.`id` = `".$this->name."_lang`.`id`";
+	$query_base["where"][] = "`".$this->name."_lang`.`lang_id` = '".SITE_LANG_ID."'";
+}
+
+// This query is always performed to map keys with results, which is simpler for other queries
+if (count($query_base["where"]) == 0)
+{
+	$query_base["where"][] = "1";
+}
+// Sort
+if (count($sort)>0)
+{
+	foreach($sort as $i=>$j)
+	{
+		if (strtolower($j) == "desc")
+			$query_sort[] = "`".db()->string_escape($i)."` DESC";
+		else
+			$query_sort[] = "`".db()->string_escape($i)."` ASC";
+	}
+}
 else
 {
-	// Requete sur la table principale
-	$query_base = array ( "fields" => array(), "having" => array(), "where" => array(), "from" => array("`".$this->table."`") );
-	$query_lang = false;
-	// Autres requetes
-	$query_list = array();
-	// Fields to be retrieved with other queries : A MODIFIER, VERIFIER LA TABLE ! CAR TABLES COMPLEMENTAIRES AUSSI POSSIBLES
-	$type_special = array("list", "dataobject_list", "dataobject_select"); // "list" à rajouter !
-	// Result
-	$return = array();
-	// Result params mapping
-	$return_params = array();
-	
-	$fields = array();
-	// Verify fields to be retrieved :
-	foreach($this->fields as $name=>$field)
-	{
-		// Add key & required fields if needed
-		if (in_array($name, $this->fields_key) || in_array($name, $this->fields_required) || $fields_input === true || (is_array($fields_input) && in_array($name, $fields_input)) || (is_string($fields_input) && $name == $fields_input))
-		{
-			$fields[] = $name;
-			if (!in_array($field->type, $type_special))
-			{
-				if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
-					$tablename = $this->table;
-				else
-					$query_base["join"][] = $tablename;
-				if (!isset($field->db_opt["field"]) || !($fieldname = $field->db_opt["field"]))
-					$fieldname = $name;
-				if (isset($field->db_opt["lang"]))
-				{
-					$query_lang = true;
-					$query_base["fields"][] = "`".$tablename."_lang`.`$fieldname` as `$name`";
-				}
-				else
-					$query_base["fields"][] = "`$tablename`.`$fieldname` as `$name`";
-			}
-			elseif ($field->type == "dataobject_select")
-			{
-				$tablename = $this->name;
-				$fieldname_1 = $field->db_opt["databank_field"];
-				$fieldname_2 = $field->db_opt["field"];
-				$query_base["fields"][] = "CONCAT(`$tablename`.`$fieldname_1`,',',`$tablename`.`$fieldname_2`) as $name";
-			}
-			elseif ($field->type == "dataobject_list")
-			{
-				//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
-				$query_list[$name] = array( "field" => $name , "table" => $this->fields[$name]->db_opt("ref_table") );
-			}
-			elseif ($field->type == "list")
-			{
-				//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
-				$query_list[$name] = array( "field" => $this->fields[$name]->db_opt("ref_field") , "table" => $this->fields[$name]->db_opt("ref_table") );
-			}
-		}
-	}
-	
-	// Verify query params
-	foreach($params as $param_nb=>$param)
-	{
-		if (isset($param["name"]) && isset($this->fields[$param["name"]]))
-		{
-			if (!isset($param["type"]))
-				$param["type"] = "";
-			$field = $this->fields[$param["name"]];
-			// Champ "standard"
-			if (!in_array($field->type, $type_special))
-			{
-				if (isset($field->db_opt["lang"]))
-				{
-					$query_lang = true;
-					$query_base["where"][] = "`".$this->table."_lang`.".$field->db_query_param($param["value"], $param["type"]);
-				}
-				else
-					$query_base["where"][] = "`".$this->table."`.".$field->db_query_param($param["value"], $param["type"]);
-				// mapping for other queries
-				foreach($query_list as $i=>$j)
-				{
-					if ($this->fields[$i]->type == "dataobject_list")
-					{
-						$query_list[$i]["where"][] = "`".$this->table."`.".$field->db_query_param($param["value"], $param["type"]);
-					}
-					else
-					{
-						//echo "<br />BUG";
-					}
-				}
-			}
-			elseif ($field->type == "dataobject_select")
-			{
-				$query_base["where"][] = "`".$field->db_opt["databank_field"]."` = '".db()->string_escape($param["value"])."'";
-			}
-			elseif ($field->type == "dataobject_list")
-			{
-				$query_base["from"][] = "`".$field->db_opt["ref_table"]."`";
-				$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_field"]."` = '".db()->string_escape($param["value"])."'";
-				$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_id"]."` = `".$this->table."`.`id`";
-				// FAIRE UN JOIN CAR CONDITIONS PARAMS AVEC AUTRES TABLES : genre entreprise qui embauche 
-			}
-		}
-		// Query using fulltext index
-		elseif (isset($param["type"]) && isset($param["value"]) && count($this->fields_index))
-		{
-			if ($param["type"] == "fulltext")
-			{
-				$query_base["fields"][] = "MATCH(`".implode("`, `", $this->fields_index)."`) AGAINST('".db()->string_escape($param["value"])."') as `relevance`";
-				$query_base["having"][] = "relevance > 0";
-			}
-			else //if ($param["type"] == "like")
-			{
-				$l = array();
-				foreach($this->fields_index as $i)
-					$l[] = "`$i` LIKE '%".db()->string_escape($param["value"])."%'";
-				$query_base["where"][] = "(".implode(" OR ", $l).")";
-			}
-		}
-		// PAS DEFINI
-		else
-		{
-			unset($params[$param_nb]);
-		}
-	}
-	
-	// Primary query
-
-	// Lang
-	if ($query_lang)
-	{
-		$query_base["from"][] = "`".$this->table."_lang`";
-		$query_base["where"][] = "`".$this->table."`.`id` = `".$this->table."_lang`.`id`";
-		$query_base["where"][] = "`".$this->table."_lang`.`lang_id` = '".SITE_LANG_ID."'";
-	}
-	
-	// This query is always performed to map keys with results, which is simpler for other queries
-	if (count($query_base["where"]) == 0)
-	{
-		$query_base["where"][] = "1";
-	}
-	// Sort
-	if (count($sort)>0)
-	{
-		foreach($sort as $i=>$j)
-		{
-			if (strtolower($j) == "desc")
-				$query_sort[] = "`".db()->string_escape($i)."` DESC";
-			else
-				$query_sort[] = "`".db()->string_escape($i)."` ASC";
-		}
-	}
-	else
-	{
-		$query_sort[] = "`id` ASC";
-	}
-	// Limit
-	if ($limit)
-	{
-		$query_limit = " LIMIT $start, $limit";
-	}
-	else
-	{
-		$query_limit = "";
-	}
-	
-	if (count($query_base["having"]))
-		$query_having = "HAVING ".implode(" AND ", $query_base["having"]);
-	else
-		$query_having = "";
-	
-	$query_string = "
-		SELECT DISTINCT ".implode(" , ",$query_base["fields"])."
-		FROM ".implode(" , ",$query_base["from"])."
-		WHERE ".implode(" AND ",$query_base["where"])."
-		$query_having
-		ORDER BY ".implode(",", $query_sort)."
-		$query_limit";
-	//echo "<p>$query_string</p>";
-	// Effective Query
-	$query = db()->query($query_string);
-	
-	if ($query->num_rows() >= 1)
-	{
-		
-		$list_id = array();
-		while ($row=$query->fetch_assoc())
-		{
-			$return[$row["id"]] = $row;
-			$list_id[] = $row["id"];
-			// Result params mapping
-			/*
-			$return_params[$nb] = array();
-			foreach($this->fields_key as $fieldname)
-			{
-				$return_params[$nb][$fieldname] = $row[$fieldname];
-			}
-			*/
-		}
-		
-		// Other queries
-		
-		foreach($query_list as $name=>$detail)
-		{
-			$field = $this->fields[$detail["field"]];
-			if ($field->type == "list")
-			{
-				$ref_field = $field->db_opt("ref_field");
-				$ref_table = $field->db_opt("ref_table");
-				$ref_id = $field->db_opt("ref_id");
-				$detail["where"][] = "`".$this->table."`.`id` = `$ref_table`.`$ref_id`";
-				$detail["where"][] = "`".$this->table."`.`id` IN (".implode(" , ", $list_id).")";
-				$query_string = "
-					SELECT `$ref_table`.`$ref_id`, `$ref_table`.`$ref_field`
-					FROM `".$this->table."` , `$ref_table`
-					WHERE ".implode(" AND ",$detail["where"]);
-				$query = db()->query($query_string);
-				if ($query->num_rows() >= 1)
-				{
-					while ($row=$query->fetch_row())
-					{
-						$return[$row[0]][$name][] = $row[1];
-					}
-				}
-				foreach ($return as $id=>$detail)
-				{
-					if (!isset($return[$id][$name]))
-					{
-						$return[$id][$name] = array();
-					}
-				}
-			}
-			elseif ($field->type == "dataobject_list")
-			{
-				//print_r($field->db_opt_list_get());
-				$ref_field = $field->db_opt("ref_field");
-				if ($ref_table = $field->db_opt("ref_table"))
-				{
-					$ref_id = $field->db_opt("ref_id");
-				}
-				else
-				{
-					$ref_table = datamodel($field->structure_opt["databank"])->db_opt("table");
-					$ref_id = "id";
-				}
-				$detail["where"][] = "`".$this->table."`.`id` = `$ref_table`.`$ref_id`";
-				$detail["where"][] = "`".$this->table."`.`id` IN (".implode(" , ", $list_id).")";
-				// TODO : Retrieve other required fields and next step create the dependant object without other queried !
-				$query_string = "
-					SELECT `$ref_table`.`$ref_id`, `$ref_table`.`$ref_field`
-					FROM `".$this->table."` , `$ref_table`
-					WHERE ".implode(" AND ",$detail["where"]);
-				$query = db()->query($query_string);
-				if ($query->num_rows() >= 1)
-				{
-					while ($row=$query->fetch_row())
-					{
-						// Patch des fois qu'on ai des resultats en trop ^^
-						if (isset($return[$row[0]]))
-						{
-							$return[$row[0]]
-							[$name][] = $row[1];
-						}
-					}
-				}
-				foreach ($return as $id=>$detail)
-				{
-					if (!isset($return[$id][$name]))
-					{
-						$return[$id][$name] = array();
-					}
-				}
-			}
-		}
-	}
-	
-	return $return;
-	
+	$query_sort[] = "`id` ASC";
 }
+// Limit
+if ($limit)
+{
+	$query_limit = " LIMIT $start, $limit";
+}
+else
+{
+	$query_limit = "";
+}
+
+if (count($query_base["having"]))
+	$query_having = "HAVING ".implode(" AND ", $query_base["having"]);
+else
+	$query_having = "";
+
+$query_string = "
+	SELECT DISTINCT ".implode(" , ",$query_base["fields"])."
+	FROM ".implode(" , ",$query_base["from"])."
+	WHERE ".implode(" AND ",$query_base["where"])."
+	$query_having
+	ORDER BY ".implode(",", $query_sort)."
+	$query_limit";
+//echo "<p>$query_string</p>";
+// Effective Query
+$query = db()->query($query_string);
+
+if ($query->num_rows() >= 1)
+{
+	
+	$list_id = array();
+	while ($row=$query->fetch_assoc())
+	{
+		$return[$row["id"]] = $row;
+		$list_id[] = $row["id"];
+		// Result params mapping
+		/*
+		$return_params[$nb] = array();
+		foreach($this->fields_key as $fieldname)
+		{
+			$return_params[$nb][$fieldname] = $row[$fieldname];
+		}
+		*/
+	}
+	
+	// Other queries
+	
+	foreach($query_list as $name=>$detail)
+	{
+		$field = $this->fields[$detail["field"]];
+		if ($field->type == "list")
+		{
+			$ref_field = $field->db_opt("ref_field");
+			$ref_table = $field->db_opt("ref_table");
+			$ref_id = $field->db_opt("ref_id");
+			$detail["where"][] = "`".$this->name."`.`id` = `$ref_table`.`$ref_id`";
+			$detail["where"][] = "`".$this->name."`.`id` IN (".implode(" , ", $list_id).")";
+			$query_string = "
+				SELECT `$ref_table`.`$ref_id`, `$ref_table`.`$ref_field`
+				FROM `".$this->name."` , `$ref_table`
+				WHERE ".implode(" AND ",$detail["where"]);
+			$query = db()->query($query_string);
+			if ($query->num_rows() >= 1)
+			{
+				while ($row=$query->fetch_row())
+				{
+					$return[$row[0]][$name][] = $row[1];
+				}
+			}
+			foreach ($return as $id=>$detail)
+			{
+				if (!isset($return[$id][$name]))
+				{
+					$return[$id][$name] = array();
+				}
+			}
+		}
+		elseif ($field->type == "dataobject_list")
+		{
+			//print_r($field->db_opt_list_get());
+			$ref_field = $field->db_opt("ref_field");
+			if ($ref_table = $field->db_opt("ref_table"))
+			{
+				$ref_id = $field->db_opt("ref_id");
+			}
+			else
+			{
+				$ref_table = datamodel($field->structure_opt["databank"])->db_opt("table");
+				$ref_id = "id";
+			}
+			$detail["where"][] = "`".$this->name."`.`id` = `$ref_table`.`$ref_id`";
+			$detail["where"][] = "`".$this->name."`.`id` IN (".implode(" , ", $list_id).")";
+			// TODO : Retrieve other required fields and next step create the dependant object without other queried !
+			$query_string = "
+				SELECT `$ref_table`.`$ref_id`, `$ref_table`.`$ref_field`
+				FROM `".$this->name."` , `$ref_table`
+				WHERE ".implode(" AND ",$detail["where"]);
+			$query = db()->query($query_string);
+			if ($query->num_rows() >= 1)
+			{
+				while ($row=$query->fetch_row())
+				{
+					// Patch des fois qu'on ai des resultats en trop ^^
+					if (isset($return[$row[0]]))
+					{
+						$return[$row[0]]
+						[$name][] = $row[1];
+					}
+				}
+			}
+			foreach ($return as $id=>$detail)
+			{
+				if (!isset($return[$id][$name]))
+				{
+					$return[$id][$name] = array();
+				}
+			}
+		}
+	}
+}
+
+return $return;
 
 }
 
@@ -1698,7 +1730,7 @@ else
 public function exists($id)
 {
 	
-$query = db()->query("SELECT 1 FROM `".$this->table."` WHERE `id`='".db()->string_escape($id)."'");
+$query = db()->query("SELECT 1 FROM `".$this->name."` WHERE `id`='".db()->string_escape($id)."'");
 if ($query->num_rows())
 	return true;
 else
@@ -1726,7 +1758,7 @@ if (!is_array($params))
 else
 {
 	// Requete sur la table principale
-	$query_base = array ("where"=>array(), "from"=>array("`".$this->table."`"), "having"=>array());
+	$query_base = array ("where"=>array(), "from"=>array("`".$this->name."`"), "having"=>array());
 	// Autres requetes
 	$query_list = array();
 	// Fields to be retrieved with other queries : A MODIFIER, VERIFIER LA TABLE ! CAR TABLES COMPLEMENTAIRES AUSSI POSSIBLES
@@ -1751,16 +1783,16 @@ else
 				if (isset($field->db_opt["lang"]))
 				{
 					$query_lang = true;
-					$query_base["where"][] = "`".$this->table."_lang`.".$field->db_query_param($param["value"], $param["type"]);
+					$query_base["where"][] = "`".$this->name."_lang`.".$field->db_query_param($param["value"], $param["type"]);
 				}
 				else
-					$query_base["where"][] = "`".$this->table."`.".$field->db_query_param($param["value"], $param["type"]);
+					$query_base["where"][] = "`".$this->name."`.".$field->db_query_param($param["value"], $param["type"]);
 				// mapping for other queries
 				foreach($query_list as $i=>$j)
 				{
 					if ($this->fields[$i]->type == "dataobject_list")
 					{
-						$query_list[$i]["where"][] = "`".$this->table."`.".$field->db_query_param($param["value"], $param["type"]);
+						$query_list[$i]["where"][] = "`".$this->name."`.".$field->db_query_param($param["value"], $param["type"]);
 					}
 					else
 					{
@@ -1776,7 +1808,7 @@ else
 			{
 				$query_base["from"][] = "`".$field->db_opt["ref_table"]."`";
 				$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_field"]."` = '".db()->string_escape($param["value"])."'";
-				$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_id"]."` = `".$this->table."`.`id`";
+				$query_base["where"][] = "`".$field->db_opt["ref_table"]."`.`".$field->db_opt["ref_id"]."` = `".$this->name."`.`id`";
 				// FAIRE UN JOIN CAR CONDITIONS PARAMS AVEC AUTRES TABLES : genre entreprise qui embauche 
 			}
 		}
@@ -1792,10 +1824,10 @@ else
 	if ($query_lang)
 	{
 		if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
-			$tablename = $this->table;
+			$tablename = $this->name;
 		$query_base["from"][] = "`".$tablename."_lang`";
-		$query_base["where"][] = "`".$this->table."`.`id` = `".$this->table."_lang`.`id`";
-		$query_base["where"][] = "`".$this->table."_lang`.`lang_id` = '".SITE_LANG_ID."'";
+		$query_base["where"][] = "`".$this->name."`.`id` = `".$this->name."_lang`.`id`";
+		$query_base["where"][] = "`".$this->name."_lang`.`lang_id` = '".SITE_LANG_ID."'";
 	}
 	// This query is always performed to map keys with results, which is simpler for other queries
 	if (count($query_base["where"]) == 0)
@@ -1908,7 +1940,7 @@ if ($datamodel_id && $GLOBALS["datamodel_gestion"]->exists($datamodel_id))
 	//var_dump($datamodel);
 	if ($object_id)
 	{
-		if (is_a($object=$datamodel->get($object_id, $fields), "data_bank_agregat"))
+		if (is_a($object=$datamodel->get($object_id), "data_bank_agregat"))
 			return $object;
 		else
 			return false;	

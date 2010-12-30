@@ -123,8 +123,9 @@
 				// check to make sure it's not an IE screwup, and add it to the list
 
 				if($.browser.msie && $.browser.version < 7 && !ieClick) return;
-				var id = $(this).children("option:selected").slice(0,1).attr('rel'); 
-				addListItem(id); 	
+				var id = $(this).children("option:selected").slice(0,1).attr('rel');
+				if (id)
+					addListItem(id); 	
 				ieClick = false; 
 				triggerOriginalChange(id, 'add'); // for use by user-defined callbacks
 			}

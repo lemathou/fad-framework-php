@@ -39,9 +39,9 @@ if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
 foreach ($_type()->list_detail_get() as $id=>$info)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] $info[label]</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] [$info[type]] $info[label]</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $info[label]</option>\n";
+		echo "	<option value=\"$id\">[$id] [$info[type]] $info[label]</option>\n";
 }
 ?></select>
 <a href="?add">Ajouter</a>

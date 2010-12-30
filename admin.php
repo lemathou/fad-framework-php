@@ -33,7 +33,8 @@ else
 {
 
 header("HTTP/1.0 401 Unavailable");
-die("<h1>NOT AUTHORIZED</h1>\n<p>Please first log as admin.</p>");
+// Display admin login
+include PATH_ADMIN."/index_login.inc.php";
 
 }
 

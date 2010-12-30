@@ -981,19 +981,19 @@ $page_list = $this->page_list($page);
 
 $link_list = array();
 
-if (is_numeric(strpos($this->url, "?")))
-	$url = $this->url."&";
-else
+if (!is_numeric(strpos($this->url, "?")))
 	$url = $this->url."?";
+else
+	$url = $this->url;
 
 foreach ($page_list as $i)
 {
 	if (!$i)
 		$link_list[] = "...";
 	elseif ($this->page == $i)
-		$link_list[] = "<span class=\"selected\">$i</span>";
+		$link_list[] = "<input class=\"selected\" value=\"$i\" size=\"".strlen($i)."\" onchange=\"document.location.href='".$url."&page_nb=$this->page_nb&page='+this.value\" onkeyup=\"if (this.value.length) this.size=(this.value.length); else this.size='1';\" style=\"border:0;\" />";
 	else
-		$link_list[] = "<a href=\"".$url."page_nb=$this->page_nb&page=$i\">$i</a>";
+		$link_list[] = "<a href=\"".$url."&page_nb=$this->page_nb&page=$i\">$i</a>";
 }
 
 return $link_list;

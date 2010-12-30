@@ -303,8 +303,6 @@ if ($query_ok && count($fields) && ($list = $this->datamodel()->db_fields($param
 				$this->field_values[$name] = $field->value;
 			}
 		}
-		if (APC_CACHE)
-			apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
 		return true;
 	}
 	else
@@ -355,9 +353,7 @@ if (!$name)
 // C'est un mega gros mix de toutes les façons de faire... va falloir choisir à un moment !
 if (template()->exists_name("datamodel/$name"))
 {
-	$list_name = template()->list_name_get();
-	$id = $list_name["datamodel/$name"];
-	$view = template($id);
+	$view = template()->get_name("datamodel/$name");
 	$view->object_set($this);
 	return $view;
 }
@@ -394,8 +390,6 @@ return $this->view($name);
 public function form($name="")
 {
 
-$this->db_retrieve_all();
-
 if (!$name)
 	$name = $this->datamodel()->name();
 
@@ -421,8 +415,6 @@ return $view;
  */
 public function insert_form($name="")
 {
-
-$this->db_retrieve_all();
 
 if (!$name)
 	$name = $this->datamodel()->name();
@@ -464,19 +456,21 @@ else
  * Update the object from a form
  * @param unknown_type $fields
  */
-public function update_from_form($fields=array())
+public function update_from_form($fields=array(), $db_update=false)
 {
 
-if (count($fields) > 0)
+if (is_array($fields) && count($fields) > 0)
 {
 	foreach($fields as $name=>$value)
 	{
 		if ($field=$this->__get($name))
 		{
+			//echo "<p>$name : $value</p>";
 			$field->value_from_form($value);
 		}
 	}
-	// Champs calculés
+	// Calculated fields
+	// TODO : UPDATE
 	if (count($this->datamodel()->fields_calculated()))
 	{
 		$calculate = array();
@@ -512,9 +506,9 @@ if (count($fields) > 0)
 		}
 	}
 	// Mise à jour en base de donnée
-	//$this->db_update();
+	if ($db_update)
+		$this->db_update();
 }
-//$this->form()->disp();
 	
 }
 /**

@@ -476,7 +476,7 @@ if (preg_match_all("/\[\[INCLUDE_DATAMODEL:(.*),(.*),(.*)\]\]/", $tpl, $matches,
 			if (DEBUG_TEMPLATE)
 				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id, for datamodel ID#$match[2], object ID#$match[3]</p>\n";
 			$template->reset();
-			$template->object_set(datamodel($match[2])->get($match[3], true));
+			$template->object_set(datamodel($match[2])->get($match[3]));
 			$tpl = str_replace($match[0], $template, $tpl);
 		}
 	}
@@ -493,8 +493,8 @@ protected function execute()
 {
 
 //echo "<p>template(#ID$this->id:$this->name)::execute()</p>\n";
-ob_start();
 extract($this->param);
+ob_start();
 include PATH_TEMPLATE."/$this->name.tpl.php";
 $return = $this->subtemplates_apply(ob_get_contents());
 ob_end_clean();
@@ -540,8 +540,8 @@ public function cache_generate()
 $_time = time();
 
 //echo "<p>template(ID#$this->id)::cache_generate() ".PATH_TEMPLATE."/$this->name.tpl.php : $this->cache_id</p>\n";
-ob_start();
 extract($this->param);
+ob_start();
 include PATH_TEMPLATE."/$this->name.tpl.php";
 if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
 	apc_store("tpl_$this->cache_id", $this->tpl="<!-- $_time -->".ob_get_contents(), TEMPLATE_CACHE_MAX_TIME);
@@ -759,11 +759,14 @@ foreach($this->param_list_detail as $param)
 class template_datamodel extends template
 {
 
+protected $datamodel_id = null;
+protected $object_id = null;
 protected $object = null;
 
 function object_set(data_bank_agregat $object)
 {
 
+$this->object_id = $object->id->value;
 $this->object = $object;
 
 $this->object_retrieve_values();

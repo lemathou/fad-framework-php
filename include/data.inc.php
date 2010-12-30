@@ -166,47 +166,40 @@ public static $disp_opt_list = array("mime_type", "ref_field_disp", "preg_replac
  * @param mixed $value
  * @param array $options
  */
-public function __construct($name, $value, $label, $structure_opt=array(), $db_opt=array(), $disp_opt=array())
+public function __construct($name, $value, $label, $options=array())
 {
 
 $this->name = $name;
 $this->label = $label;
+$this->value = $value;
 
-if (is_array($structure_opt))
-	foreach ($structure_opt as $i=>$j)
-	{
-		$this->structure_opt_set($i,$j);
-		//$this->opt_set($i,$j);
-	}
-if (is_array($db_opt))
-	foreach ($db_opt as $i=>$j)
-	{
-		$this->db_opt_set($i,$j);
-		//$this->opt_set($i,$j);
-	}
-if (is_array($disp_opt))
-	foreach ($disp_opt as $i=>$j)
-	{
-		$this->disp_opt_set($i,$j);
-		//$this->opt_set($i,$j);
-	}
-
-// Par défaut on force la valeur à l'initialisation
-$this->value_set($value, true);
+if (is_array($options)) foreach ($options as $i=>$j)
+{
+	$this->structure_opt_set($i, $j);
+	//$this->opt_set($i, $j);
+}
 
 }
 
 public function datamodel_set($datamodel_id)
 {
 
-// TODO : Cannot verify the consistence of the datamodel, the fields are constructed at the same time... 
-$this->datamodel_id = $datamodel_id;
+if (datamodel()->exists($datamodel_id))
+{
+	$this->datamodel_id = $datamodel_id;
+	return true;
+}
+else
+	return false;
 
 }
 public function datamodel()
 {
 
-return datamodel($this->datamodel_id);
+if ($this->datamodel_id)
+	return datamodel($this->datamodel_id);
+else
+	return false;
 
 }
 
@@ -216,7 +209,7 @@ return datamodel($this->datamodel_id);
 public function opt_set($name, $value)
 {
 
-// TODO : verify the type of the value given in each case, using data verify
+// TODO : verify the type of the value given in each case
 
 if (isset(self::$opt_list[$name]))
 	$this->opt[$name] = $value;
@@ -336,7 +329,7 @@ if ($name == "value")
  * @param boolean force
  * @return boolean
  */
-public function value_set($value, $force=false)
+public function value_set($value, $convert=false, $options=array())
 {
 
 $this->value = &$value;
@@ -345,8 +338,7 @@ $this->value = &$value;
 if ($value !== null)
 {
 	$this->convert_before($value);
-	if (!$this->verify($value) && $force)
-		$this->convert($value);
+	$this->verify($value, $convert, $options);
 	$this->convert_after($value);
 }
 
@@ -360,7 +352,7 @@ if ($value !== null)
  * @param mixed value
  * @return boolean
  */
-public function verify(&$value, $convert=false)
+public function verify(&$value, $convert=false, $options=array())
 {
 
 return true;
@@ -426,7 +418,10 @@ else
 public function __tostring()
 {
 
-return (string)$this->value;
+if ($this->value === null)
+	return "";
+else
+	return (string)$this->value;
 
 }
 
@@ -513,7 +508,6 @@ $this->value_set($value, true);
 }
 /**
  * Convert the value to export it in an HTML form in the appropriate format
- * TODO : Is this really usefull ..?
  * 
  * @param unknown_type $value
  * @return mixed
@@ -521,7 +515,10 @@ $this->value_set($value, true);
 public function value_to_form()
 {
 
-return $this->value;
+if ($this->value === null)
+	return "";
+else
+	return $this->value;
 
 }
 /**
@@ -588,6 +585,81 @@ protected $structure_opt = array
 	"size" => 256
 );
 
+public function db_field_create()
+{
+
+return array( "type" => "string", "size" => $this->structure_opt["size"] );
+
+}
+
+/* Verify */
+public function verify(&$value, $convert=false, $options=array())
+{
+
+$return = true;
+
+if (!is_string($value))
+{
+	if ($convert)
+	{
+		$value = "";
+		$return = false;
+	}
+	else
+		return false;
+}
+
+if (isset($this->structure_opt["size"]) && ($maxlength=$this->structure_opt["size"]) && strlen($value) > $maxlength)
+{
+	if ($convert)
+	{
+		$value = substr($value, 0, $maxlength);
+		$return = false;
+	}
+	else
+		return false;
+}
+
+if (isset($this->structure_opt["ereg"]) && ($ereg=$this->structure_opt["ereg"]) && !preg_match($ereg, $value))
+{
+	if ($convert)
+	{
+		$value = null;
+		$return = false;
+	}
+	else
+		return false;
+}
+
+return $return;
+
+}
+public function convert(&$value)
+{
+
+if (!is_string($value))
+	$value = (string)$value;
+if (isset($this->structure_opt["size"]) && ($maxlength=$this->structure_opt["size"]) && strlen($value) > $maxlength)
+	$value = substr($value, 0, $maxlength);
+if (isset($this->structure_opt["ereg"]) && ($ereg=$this->structure_opt["ereg"]) && !preg_match($ereg, $value))
+	$value = null;
+
+}
+
+/* View */
+public function __tostring()
+{
+
+if ($this->value === null)
+	return "";
+elseif (isset($this->disp_opt["preg_replace"]) && is_array($opt=$this->disp_opt["preg_replace"]) && isset($opt["pattern"]) && isset($opt["replace"]) && preg_match($opt["pattern"], $this->value))
+{
+	return preg_replace($opt["pattern"], $opt["replace"], (string)$this->value);
+}
+else
+	return (string)$this->value;
+
+}
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -609,54 +681,6 @@ if ($print)
 	print $return;
 else
 	return $return;
-
-}
-
-public function db_field_create()
-{
-
-return array( "type" => "string", "size" => $this->structure_opt["size"] );
-
-}
-
-/**
- * TODO : explain use of disp_opt()
- */
-public function __tostring()
-{
-
-if (isset($this->disp_opt["preg_replace"]) && is_array($opt=$this->disp_opt["preg_replace"]) && isset($opt["pattern"]) && isset($opt["replace"]) && preg_match($opt["pattern"], $this->value))
-{
-	return preg_replace($opt["pattern"], $opt["replace"], (string)$this->value);
-}
-else
-	return (string)$this->value;
-
-}
-
-public function verify(&$value)
-{
-
-if (!is_string($value))
-	return false;
-if (isset($this->structure_opt["size"]) && ($maxlength=$this->structure_opt["size"]) && strlen($value) > $maxlength)
-	return false;
-if (isset($this->structure_opt["ereg"]) && ($ereg=$this->structure_opt["ereg"]) && !preg_match($ereg, $value))
-	return false;
-
-return true;
-
-}
-
-public function convert(&$value)
-{
-
-if (!is_string($value))
-	$value = (string)$value;
-if (isset($this->structure_opt["size"]) && ($maxlength=$this->structure_opt["size"]) && strlen($value) > $maxlength)
-	$value = substr($value, 0, $maxlength);
-if (isset($this->structure_opt["ereg"]) && ($ereg=$this->structure_opt["ereg"]) && !preg_match($ereg, $value))
-	$value = null;
 
 }
 
@@ -688,7 +712,10 @@ protected $structure_opt = array
 function __tostring()
 {
 
-return (string)$this->value;
+if ($this->value === null)
+	return "";
+else
+	return (string)$this->value;
 
 }
 
@@ -708,25 +735,8 @@ protected $structure_opt = array
 	"integer" => array( "signed" => true , "size" => 11 ), // TODO : use "numeric" opt name
 );
 
-public function form_field_disp($print=true, $options=array())
-{
-
-$attrib_size = " size=\"".($this->structure_opt["integer"]["size"]+1)."\"";
-$attrib_maxlength = " maxlength=\"".($this->structure_opt["integer"]["size"]+1)."\"";
-
-$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
 public function db_field_create()
 {
-
-//print_r($this->structure_opt);
 
 $return = array
 (
@@ -743,18 +753,33 @@ return $return;
 
 }
 
-public function verify(&$value)
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
 {
 
-if (!is_numeric($value) || (int)$value != $value)
-	return false;
-if (isset($this->structure_opt["integer"]["signed"]) && $this->structure_opt["integer"]["signed"] == false && $value < 0)
-	return false;
+$return = true;
 
-return true;
+if (!is_numeric($value) || (int)$value != $value)
+	if ($convert)
+	{
+		$value = (int)$value;
+		$return = false;
+	}
+	else
+		return false;
+
+if (isset($this->structure_opt["integer"]["signed"]) && $this->structure_opt["integer"]["signed"] == false && $value < 0)
+	if ($convert)
+	{
+		$value = -$value;
+		$return = false;
+	}
+	else
+		return false;
+
+return $return;
 
 }
-
 public function convert(&$value)
 {
 
@@ -764,10 +789,35 @@ if (isset($this->structure_opt["integer"]["signed"]) && $this->structure_opt["in
 
 }
 
+/* View */
 public function __tostring()
 {
 
-return (string)$this->value;
+if ($this->value === null)
+	return "";
+else
+	return (string)$this->value;
+
+}
+public function form_field_disp($print=true, $options=array())
+{
+
+$attrib_size = " size=\"".($this->structure_opt["integer"]["size"]+1)."\"";
+$attrib_maxlength = " maxlength=\"".($this->structure_opt["integer"]["size"]+1)."\"";
+
+$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
+
+if ($print)
+	print $return;
+else
+	return $return;
+
+}
+
+public function increment()
+{
+
+$this->value++;
 
 }
 
@@ -786,21 +836,6 @@ protected $structure_opt = array
 (
 	"float" => array("signed"=>true, "size"=>11, "precision"=>2) // TODO : use "numeric" opt name
 );
-
-public function form_field_disp($print=true, $options=array())
-{
-
-$attrib_size = " size=\"".($this->structure_opt["float"]["size"]+2)."\"";
-$attrib_maxlength = " maxlength=\"".($this->structure_opt["float"]["size"]+2)."\"";
-
-$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
 
 public function db_field_create()
 {
@@ -821,20 +856,43 @@ return $return;
 
 }
 
-function verify(&$value)
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
 {
 
-if (!is_numeric($value))
-	return false;
-if (isset($this->structure_opt["float"]["precision"]) && ($precision=$this->structure_opt["float"]["precision"]) && !preg_match('/^?[-]?([1-9][0-9]*)?[0-9](\.[0-9]{0,'.($param["precision"]-1).'}[1-9]){0,1}$/', $value))
-	return false;
-if (isset($this->structure_opt["float"]["signed"]) && $this->structure_opt["float"]["signed"] == false && $value < 0)
-	return false;
+$return = true;
 
-return true;
+if (!is_numeric($value) || (float)$value != $value)
+	if ($convert)
+	{
+		$value = str_replace(",", ".", $value);
+		$value = (float)$value;
+		$return = false;
+	}
+	else
+		return false;
+
+if (isset($this->structure_opt["float"]["precision"]) && ($precision=$this->structure_opt["float"]["precision"]) && $value != round($value, $precision))
+	if ($convert)
+	{
+		$value = round($value, $precision);
+		$return = false;
+	}
+	else
+		return false;
+
+if (isset($this->structure_opt["float"]["signed"]) && $this->structure_opt["float"]["signed"] == false && $value < 0)
+	if ($convert)
+	{
+		$value = -$value;
+		$return = false;
+	}
+	else
+		return false;
+
+return $return;
 
 }
-
 function convert(&$value)
 {
 
@@ -843,10 +901,28 @@ if (!preg_match('/^?[-]?([0-9]*)(\.([0-9]*)){0,1}$/', $value))
 
 }
 
+/* View */
 function __tostring()
 {
 
-return (string)$this->value;
+if ($this->value === null)
+	return "";
+else
+	return (string)$this->value;
+
+}
+public function form_field_disp($print=true, $options=array())
+{
+
+$attrib_size = " size=\"".($this->structure_opt["float"]["size"]+2)."\"";
+$attrib_maxlength = " maxlength=\"".($this->structure_opt["float"]["size"]+2)."\"";
+
+$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
+
+if ($print)
+	print $return;
+else
+	return $return;
 
 }
 
@@ -865,38 +941,21 @@ class data_boolean extends data_string
 
 protected $structure_opt = array("boolean"=>array("NO","YES"));
 
-function __construct($name, $value, $label="Boolean")
+function __construct($name, $value, $label="Boolean", $options=array())
 {
 
-data::__construct($name, $value, $label);
-
-}
-
-public function verify(&$value)
-{
-
-if ($value !== true || $value !== false)
-	return false;
-
-return true;
-
-}
-public function convert(&$value)
-{
-
-if (empty($value))
-	$value = false;
-else
-	$value = true;
+data::__construct($name, $value, $label, $options);
 
 }
 
 public function db_field_create()
 {
 
-return array( "type" => "boolean" );
+return array("type"=>"boolean");
 
 }
+
+/* Convert */
 public function value_from_db($value)
 {
 
@@ -912,28 +971,62 @@ else
 	return ($this->value) ? "1" : "0";
 
 }
-
 public function value_to_form()
 {
 
 if ($this->value === null)
-	return null;
+	return "";
 else
-	return ($this->value == true) ? "1" : "0";
+	return ($this->value) ? "1" : "0";
 
 }
+public function verify(&$value, $convert=false, $options=array())
+{
+
+if ($value !== true || $value !== false)
+{
+	if ($convert)
+	{
+		if (empty($value))
+			$value = false;
+		else
+			$value = true;
+	}
+	return false;
+}
+
+return true;
+
+}
+public function convert(&$value)
+{
+
+if (empty($value))
+	$value = false;
+else
+	$value = true;
+
+}
+
+/* View */
 public function form_field_disp($print=true, $options=array())
 {
 
-if ($this->value)
-	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" checked class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
-else
-	$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\" checked />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\" class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
+$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\"".($this->value === false)?" checked":""." class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\"".($this->value === true)?" checked":""." class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
 
 if ($print)
 	print $return;
 else
 	return $return;
+
+}
+public function __tostring()
+{
+
+if ($this->value === null)
+	return "";
+else
+	return $this->structure_opt["boolean"][($this->value)?1:0];
 
 }
 
@@ -953,6 +1046,14 @@ protected $type = "text";
 
 protected $structure_opt = array();
 
+public function db_field_create()
+{
+
+return array("type"=>"string");
+
+}
+
+/* View */
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -966,7 +1067,6 @@ else
 	return $return;
 
 }
-
 public function form_field_select_disp($print=true, $options=array())
 {
 
@@ -978,19 +1078,13 @@ else
 	return $return;
 
 }
-
-
-public function db_field_create()
-{
-
-return array( "type" => "string" );
-
-}
-
 public function __tostring()
 {
 
-return nl2br($this->value, true);
+if ($this->value === null)
+	return "";
+else
+	return nl2br((string)$this->value, true);
 
 }
 
@@ -1015,20 +1109,10 @@ protected $structure_opt = array
 	"size" => 10,
 );
 
-protected $db_opt = array
-(
-	"tablename" => "",
-	"fieldname" => "",
-	"type" => "date",
-);
-
-public function __tostring()
+public function db_field_create()
 {
 
-if ($this->value && $this->value != "00/00/0000")
-	return strftime($this->structure_opt["date"], $this->timestamp());
-else
-	return "";
+return array( "type" => "date" );
 
 }
 
@@ -1042,16 +1126,57 @@ else
 
 }
 
-function view($style="%A %d %B %G")
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
 {
 
-if ($this->value && $this->value != "00/00/0000")
-	return strftime($style, $this->timestamp());
+if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
+{
+	if ($convert)
+		$value = "00/00/0000";
+	return false;
+}
+
+return true;
+
+}
+function convert(&$value)
+{
+
+if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
+	$value = "00/00/0000";
+
+
+}
+function value_to_db()
+{
+
+if ($this->value === null || !$this->value)
+	return null;
 else
+	return implode("-",array_reverse(explode("/",$this->value)));
+
+}
+function value_to_form()
+{
+
+if ($this->value === null || !$this->value)
 	return "";
+else
+	return $this->value;
+	
+}
+function value_from_db($value)
+{
+
+if ($value !== null)
+	$this->value = implode("/",array_reverse(explode("-",$value)));
+else
+	$this->value = null;
 
 }
 
+/* View */
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1066,41 +1191,22 @@ else
 	return $return;
 
 }
-
-function value_to_db()
+function view($style="%A %d %B %G")
 {
 
-if ($this->value === null || !$this->value)
-	return null;
+if ($this->value && $this->value != "00/00/0000")
+	return strftime($style, $this->timestamp());
 else
-	return implode("-",array_reverse(explode("/",$this->value)));
-
-}
-
-function value_to_form()
-{
-
-if ($this->value === null || !$this->value)
 	return "";
-else
-	return $this->value;
-	
-}
-
-function value_from_db($value)
-{
-
-if ($value !== null)
-	$this->value = implode("/",array_reverse(explode("-",$value)));
-else
-	$this->value = null;
 
 }
-
-public function db_field_create()
+public function __tostring()
 {
 
-return array( "type" => "date" );
+if ($this->value && $this->value != "00/00/0000")
+	return strftime($this->structure_opt["date"], $this->timestamp());
+else
+	return "";
 
 }
 
@@ -1119,7 +1225,6 @@ else
 	return null;
 
 }
-
 /**
  * Compare date timestamps and returns if the stored value is larger, smaller or equal to the passed value
  * @param timestamp $value
@@ -1148,25 +1253,6 @@ else
 	return false;
 }
 
-function verify(&$value)
-{
-
-if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
-	return false;
-
-return true;
-
-}
-
-function convert(&$value)
-{
-
-if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
-	$value = "00/00/0000";
-
-
-}
-
 }
 
 /**
@@ -1185,22 +1271,36 @@ protected $structure_opt = array
 	"year" => "0000", // A CORRIGER
 );
 
-protected $db_opt = array
-(
-	"type" => "year",
-);
-
-
-public function __tostring()
+public function db_field_create()
 {
 
-if ($this->value && $this->value != "0000")
-	return $this->value;
-else
-	return "";
+return array( "type" => "year" );
 
 }
 
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
+{
+
+if (!is_string($value) || !preg_match("([0-9]{4})", $value))
+{
+	if ($convert)
+		$value = "0000";
+	return false;
+}
+
+return true;
+
+}
+function convert(&$value)
+{
+
+if (!is_string($value) || !preg_match("([0-9]{4})", $value))
+	$value = "0000";
+
+}
+
+/* View */
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1212,30 +1312,13 @@ else
 	return $return;
 
 }
-
-
-public function db_field_create()
+public function __tostring()
 {
 
-return array( "type" => "year" );
-
-}
-
-function verify(&$value)
-{
-
-if (!is_string($value) || !preg_match("([0-9]{4})", $value))
-	return false;
-
-return true;
-
-}
-
-function convert(&$value)
-{
-
-if (!is_string($value) || !preg_match("([0-9]{4})", $value))
-	$value = "0000";
+if ($this->value && $this->value != "0000")
+	return $this->value;
+else
+	return "";
 
 }
 
@@ -1252,17 +1335,39 @@ protected $type = "time";
 
 protected $structure_opt = array
 (
-	"time" => "", // A CORRIGER
-	"size" => 8,
+	"time" => ""
 );
 
-protected $db_opt = array
-(
-	"tablename" => "",
-	"fieldname" => "",
-	"type" => "time",
-);
+public function db_field_create()
+{
 
+return array("type" => "time");
+
+}
+
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
+{
+
+if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+{
+	if ($convert)
+		$value = "00:00:00";
+	return false;
+}
+
+return true;
+
+}
+public function convert(&$value)
+{
+
+if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+	$value = "00:00:00";
+
+}
+
+/* View */
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1272,31 +1377,6 @@ if ($print)
 	print $return;
 else
 	return $return;
-
-}
-
-public function db_field_create()
-{
-
-return array( "type" => "time" );
-
-}
-
-public function verify(&$value)
-{
-
-if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
-	return false;
-
-return true;
-
-}
-
-public function convert(&$value)
-{
-
-if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
-	$value = "00:00:00";
 
 }
 
@@ -1316,16 +1396,87 @@ protected $type = "datetime";
 protected $structure_opt = array
 (
 	"datetime" => "%A %d %B %G à %H:%M:%S", // Defined for strftime()
-	"size" => 19,
 );
 
-protected $db_opt = array
-(
-	"tablename" => "",
-	"fieldname" => "",
-	"type" => "datetime",
-);
+public function db_field_create()
+{
 
+return array( "type" => "datetime" );
+
+}
+
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
+{
+
+if (!is_string($value) || !$value)
+{
+	if ($convert)
+		$value = null;
+	return false;
+}
+
+$return = true;
+
+$e = explode(" ", $value);
+if (!data_date::verify($e[0], true))
+	$return = false;
+
+if (!count($e) == 2)
+{
+	$e = array($e[0], "00:00:00");
+	$return = false;
+}
+elseif (!data_time::verify($e[1], true))
+	$return = false;
+
+if ($convert)
+	$value = implode(" ", $e);
+
+return $return;
+
+}
+public function convert(&$value)
+{
+
+if (!is_string($value) || !$value || count($e=explode(" ", $value)) != 2 || count($d=explode("/", $e[0])) != 3 || count($t=explode("/", $e[1])) != 3)
+	$value = null;
+
+}
+public function convert_after(&$value)
+{
+
+if ($value !== null)
+{
+	$e = explode(" ", $value);
+	$d = explode("/", $e[0]);
+	$t = explode("/", $e[1]);
+	$value = mktime($t[0], $t[1], $t[2], $d[1], $d[0], $d[2]);
+}
+
+}
+public function value_from_db($value)
+{
+
+if ($value === null || $value == "0000-00-00 00:00:00")
+	$this->value = null;
+else
+{
+	$e = explode(" ", $value);
+	$d = explode("-", $e[0]);
+	$t = explode(":", $e[1]);
+	$this->value = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
+}
+
+}
+public function value_to_db()
+{
+
+return date("Y-m-d H:i:s", $this->value);
+
+}
+
+/* View */
 public function __tostring()
 {
 
@@ -1374,71 +1525,6 @@ else
 
 }
 
-public function value_from_db($value)
-{
-
-if ($value === null || $value == "0000-00-00 00:00:00")
-	$this->value = null;
-else
-{
-	$e = explode(" ", $value);
-	$d = explode("-", $e[0]);
-	$t = explode(":", $e[1]);
-	$this->value = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
-}
-
-}
-public function value_to_db()
-{
-
-return date("Y-m-d H:i:s", $this->value);
-
-}
-
-public function db_field_create()
-{
-
-return array( "type" => "datetime" );
-
-}
-
-public function verify(&$value, $convert=false, $options=array())
-{
-
-if (!is_string($value) || !$value || count($e=explode(" ", $value)) != 2 || count($d=explode("/", $e[0])) != 3 || count($t=explode("/", $e[1])) != 3)
-	return false;
-
-for ($i=0;$i<=2;$i++)
-{
-	if (!is_numeric($d[$i]))
-		return false;
-	if (!is_numeric($t[$i]))
-		return false;
-}
-
-return true;
-
-}
-public function convert(&$value)
-{
-
-if (!is_string($value) || !$value || count($e=explode(" ", $value)) != 2 || count($d=explode("/", $e[0])) != 3 || count($t=explode("/", $e[1])) != 3)
-	$value = null;
-
-}
-public function convert_after(&$value)
-{
-
-if ($value !== null)
-{
-	$e = explode(" ", $value);
-	$d = explode("/", $e[0]);
-	$t = explode("/", $e[1]);
-	$value = mktime($t[0], $t[1], $t[2], $d[1], $d[0], $d[2]);
-}
-
-}
-
 }
 
 /**
@@ -1457,6 +1543,39 @@ protected $structure_opt = array
 	"select" => array(),
 );
 
+public function db_field_create()
+{
+
+$value_list = array();
+foreach($this->structure_opt["select"] as $name=>$label)
+	$value_list[] = $name;
+return array("type" => "select", "value_list" => $value_list);
+
+}
+
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
+{
+
+if (!isset($this->structure_opt["select"][$value]))
+{
+	if ($convert)
+		$value = "";
+	return false;
+}
+
+return true;
+
+}
+function convert(&$value)
+{
+
+if (!isset($this->structure_opt["select"][$value]))
+	$value = "";
+
+}
+
+/* View */
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1475,7 +1594,6 @@ else
 	return $return;
 
 }
-
 public function form_field_select_disp($print=true, $options=array())
 {
 
@@ -1494,7 +1612,6 @@ else
 	return $return;
 
 }
-
 function __tostring()
 {
 
@@ -1502,34 +1619,6 @@ if ($this->value && isset($this->structure_opt["select"][$this->value]))
 	return "".$this->structure_opt["select"][$this->value];
 else
 	return "";
-
-}
-
-public function db_field_create()
-{
-
-$value_list = array();
-foreach($this->structure_opt["select"] as $name=>$label)
-	$value_list[] = $name;
-return array("type" => "select", "value_list" => $value_list);
-
-}
-
-function verify(&$value, $convert=false)
-{
-
-if (!isset($this->structure_opt["select"][$value]))
-	return false;
-
-return true;
-
-}
-
-function convert(&$value)
-{
-
-if (!isset($this->structure_opt["select"][$value]))
-	$value = "";
 
 }
 
@@ -1541,7 +1630,7 @@ if (!isset($this->structure_opt["select"][$value]))
  * Can be indexed or ordered
  * 
  * The content is a set en elements of the same type
- * Use the data_list_mixed to put different datatypes inside
+ * TODO : Use the data_list_mixed to put different datatypes inside
  * 
  * Displaying uses jquery, and data is stored in json in a text DB field
  *
@@ -1563,20 +1652,27 @@ protected $db_opt = array
 	"ref_id" => "", // champ de liaison
 );
 
-protected $disp_opt = array
-(
-	"mime_type" => "text/csv",
-	"sort" => "key",
-);
-
-public function __tostring()
+/* Convert */
+public function verify(&$value, $convert=false, $options=array())
 {
 
-//return (string)implode(" , ",$this->value);
-return (string)count($this->value);
-
+if (!is_array($value))
+{
+	if ($convert)
+		$value = array();
+	return false;
 }
 
+return true;
+
+}
+public function convert(&$value)
+{
+
+if (!is_array($value))
+	$value = array();
+
+}
 public function value_from_db($value)
 {
 
@@ -1586,7 +1682,6 @@ else
 	$this->value = null;
 
 }
-
 public function value_to_db()
 {
 
@@ -1597,18 +1692,14 @@ else
 
 }
 
-public function verify(&$value)
+/* View */
+public function __tostring()
 {
 
-return is_array($value);
-
-}
-
-public function convert(&$value)
-{
-
-if (!is_array($value))
-	$value = array();
+if ($this->value === null)
+	return "";
+else
+	return (string)count($this->value);
 
 }
 
@@ -1631,6 +1722,74 @@ protected $structure_opt = array
 	"fromlist" => array(),
 );
 
+public function db_field_create()
+{
+
+return array( "type" => "fromlist" , "value_list" => array_keys($this->structure_opt["fromlist"]) );
+
+}
+
+/* Convert */
+public function value_from_db($value)
+{
+
+$this->value = array();
+if (is_array($value)) foreach ($value as $i)
+	if (isset($this->structure_opt["fromlist"][$i]))
+		$this->value[] = $i;
+
+}
+public function value_to_db()
+{
+
+if (is_array($this->value))
+	return implode(",", $this->value);
+else
+	return null;
+
+}
+public function verify(&$value, $convert=false, $options=array())
+{
+
+if (!is_array($value))
+{
+	if ($convert)
+		$value = array();
+	return false;
+}
+
+$return = true;
+
+foreach ($value as $nb=>$i)
+{
+	if (!isset($this->structure_opt["fromlist"][$i]))
+	{
+		if ($convert)
+		{
+			unset($value[$nb]);
+			$return = false;
+		}
+		else
+			return false;
+	}
+}
+
+return $return;
+
+}
+public function convert(&$value)
+{
+
+if (!is_array($value))
+	$value = array();
+
+foreach ($value as $i=>$j)
+	if (!isset($this->structure_opt["fromlist"][$j]))
+		unset($value[$i]);
+
+}
+
+/* View */
 public function __tostring()
 {
 
@@ -1640,7 +1799,6 @@ else
 	return "";
 
 }
-
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1656,59 +1814,6 @@ if ($print)
 	echo $return;
 else
 	return $return;
-
-}
-
-public function value_from_db($value)
-{
-
-$this->value = array();
-if (is_array($value)) foreach ($value as $i)
-	if (isset($this->structure_opt["fromlist"][$i]))
-		$this->value[] = $i;
-
-}
-
-public function value_to_db()
-{
-
-if (is_array($this->value))
-	return implode(",", $this->value);
-else
-	return null;
-
-}
-
-public function db_field_create()
-{
-
-return array( "type" => "fromlist" , "value_list" => array_keys($this->structure_opt["fromlist"]) );
-
-}
-
-public function verify(&$value)
-{
-
-if (!is_array($value))
-	return false;
-
-foreach ($value as $i)
-	if (!isset($this->structure_opt["fromlist"][$i]))
-		return false;
-
-return true;
-
-}
-
-public function convert(&$value)
-{
-
-if (!is_array($value))
-	$value = array();
-
-foreach ($value as $i=>$j)
-	if (!isset($this->structure_opt["fromlist"][$j]))
-		unset($value[$i]);
 
 }
 
@@ -1734,10 +1839,10 @@ foreach ($value as $i=>$j)
 class data_number extends data_integer
 {
 
-function __construct($name, $value, $label="Number", $size="10", $db_opt=array(), $disp_opt=array())
+function __construct($name, $value, $label="Number", $size="10", $options=array())
 {
 
-data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size), "size"=>$size), $db_opt, $disp_opt);
+data_integer::__construct($name, $value, $label, array_merge(array("integer"=>array("signed"=>false, "size"=>$size), "size"=>$size), $options));
 
 }
 
@@ -1753,55 +1858,55 @@ data_integer::__construct($name, $value, $label, array("integer"=>array("signed"
  * Integer unsigned
  * 
  */
-class data_id extends data_number
+class data_id extends data_integer
 {
+
+protected $structure_opt = array
+(
+	"integer"=>array("signed"=>false, "size"=>6)
+);
 
 protected $db_opt = array
 (
 	"auto_increment"=>true,
 );
 
-function __construct()
+function __construct($name="id", $value=null, $label="ID")
 {
 
-data_number::__construct("id", null, "ID", 6, array("auto_increment"=>true));
+data_integer::__construct($name, $value, $label);
 
 }
 
 public function db_field_create()
 {
 
-$return = array
+return array
 (
-	"type" => "integer",
-	"size" => $this->structure_opt["integer"]["size"],
-	
+	"type"=>"integer",
+	"size"=>$this->structure_opt["integer"]["size"],
+	"auto_increment"=>true
 );
-if (isset($this->db_opt["auto_increment"]))
-{
-	$return["auto_increment"]=true;
-}
-
-return $return;
 
 }
 
 }
 
 /**
- * Name
+ * Name, label, etc.
  *
  * Maxlength fixed to 64
- * Field size fixed to 20
  *
  */
 class data_name extends data_string
 {
 
-function __construct($name, $value, $label="Name", $db_opt=array(), $disp_opt=array())
+protected $structure_opt = array( "size"=>64 );
+
+function __construct($name, $value, $label="Name", $options=array())
 {
 
-data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $disp_opt);
+data_string::__construct($name, $value, $label, $options);
 
 }
 
@@ -1816,10 +1921,12 @@ data_string::__construct($name, $value, $label, array("size"=>64), $db_opt, $dis
 class data_description extends data_text
 {
 
-function __construct($name, $value, $label="Description", $size=256, $db_opt=array(), $disp_opt=array())
+protected $structure_opt = array( "size"=>256 );
+	
+function __construct($name, $value, $label="Description", $options=array())
 {
 
-data_text::__construct($name, $value, $label, array("size"=>$size), $db_opt=array(), $disp_opt=array());
+data_text::__construct($name, $value, $label, $options);
 
 }
 
@@ -1840,9 +1947,9 @@ data_text::__construct($name, $value, $label, array("size"=>$size), $db_opt=arra
 
 
 /**
- * Rich Text (HTML)
+ * Rich Text (XHTML)
  * 
- * Can limit the use of some tags.
+ * Can limit the use of tags to a list.
  * 
  */
 class data_richtext extends data_text
@@ -1852,9 +1959,35 @@ protected $type = "richtext";
 
 protected $structure_opt = array
 (
-	"string_tag_authorized" => array ( "b" , "i" , "u" , "font" , "strong" , "a" , "p" ),
+	"string_tag_attrib_authorized" => array("b"=>array(), "i"=>array(), "u"=>array(), "strong"=>array(), "a"=>array("href"), "p"=>array(), "img"=>array("src", "alt")),
+	"string_tag_authorized" => "<p><b><i><u><font><strong><a><img>"
 );
 
+public function db_field_create()
+{
+
+return array("type" => "richtext");
+
+}
+
+/* Conversion */
+public function convert_before(&$value)
+{
+
+$value = strip_tags($value, $this->structure_opt["string_tag_authorized"]);
+
+}
+
+/* View */
+public function __tostring()
+{
+
+if ($this->value === null)
+	return "";
+else
+	return (string)$this->value;
+
+}
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -1864,20 +1997,6 @@ if ($print)
 	print $return;
 else
 	return $return;
-
-}
-
-public function db_field_create()
-{
-
-return array( "type" => "richtext" );
-
-}
-
-public function __tostring()
-{
-
-return (string)$this->value;
 
 }
 
@@ -1895,7 +2014,7 @@ class data_priority extends data_number
 function __construct($name, $value, $label="Priority", $size=1)
 {
 
-data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size)), array(), array(), array("size"=>$size));
+data_integer::__construct($name, $value, $label, array("integer"=>array("signed"=>false, "size"=>$size)));
 
 }
 
@@ -1925,17 +2044,20 @@ $this->value++;
 class data_measure extends data_float
 {
 
-function __construct($name, $value, $label="Measure", $precision=4, $db_opt=array(), $disp_opt=array())
+function __construct($name, $value, $label="Measure", $precision=4, $options=array())
 {
 
-data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>10, "precision"=>$precision)), $db_opt, $disp_opt);
+data_float::__construct($name, $value, $label, array_merge(array("float"=>array("signed"=>false, "size"=>10, "precision"=>$precision)), $options));
 
 }
 
 function __tostring()
 {
 
-return (string)$this->value;
+if ($this->value === null)
+	return "";
+else
+	return (string)$this->value;
 
 }
 
@@ -1950,17 +2072,24 @@ return (string)$this->value;
 class data_money extends data_float
 {
 
-function __construct($name, $value, $label="Measure", $type="", $limit=null)
+protected $structure_opt = array(
+	"float" => array("signed"=>true, "size"=>8, "precision"=>2)
+);
+
+function __construct($name, $value, $label="Amount", $type="", $limit=null)
 {
 
-data_float::__construct($name, $value, $label, array("float"=>array("signed"=>false, "size"=>8, "precision"=>2), "size"=>8), array(), array());
+data_float::__construct($name, $value, $label);
 
 }
 
 function __tostring()
 {
 
-return $this->value." &euro;";
+if ($this->value === null)
+	return "";
+else
+	return $this->value." &euro;";
 
 }
 
@@ -1981,13 +2110,38 @@ data::__construct($name, $value, $label, $options);
 
 }
 
-function __tostring()
+public function db_field_create()
 {
 
-if ($this->value === null)
-	return "";
+return array("type" => "float", "size" => 5, "precision" => 2);
+
+}
+
+public function verify(&$value, $convert=false, $options=array())
+{
+
+if (!is_numeric($value) || $value < 0 || $value > 1)
+{
+	if ($convert)
+	{
+		if ($value)
+			$value = 1;
+		else
+			$value = 0;
+	}
+	return false;
+}
+
+return true;
+
+}
+public function convert(&$value)
+{
+
+if ($value)
+	$value = 1;
 else
-	return ($this->value*100)." %";
+	$value = 0;
 
 }
 function value_to_db()
@@ -2008,6 +2162,7 @@ else
 	$this->value = $value/100;
 
 }
+
 public function form_field_disp($print=true, $options=array())
 {
 
@@ -2019,31 +2174,13 @@ else
 	return $return;
 
 }
-
-public function db_field_create()
+function __tostring()
 {
 
-return array("type" => "float", "size" => 5, "precision" => 2);
-
-}
-
-public function verify(&$value)
-{
-
-if (!is_numeric($value) || $value < 0 || $value > 1)
-	return false;
-
-return true;
-
-}
-
-public function convert(&$value)
-{
-
-if ($value)
-	$value = 1;
+if ($this->value === null)
+	return "";
 else
-	$value = 0;
+	return ($this->value*100)." %";
 
 }
 
@@ -2059,10 +2196,10 @@ else
 class data_email extends data_string
 {
 
-function __construct($name, $value, $label="Email", $db_opt=array(), $disp_opt=array())
+function __construct($name, $value, $label="Email", $options=array())
 {
 
-data_string::__construct($name, $value, $label, array("email"=>array("strict"=>false), "size"=>128), $db_opt, $disp_opt);
+data_string::__construct($name, $value, $label, array_merge(array("email"=>array("strict"=>false), "size"=>128), $options));
 
 }
 
@@ -2080,13 +2217,17 @@ else
 
 }
 
-public function verify(&$value)
+public function verify(&$value, $convert=false, $options=array())
 {
 
 $regex = ($this->structure_opt["email"]["strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
 
 if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($match[2], "MX"))
+{
+	if ($convert)
+		$value = "";
 	return false;
+}
 
 return false;
 
@@ -2114,10 +2255,10 @@ if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($ma
 class data_url extends data_string
 {
 
-function __construct($name, $value, $label="URL", $db_opt=array(), $disp_opt=array())
+function __construct($name, $value, $label="URL", $options=array())
 {
 
-data_string::__construct($name, $value, $label, array("url"=>array()), $db_opt, $disp_opt);
+data_string::__construct($name, $value, $label, array_merge(array("url"=>array()), $options));
 
 }
 
@@ -2129,13 +2270,17 @@ function link($target="_blank")
 		return "<a href=\"$this->value\">$this->value</a>";
 }
 
-public function verify(&$value, $convert=false)
+public function verify(&$value, $convert=false, $options=array())
 {
 
 $regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
 
 if (!is_string($value) || !preg_match($regex, $value))
+{
+	if ($convert)
+		$value = "";
 	return false;
+}
 
 return true;
 
@@ -2396,10 +2541,10 @@ protected $disp_opt = array
 	"ref_field_disp" => "", // field to display if needed
 );
 
-function __construct($name, $value, $label="Name", $databank=0, $db_opt=array(), $disp_opt=array())
+function __construct($name, $value, $label="Name", $databank=0, $options=array())
 {
 
-data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, $disp_opt);
+data::__construct($name, $value, $label, array_merge(array("databank"=>$databank), $options));
 
 }
 
@@ -2430,17 +2575,21 @@ function object()
 {
 
 if ($this->value)
-	return datamodel($this->structure_opt["databank"])->get($this->value, true);
+	return datamodel($this->structure_opt["databank"])->get($this->value);
 else
 	return null;
 
 }
 
-function verify(&$value)
+public function verify(&$value, $convert=false, $options=array())
 {
 
 if (!is_numeric($value) || !datamodel($this->structure_opt["databank"])->exists($value))
+{
+	if ($convert)
+		$value = null;
 	return false;
+}
 
 return true;
 
@@ -2554,10 +2703,10 @@ protected $db_opt = array
 	"field" => ""
 );
 
-function __construct($name, $value, $label="Name", $databank_list, $db_opt=array())
+function __construct($name, $value, $label="Name", $databank_list, $options=array())
 {
 
-data::__construct($name, $value, $label, array("databank_select"=>$databank_list), $db_opt);
+data::__construct($name, $value, $label, array_merge(array("databank_select"=>$databank_list), $options));
 
 }
 
@@ -2585,7 +2734,7 @@ function object()
 {
 
 if ($this->nonempty())
-	return datamodel($this->value[0], $this->value[1]);
+	return datamodel($this->value[0])->get($this->value[1]);
 else
 	return null;
 
@@ -2675,10 +2824,10 @@ protected $disp_opt = array
 	"ref_field_disp" => "", // field to display if needed
 );
 
-function __construct($name, $value, $label="Name", $databank=0, $db_opt=array(), $disp_opt=array())
+function __construct($name, $value, $label="Name", $databank=null, $options=array())
 {
 
-data::__construct($name, $value, $label, array("databank"=>$databank), $db_opt, $disp_opt);
+data::__construct($name, $value, $label, array_merge(array("databank"=>$databank), $options));
 
 }
 
@@ -2739,19 +2888,31 @@ else
 
 }
 
-function verify(&$value)
+public function verify(&$value, $convert=false, $options=array())
 {
 
 if (!is_array($value))
-	return false;
-
-foreach($value as $id)
 {
-	if (!datamodel($this->structure_opt["databank"])->exists($id))
-		return false;
+	if ($convert)
+		$value = array();
+	return false;
 }
 
-return true;
+$return = true;
+
+foreach($value as $nb=>$id)
+{
+	if (!datamodel($this->structure_opt["databank"])->exists($id))
+		if ($convert)
+		{
+			unset($value[$nb]);
+			$return = false;
+		}
+		else
+			return false;
+}
+
+return $return;
 
 }
 
@@ -2787,11 +2948,11 @@ if (($nb=datamodel($this->structure_opt["databank"])->db_count()) < 20)
 		$size = 5;
 	$return = "<input name=\"$this->name\" type=\"hidden\" />";
 	$return .= "<select name=\"".$this->name."[]\" title=\"$this->label\" multiple size=\"$size\" class=\"".get_called_class()."\">\n";
-	foreach ($this->value as $id)
+	if (is_array($this->value)) foreach ($this->value as $id)
 			$return .= "<option value=\"$id\" selected>".datamodel($this->structure_opt["databank"])->get($id)."</option>";
 	foreach($query as $object)
 	{
-		if (!in_array($object->id->value, $this->value))
+		if (!is_array($this->value) || !in_array($object->id->value, $this->value))
 			$return .= "<option value=\"$object->id\">$object</option>";
 	}
 	$return .= "</select>\n";

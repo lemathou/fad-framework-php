@@ -143,11 +143,15 @@ td.label
 	width: 250px;
 }
 
-.data_string, .data_name, .data_text, .data_richtext, .data_script
+.data_text, .data_richtext, .data_script
 {
 	width: 100%;
 }
+.data_string, .data_name
+{
+}
 .data_script
 {
+	position: relative;
 	height: 100%;
-}	
+}

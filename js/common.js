@@ -701,15 +701,15 @@ function article_edit(id)
 
 $(document).ready( function(){
 	$("select.data_dataobject_list").asmSelect({
-        sortable: true,
-        animate: true,
-        addItemTarget: 'bottom'
-    });
+		sortable: true,
+		animate: true,
+		addItemTarget: 'bottom'
+	});
 	$("select.data_fromlist").asmSelect({
-        sortable: true,
-        animate: true,
-        addItemTarget: 'bottom'
-    });
+		sortable: true,
+		animate: true,
+		addItemTarget: 'bottom'
+	});
 	$("textarea.data_script").each(function(){
 		// initialisation
 		editAreaLoader.init({

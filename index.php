@@ -37,9 +37,13 @@ include PATH_INCLUDE."/lang.inc.php";
 session_start();
 // Rafraichissement du login
 login()->refresh();
+if (DEBUG_GENTIME == true)
+	gentime("Session refresh");
 
 // Mise en place des fonctions associées aucx banques de donnée !!
 datamodel();
+if (DEBUG_GENTIME == true)
+	gentime("Datamodel init");
 
 // Controller (Warning !!)
 //include "include/data_controller.inc.php";
@@ -56,7 +60,8 @@ include PATH_INCLUDE."/page_choose.inc.php";
 // Affichage du template
 header("Content-type: text/html; charset=".SITE_CHARSET);
 page_current()->tpl()->disp();
-gentime("TEMPLATE_DISP");
+if (DEBUG_GENTIME == true)
+	gentime("TEMPLATE_DISP");
 
 // Gestion message login
 login()->message_show();
@@ -64,11 +69,12 @@ login()->message_show();
 // On incrémente le nombre de pages vues par le visiteur
 login()->page_count++;
 
-gentime("END");
+if (DEBUG_GENTIME == true)
+	gentime("END");
 
 ?>
 
-<?php if (DEBUG_GENTIME && login()->perm(2)) { // SuperAdmin ?>
+<?php if (DEBUG_GENTIME == true && login()->perm(2)) { // SuperAdmin ?>
 
 <div style="width:980px;margin:5px;padding:5px;background-color:white;">
 <h1>DEBUG Gentime</h1>

@@ -3,7 +3,7 @@
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -30,18 +30,20 @@ if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
 	$_type()->del($_POST["_delete"]);
 }
 
+$_type()->retrieve_objects();
+
 ?>
 <form method="get" class="page_form">
 <input type="submit" value="<?php echo $_label; ?>" />
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach ($_type()->list_detail_get() as $id=>$info)
+foreach ($_type()->list_get() as $id=>$template)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] [$info[type]] $info[label]</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] ".$template->info("type")." ".$template->label()."</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] [$info[type]] $info[label]</option>\n";
+		echo "	<option value=\"$id\">[$id] ".$template->info("type")." ".$template->label()."</option>\n";
 }
 ?></select>
 <a href="?add">Ajouter</a>
@@ -50,41 +52,37 @@ foreach ($_type()->list_detail_get() as $id=>$info)
 
 <?php
 
-$library_list = library()->list_detail_get();
-
 // EDITION
 if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 {
 
+$template = $_type($id);
+
 ?>
 <div class="admin_menu admin_submenu">
-	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" class="selected">Formulaire</a>
-	<a href="javascript:;" name="param_list" onclick="admin_submenu(this.name)">Paramètres</a>
+	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)"<?php if (empty($_GET["param_edit"])) echo " class=\"selected\""; ?>>Formulaire</a>
+	<a href="javascript:;" name="param_list" onclick="admin_submenu(this.name)"<?php if (!empty($_GET["param_edit"])) echo " class=\"selected\""; ?>>Paramètres</a>
 </div>
-<div id="update_form" class="subcontents">
+<div id="update_form" class="subcontents"<?php if (!empty($_GET["param_edit"])) echo " style=\"display:none;\""; ?>>
 <?
-$_type($id)->update_form();
+$template->update_form();
 ?>
 </div>
 
-<div id="param_list" class="subcontents" style="display:none;">
+<div id="param_list" class="subcontents"<?php if (empty($_GET["param_edit"])) echo " style=\"display:none;\""; ?>>
 <h2>Gestion des paramètres</h2>
 <?php
 // Ajout
-if (isset($_POST["param_add"]) && is_array($param_add=$_POST["param_add"]))
+if (isset($_POST["param_add"]) && is_array($_POST["param_add"]) && isset($_POST["param_add"]["name"]))
 {
-	list($param_add["order"]) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$id'")->fetch_row();
-	db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `defaultvalue`) VALUES ('$id', '".$param_add["order"]."', '".$param_add["datatype"]."', '".$param_add["name"]."', '".addslashes($param_add["defaultvalue"])."' )");
-	db()->query("INSERT INTO `_template_params_lang` (`template_id`, `lang_id`, `name`, `description`) VALUES ('$id', '".SITE_LANG_ID."', '".$param_add["name"]."', '".addslashes($param_add["description"])."' )");
-	echo "<p>Le paramètre $param_add[name] a bien été ajouté.</p>\n";
+	if ($template->param_add($_POST["param_add"]["name"], $_POST["param_add"]))
+		echo "<p>Le paramètre ".$_POST["param_add"]["name"]." a bien été ajouté.</p>\n";
 }
 // Suppression
-if (isset($_GET["param_delete"]) && ($param_delete=$_GET["param_delete"]))
+if (isset($_GET["param_delete"]))
 {
-	db()->query("DELETE FROM `_template_params` WHERE template_id='$id' AND name='$param_delete'");
-	db()->query("DELETE FROM `_template_params_lang` WHERE template_id='$id' AND name='$param_delete'");
-	db()->query("DELETE FROM `_template_params_opt` WHERE template_id='$id' AND name='$param_delete'");
-	echo "<p>Le paramètre $param_delete a bien été supprimé.</p>\n";
+	if ($template->param_del($_GET["param_delete"]))
+		echo "<p>Le paramètre ".$_GET["param_delete"]." a bien été supprimé.</p>\n";
 }
 // Mise à jour
 if (isset($_GET["param_edit"]) && isset($_GET["option_del"]))
@@ -219,18 +217,21 @@ if ($query->num_rows())
 </form>
 <?php
 }
+
 ?>
 
 <form action="?id=<?=$id?>" method="post">
-<table width="100%" cellspacing="1" border="1" cellpadding="1">
-<tr>
+<table width="100%" cellspacing="0" border="0" cellpadding="0">
+<tr class="label">
 	<td colspan="2">&nbsp;</td>
 	<td>Name</td>
-	<td>description</td>
+	<td>Label</td>
 	<td>Datatype</td>
-	<td>Defaultvalue (JSON)</td>
+	<td>Value (JSON)</td>
 </tr>
 <?
+
+$ordermax = count($template->param_list_detail());
 
 if (isset($_POST["order_change"]) && is_array($_POST["order_change"]))
 {
@@ -245,27 +246,26 @@ if (isset($_POST["order_change"]) && is_array($_POST["order_change"]))
 	}
 }
 
-list($ordermax) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$id'")->fetch_row();
+var_dump($template);
 
-$query_params = db()->query("SELECT t1.name , t1.order , t2.description , t1.datatype , t1.defaultvalue , t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$id' ORDER BY t1.order");
-while ($param = $query_params->fetch_assoc())
+foreach ($template->param_list_detail() as $nb=>$param)
 {
 ?>
-<tr>
+<tr<?php if ($nb%2 == 0) echo " class=\"alt\""; ?>>
 	<td><a href="?id=<?php echo $id; ?>&param_delete=<?=$param["name"]?>" onclick="return(confirm('Êtes-vous sûr de vouloir effacer ?'))" style="color:red;border:1px red dotted;">X</a></td>
 	<td><select id="order_change[<?=$param["name"]?>]" onchange="this.name=this.id;this.form.submit();"><?php
 	for ($i=0;$i<$ordermax;$i++)
 	{
-		if ($param["order"] == $i)
+		if ($nb == $i)
 			echo "<option value=\"$i\" selected>$i</option>\n";
 		else
 			echo "<option value=\"$i\">$i</option>\n";
 	}
 	?></select></td>
 	<td><a href="?id=<?php echo $id; ?>&param_edit=<?=$param["name"]?>"><?=$param["name"]?></a></td>
-	<td><?=$param["description"]?></td>
+	<td><?=$param["label"]?></td>
 	<td><?=data()->get_name($param["datatype"])->label?></td>
-	<td><?=$param["defaultvalue"]?></td>
+	<td><?=$param["value"]?></td>
 </tr>
 <?php
 }
@@ -281,8 +281,8 @@ while ($param = $query_params->fetch_assoc())
 	<td><input name="param_add[name]" /></td>
 </tr>
 <tr>
-	<td>Description :</td>
-	<td><textarea name="param_add[description]" style="width:100%;" rows="4"></textarea></td>
+	<td>Label :</td>
+	<td><input name="param_add[label]" /></td>
 </tr>
 <tr>
 	<td>Type de donnée :</td>
@@ -298,7 +298,7 @@ while ($param = $query_params->fetch_assoc())
 </tr>
 <tr>
 	<td>Valeur par défaut :</td>
-	<td><textarea name="param_add[defaultvalue]" style="width:100%;" rows="10"></textarea></td>
+	<td><textarea name="param_add[value]" style="width:100%;" rows="10"></textarea></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>

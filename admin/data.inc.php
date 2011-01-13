@@ -73,9 +73,6 @@ if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]))
 		ID#<input id="object_id" name="object_id" class="q_id" value="<?php if (isset($_GET["object_id"])) echo $_GET["object_id"]; ?>" onchange="this.form.submit()" size="6" />
 		<?
 	}
-}
-if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]))
-{
 ?>
 <div style="display: inline;position: absolute;">
 Query:

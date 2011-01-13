@@ -153,14 +153,10 @@ function menu($id=null)
 
 if (!isset($GLOBALS["menu_gestion"]))
 {
-	// APC
-	if (APC_CACHE)
+	if (OBJECT_CACHE)
 	{
-		if (!($GLOBALS["menu_gestion"]=apc_fetch("menu_gestion")))
-		{
+		if (!($GLOBALS["menu_gestion"]=object_cache_retrieve("menu_gestion")))
 			$GLOBALS["menu_gestion"] = new menu_gestion();
-			apc_store("menu_gestion", $GLOBALS["menu_gestion"], APC_CACHE_GESTION_TTL);
-		}
 	}
 	// Session
 	else

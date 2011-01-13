@@ -508,9 +508,12 @@ function login()
 
 if (!isset($GLOBALS["login"]))
 {
-	if (!isset($_SESSION["login"]))
-		$_SESSION["login"] = new login();
-	$GLOBALS["login"] = $_SESSION["login"];
+	// Session
+	{
+		if (!isset($_SESSION["login"]))
+			$_SESSION["login"] = new login();
+		$GLOBALS["login"] = $_SESSION["login"];
+	}
 }
 
 return $GLOBALS["login"];

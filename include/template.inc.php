@@ -3,7 +3,7 @@
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -36,6 +36,10 @@ protected $info_detail = array
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.inc.php")
 );
 
+protected $info_required = array("name", "label", "type");
+
+protected $retrieve_details = false;
+
 protected $default_id = 0;
 
 public function get($id=0)
@@ -44,36 +48,30 @@ public function get($id=0)
 if (!$id && TEMPLATE_ID)
 	$id = TEMPLATE_ID;
 
-//echo "<p>Accessing Template ID#$id</p>\n";
+return gestion::get($id);
 
-if (isset($this->list[$id]))
-{
-	//echo "<p>Template ID#$id found in list : ".get_class($this->list[$id])."</p>\n";
-	return $this->list[$id];
 }
-elseif (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc" && ($template=apc_fetch("template_$id")))
+
+protected function construct_object($id)
 {
-	return $this->list[$id] = $template;
-}
-elseif ($this->exists($id))
+
+if ($this->retrieve_details)
 {
 	if ($this->list_detail[$id]["type"] == "container")
-		$template = new template_container($id, false, $this->list_detail[$id]);
-	elseif (substr($this->list_detail[$id]["name"], 0, 9) == "datamodel")
-		$template = new template_datamodel($id, false, $this->list_detail[$id]);
+		return new template_container($id, false, $this->list_detail[$id]);
+	elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
+		return new template_datamodel($id, false, $this->list_detail[$id]);
 	else
-		$template = new template($id, false, $this->list_detail[$id]);
-	if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
-		apc_store("template_$id", $template, APC_CACHE_TEMPLATE_TTL);
-	return $this->list[$id] = $template;
-}
-elseif ($this->exists_name($id))
-{
-	return $this->get($this->list_name[$id]);
+		return new template($id, false, $this->list_detail[$id]);
 }
 else
 {
-	return null;
+	if ($this->list_detail[$id]["type"] == "container")
+		return new template_container($id, true);
+	elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
+		return new template_datamodel($id, true);
+	else
+		return new template($id, true);
 }
 
 }
@@ -91,15 +89,16 @@ while ($param = $query->fetch_assoc())
 		"name"=>$param["name"],
 		"datatype"=>$param["datatype"],
 		"value"=>json_decode($param["defaultvalue"], true),
-		"label"=>$param["description"]
+		"label"=>$param["description"],
+		"opt"=>array()
 	);
 	$param_order[$param["template_id"]][$param["name"]] = $param["order"];
 }
-$query_opt = db()->query("SELECT `template_id`, `name`, `opttype`, `optname`, `optvalue` FROM `_template_params_opt`");
+$query_opt = db()->query("SELECT `template_id`, `name`, `optname`, `optvalue` FROM `_template_params_opt`");
 while ($opt = $query_opt->fetch_assoc())
 {
 	if (isset($this->list_detail[$opt["template_id"]]))
-		$this->list_detail[$opt["template_id"]]["param_list_detail"][$param_order[$opt["template_id"]][$opt["name"]]][$opt["opttype"]][$opt["optname"]] = json_decode($opt["optvalue"], true);
+		$this->list_detail[$opt["template_id"]]["param_list_detail"][$param_order[$opt["template_id"]][$opt["name"]]]["opt"][$opt["optname"]] = json_decode($opt["optvalue"], true);
 }
 
 }
@@ -134,9 +133,7 @@ protected $library_list = array();
  */
 protected $param_list_detail = array();
 protected $param_list = array();
-/*
- * Effective params, using Data Objects (Yeah !)
- */
+// Effective params, using data fields
 protected $param = array();
 
 /*
@@ -151,13 +148,10 @@ protected $cache_id = "";
 protected $cache_folder = "";
 protected $cache_filename = "";
 
-protected static $infos = array("name", "type", "cache_mintime", "cache_maxtime", "login_dependant");
-protected static $infos_lang = array("label", "description");
-
 function __sleep()
 {
 
-return array("_type", "id", "name", "label", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list_detail");
+return array("id", "name", "label", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list_detail");
 
 }
 function __wakeup()
@@ -186,16 +180,10 @@ $this->param = array();
 foreach ($this->param_list_detail as $nb=>$param)
 {
 	$this->param_list[$nb] = $param["name"];
-	if (DEBUG_TEMPLATE)
-		echo "<p>DEBUG template(ID#$this->id)::query() : param ".$param["name"]."</p>\n";
 	$datatype = "data_".$param["datatype"];
-	$this->param[$param["name"]] = new $datatype($param["name"], null, $param["label"]);
-	if (isset($param["structure"]) && count($param["structure"]))
-	{
-		foreach ($param["structure"] as $i=>$j)
-			$this->param[$param["name"]]->structure_opt_set($i, $j);
-	}
-	$this->param[$param["name"]]->value = $param["value"];
+	$this->param[$param["name"]] = new $datatype($param["name"], $param["value"], $param["label"]);
+	foreach ($param["opt"] as $i=>$j)
+		$this->param[$param["name"]]->structure_opt_set($i, $j);
 }
 
 }
@@ -205,46 +193,144 @@ protected function query_info_more()
 
 $this->tpl_filename = "template/".$this->name.".tpl.php";
 
+$this->query_params();
+
+}
+protected function query_params()
+{
+
 // Params
 $this->param_list_detail = array();
 $param_order = array(); // temp
 $query = db()->query("SELECT t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.`template_id`='".$this->id."' ORDER BY t1.`order` ASC");
 while ($param = $query->fetch_row())
 {
-	$this->param_list_detail[$param[0]] = array("name"=>$param[1], "datatype"=>$param[2], "value"=>json_decode($param[3], true), "label"=>$param[4]);
+	$this->param_list_detail[$param[0]] = array("name"=>$param[1], "datatype"=>$param[2], "value"=>json_decode($param[3], true), "label"=>$param[4], "opt"=>array());
 	$param_order[$param[1]] = $param[0];
 }
-$query_opt = db()->query("SELECT `name`, `opttype`, `optname`, `optvalue` FROM `_template_params_opt` WHERE `template_id`='".$this->id."'");
+$query_opt = db()->query("SELECT `name`, `optname`, `optvalue` FROM `_template_params_opt` WHERE `template_id`='".$this->id."'");
 while ($opt = $query_opt->fetch_row())
 {
-	$this->param_list_detail[$param_order[$opt[0]]][$opt[1]][$opt[2]] = json_decode($opt[3], true);
+	$this->param_list_detail[$param_order[$opt[0]]]["opt"][$opt[1]] = json_decode($opt[2], true);
 }
 $this->construct_params();
 
 }
 
 /**
- * Load the libraries associated to the template
+ * Add, remove and update template parameters
  */
-protected function library_load()
+public function param_add($name, $info)
 {
 
-foreach ($this->library_list as $library_id)
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
+if (!is_string($name) || !preg_match("/^([a-zA-Z_-]*)$/", $name) || isset($this->param[$name]) || !is_array($info) || !isset($info["datatype"]) || !data()->exists_name($info["datatype"]))
+	return false;
+if (!isset($info["defaultvalue"]) || !is_string($info["defaultvalue"]))
+	$info["defaultvalue"] = "null";
+if (!isset($info["description"]) || !is_string($info["description"]))
+	$info["description"] = "";
+
+list($info["order"]) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$this->id'")->fetch_row();
+db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `defaultvalue`) VALUES ('$this->id', '".$info["order"]."', '".$info["datatype"]."', '".$name."', '".db()->string_escape($info["defaultvalue"])."' )");
+db()->query("INSERT INTO `_template_params_lang` (`template_id`, `lang_id`, `name`, `description`) VALUES ('$this->id', '".SITE_LANG_ID."', '".db()->string_escape($name)."', '".db()->string_escape($info["description"])."' )");
+
+$this->query_info();
+template()->query_info();
+
+return true;
+
+}
+public function param_del($name)
 {
-	if (DEBUG_LIBRARY)
-		echo "<p>template(ID#$this->id)::library_load() : ID#$library_id</p>\n";
-	library($library_id)->load();
+
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
+if (!is_string($name) || !isset($this->param[$name]))
+	return false;
+
+db()->query("DELETE FROM `_template_params` WHERE template_id='$this->id' AND name='$name'");
+db()->query("DELETE FROM `_template_params_lang` WHERE template_id='$this->id' AND name='$name'");
+db()->query("DELETE FROM `_template_params_opt` WHERE template_id='$this->id' AND name='$name'");
+
+$this->query_info();
+template()->query_info();
+
+return true;
+
 }
+public function param_update($name, $info)
+{
+
+if (!login()->perm(6))
+	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
+if (!is_string($name) || isset($this->param[$name]) || !is_array($info))
+	return false;
+
+$update_list = array();
+$update_lang_list = array();
+if (isset($info["datatype"]))
+	if (!data()->exists_name($info["datatype"]))
+		return false;
+	else
+		$update_list[] = "`datatype`='".$info["datatype"]."'";
+if (isset($info["defaultvalue"]))
+	if (!is_string($info["defaultvalue"]))
+		return false;
+	else
+		$update_list[] = "`defaultvalue`='".db()->string_escape($info["defaultvalue"])."'";
+if (isset($info["description"]))
+	if (!is_string($info["description"]))
+		return false;
+	else
+		$update_lang_list[] = "`description`='".db()->string_escape($info["description"])."'";
+list($posmax) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$this->id'")->fetch_row();
+if (isset($info["order"]))
+	if (!is_numeric($info["order"]) || $info["order"] < 0 || $info["order"] > $pos_max)
+		return false;
+
+if (count($update_list))
+{
+	db()->query("UPDATE `_template_params` SET ".implode($update_list)." WHERE `template_id`='$this->id' AND `name`='".$name."'");
+}
+if (count($update_lang_list))
+{
+	db()->query("UPDATE `_template_params_lang` SET ".implode($update_lang_list)." WHERE `template_id`='$this->id' AND `lang_id`='".SITE_LANG_ID."' AND `name`='".$name."'");
+}
+
+$this->query_info();
+template()->query_info();
+
+return true;
 
 }
 
+/**
+ * Returns the list of params
+ */
+public function param_list()
+{
+
+return $this->param_list;
+
+}
+public function param_list_detail()
+{
+
+return $this->param_list_detail;
+
+}
+
+/**
+ * Usage of params from the page or parent template
+ */
 function __isset($name)
 {
 
 return isset($this->param[$name]);
 
 }
-
 function __get($name)
 {
 
@@ -254,10 +340,6 @@ else
 	return null;
 
 }
-
-/**
- * Assignment of params from the page or parent templates
- */
 public function __set($name, $value)
 {
 
@@ -276,18 +358,17 @@ else
 }
 
 /**
- * Returns the list of params
+ * Load the libraries associated to the template
  */
-public function param_list()
+protected function library_load()
 {
 
-return $this->param_list;
-
+foreach ($this->library_list as $library_id)
+{
+	if (DEBUG_LIBRARY)
+		echo "<p>template(ID#$this->id)::library_load() : ID#$library_id</p>\n";
+	library($library_id)->load();
 }
-public function param_list_detail()
-{
-
-return $this->param_list_detail;
 
 }
 
@@ -591,7 +672,7 @@ if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
 		{
 			if ($param["datatype"] == "dataobject") // TODO : add directly a query function into the dataobject, for example $param->update_datetime_get() ...
 			{
-				$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["structure"]["databank"]."' AND `dataobject_id`='".$this->param[$param["name"]]->value."' ORDER BY `datetime` DESC LIMIT 1");
+				$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["opt"]["databank"]."' AND `dataobject_id`='".$this->param[$param["name"]]->value."' ORDER BY `datetime` DESC LIMIT 1");
 				if ($query->num_rows())
 				{
 					list($i) = $query->fetch_row();
@@ -645,7 +726,7 @@ else
 		{
 			if ($param["datatype"] == "dataobject") // TODO : add directly a query function into the dataobject, for example $param->update_datetime_get() ...
 			{
-				$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["structure"]["databank"]."' AND `dataobject_id`='".$this->param[$param["name"]]->value_to_db()."' ORDER BY `datetime` DESC LIMIT 1");
+				$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["opt"]["databank"]."' AND `dataobject_id`='".$this->param[$param["name"]]->value_to_db()."' ORDER BY `datetime` DESC LIMIT 1");
 				if ($query->num_rows())
 				{
 					list($i) = $query->fetch_row();
@@ -696,7 +777,9 @@ else
 }
 
 /**
- * Specific for container (primary) templates
+ * Specific configuration for container (alias primary) templates
+ * @author mathieu
+ * 
  */
 class template_container extends template
 {
@@ -752,9 +835,9 @@ foreach($this->param_list_detail as $param)
 }
 
 /**
- * Special configuration optimized for datamodels.
+ * Specific configuration for datamodel templates.
  * @author mathieu
- *
+ * 
  */
 class template_datamodel extends template
 {
@@ -929,14 +1012,10 @@ function template($id=0)
 
 if (!isset($GLOBALS["template_gestion"]))
 {
-	// APC
-	if (APC_CACHE)
+	if (OBJECT_CACHE)
 	{
-		if (!($GLOBALS["template_gestion"]=apc_fetch("template_gestion")))
-		{
+		if (!($GLOBALS["template_gestion"]=object_cache_retrieve("template_gestion")))
 			$GLOBALS["template_gestion"] = new template_gestion();
-			apc_store("template_gestion", $GLOBALS["template_gestion"], APC_CACHE_GESTION_TTL);
-		}
 	}
 	// Session
 	else

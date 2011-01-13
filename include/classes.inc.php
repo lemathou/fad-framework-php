@@ -3,7 +3,7 @@
 /**
   * $Id$
   * 
-  * Copyright 2008, 2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -26,17 +26,24 @@ protected $list = array();
 protected $list_detail = array();
 protected $list_name = array();
 
-protected $info_list = array("name"); // Keep at least name !
+// Data in main database table
+protected $info_list = array("name"); // Keep at least name ! This is a unique string key
+// Data in lang database table
 protected $info_lang_list = array("label", "description"); // Keep at least label
-protected $info_save_list = array("name", "label"); // Keep at least name and label !
+// Detailled data (with type, etc.)
 protected $info_detail = array // Keep at least name and label !
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true)
 );
+// Required info
+protected $info_required = array("name", "label");
 
-protected $retrieve_all = false;
+// Retrieve all objects on first load
+protected $retrieve_objects = false;
+// Keep all non required info after first load
+protected $retrieve_details = true;
 
 public function info_list()
 {
@@ -63,7 +70,7 @@ return $this->info_detail;
 function __sleep()
 {
 
-if ($this->retrieve_all)
+if ($this->retrieve_objects)
 	return array("list_detail", "list");
 else
 	return array("list_detail");
@@ -73,10 +80,7 @@ function __wakeup()
 {
 
 foreach($this->list_detail as $id=>$info)
-{
-	if (isset($info["name"]))
-		$this->list_name[$info["name"]] = $id;
-}
+	$this->list_name[$info["name"]] = $id;
 
 }
 
@@ -97,7 +101,7 @@ protected function construct_more()
 /**
  * Query required info
  */
-function query_info($retrieve_all=false)
+function query_info($retrieve_objects=false)
 {
 
 $this->list = array();
@@ -121,7 +125,7 @@ foreach ($this->info_detail as $name=>$field)
 	}
 }
 
-$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$this->type` as t1 LEFT JOIN `_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`=".SITE_LANG_ID;
+$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$this->type` as t1 LEFT JOIN `_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."'";
 $query = db()->query($query_string);
 while($info = $query->fetch_assoc())
 {
@@ -144,10 +148,40 @@ foreach ($query_objects as $name)
 
 $this->query_info_more();
 
-if ($retrieve_all || $this->retrieve_all)
-	$this->retrieve_all();
+// TEMPORARY HACK so retrieve_objects() does not become silly ^^
+if (!$this->retrieve_details)
+{
+	$rd = false;
+	$this->retrieve_details = true;
+}
+else
+	$rd = true;
 
-apc_store($this->type."_gestion", $this, APC_CACHE_GESTION_TTL);
+if ($retrieve_objects || $this->retrieve_objects)
+{
+	$this->retrieve_objects();
+}
+// generate objects in cache in some cases to optimise website
+if (!$this->retrieve_objects && !$rd && OBJECT_CACHE)
+{
+	foreach($this->list_detail as $id=>$info)
+	{
+		object_cache_store($this->type."_$id", $this->construct_object($id), OBJECT_CACHE_GESTION_TTL);
+	}
+}
+if (!$rd)
+{
+	$this->retrieve_details = false;
+	foreach ($this->list_detail as $id=>$info)
+	{
+		$this->list_detail[$id] = array();
+		foreach ($this->info_required as $name)
+			$this->list_detail[$id][$name] = $info[$name];
+	}
+}
+
+if (OBJECT_CACHE)
+	object_cache_store($this->type."_gestion", $this, OBJECT_CACHE_GESTION_TTL);
 
 }
 protected function query_info_more()
@@ -157,14 +191,32 @@ protected function query_info_more()
 
 }
 
-function retrieve_all()
+/**
+ * Constructs an object
+ */
+protected function construct_object($id)
 {
 
 $type = $this->type;
-$this->list = array();
+
+if ($this->retrieve_details)
+	return new $type($id, false, $this->list_detail[$id]);
+else
+	return new $type($id, true);
+
+}
+
+/**
+ * Retrieve all objects
+ */
+public function retrieve_objects()
+{
+
+$type = $this->type;
 foreach ($this->list_detail as $id=>$info)
 {
-	$this->list[$id] = new $type($id, false, $info);
+	if (!isset($this->list[$id]))
+		$this->list[$id] = $this->construct_object($id);
 }
 
 }
@@ -176,24 +228,25 @@ foreach ($this->list_detail as $id=>$info)
 function get($id)
 {
 
+if (!is_numeric($id))
+	return null;
+
+//echo $id;
+
 if (isset($this->list[$id]))
 {
 	return $this->list[$id];
 }
-elseif (APC_CACHE && !$this->retrieve_all && ($object=apc_fetch($this->type."_$id")))
+elseif (!$this->retrieve_objects && OBJECT_CACHE && ($object=object_cache_retrieve($this->type."_$id")))
 {
 	return $this->list[$id] = $object;
 }
-elseif (isset($this->list_detail[$id]))
+elseif (!$this->retrieve_objects && isset($this->list_detail[$id]))
 {
-	$object = new $this->type($id, false, $this->list_detail[$id]);
-	if (APC_CACHE && !$this->retrieve_all)
-		apc_store($this->type."_$id", $object, APC_CACHE_GESTION_TTL);
+	$object = $this->construct_object($id);
+	if (OBJECT_CACHE)
+		object_cache_store($this->type."_$id", $object, OBJECT_CACHE_GESTION_TTL);
 	return $this->list[$id] = $object;
-}
-elseif (DEBUG_PERMISSION)
-{
-	trigger_error("Cannot create $this->type ID#$id");
 }
 else
 {
@@ -201,6 +254,7 @@ else
 }
 
 }
+
 /**
  * Retrieve an object using its unique name
  * @param unknown_type $name
@@ -291,31 +345,36 @@ public function del($id)
 if (!login()->perm(6)) // TODO : send email to admin
 	die("ONLY ADMIN CAN DELETE $this->type");
 
-if (isset($this->list_detail[$id]))
+if (!$this->retrieve_objects)
+	if (!isset($this->list_detail[$id]))
+		return false;
+	else
+		$o_name = $this->list_detail[$id]["name"];
+elseif ($this->retrieve_objects)
+	if (!isset($this->list[$id]))
+		return false;
+	else
+		$o_name = $this->list[$id]->name();
+
+db()->query("DELETE FROM `_$this->type` WHERE `id`='$id'");
+db()->query("DELETE FROM `_".$this->type."_lang` WHERE `id`='$id'");
+foreach ($this->info_detail as $name=>$info)
 {
-	db()->query("DELETE FROM `_$this->type` WHERE `id`='$id'");
-	db()->query("DELETE FROM `_".$this->type."_lang` WHERE `id`='$id'");
-	foreach ($this->info_detail as $name=>$info)
+	if ($info["type"] == "script")
 	{
-		if ($info["type"] == "script")
-		{
-			$filename = "$info[folder]/".str_replace("{name}", $this->list_detail[$id]["name"], $info["filename"]);
-			if (file_exists($filename))
-				unlink($filename);
-		}
-		elseif ($info["type"] == "object_list")
-		{
-			db()->query("DELETE FROM `$info[db_table]` WHERE `$info[db_id]`='$id'");
-		}
+		$filename = "$info[folder]/".str_replace("{name}", $o_name, $info["filename"]);
+		if (file_exists($filename))
+			unlink($filename);
 	}
-	$this->del_more($id);
-	$this->query_info();
-	return true;
+	elseif ($info["type"] == "object_list")
+	{
+		db()->query("DELETE FROM `$info[db_table]` WHERE `$info[db_id]`='$id'");
+	}
 }
-else
-{
-	return false;
-}
+$this->del_more($id);
+$this->query_info();
+
+return true;
 
 }
 protected function del_more($id)
@@ -341,8 +400,10 @@ $query_fields_lang = array();
 $query_values_lang = array();
 $query_objects = array();
 
-if (!is_array($infos) || !isset($infos["name"]) || !is_string($infos["name"]) || !$infos["name"])
-	die();
+if (!is_array($infos) || !isset($infos["name"]) || !is_string($infos["name"]) || !preg_match("/^([a-zA-Z_\/0-9-]+)$/", $infos["name"]))
+	return false;
+if ($this->exists_name($infos["name"]))
+	return false;
 
 foreach ($this->info_detail as $name=>$field_info)
 {
@@ -387,9 +448,6 @@ $this->add_more($id, $infos);
 
 $this->query_info();
 
-if (APC_CACHE)
-	apc_store($this->type."_gestion", $this, APC_CACHE_GESTION_TTL);
-
 }
 /**
  * Specific fields for an object
@@ -414,49 +472,53 @@ public function table_list($params=array(), $field_list=true)
 if (!login()->perm(6))
 	die("ONLY ADMIN CAN SHOW LIST OF $this->type");
 
+$this->retrieve_objects();
+
 ?>
 <table width="100%" cellspacing="1" border="1" cellpadding="1" class="object_list">
-<tr style="font-weight:bold;">
+<tr class="label">
 	<td>[id] name</td>
+	<td>label</td>
 <?
-foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $field_info["type"] != "script")
+foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $name != "label" && $field_info["type"] != "script")
 	echo "<td>".$field_info["label"]."</td>\n";
 ?>
 </tr>
 <?
-foreach ($this->list_detail as $id=>$info) if (true || $params === true)
+foreach ($this->list as $id=>$object) if (true || $params === true)
 {
 	echo "<tr>\n";
-			echo "<td><a href=\"?id=$id\">[$id] $info[name]</a></td>\n";
-	foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $field_info["type"] != "script")
+			echo "<td><a href=\"?id=$id\">[$id] ".$object->name()."</a></td>\n";
+			echo "<td>".$object->label()."</td>\n";
+	foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $name != "label" && $field_info["type"] != "script")
 	{
 		if (in_array($field_info["type"], array("string", "text")))
 		{
-			echo "<td>".$info[$name]."</td>\n";
+			echo "<td>".$object->info($name)."</td>\n";
 		}
 		elseif ($field_info["type"] == "integer")
 		{
-			echo "<td align=\"right\">".$info[$name]."</td>\n";
+			echo "<td align=\"right\">".$object->info($name)."</td>\n";
 		}
 		elseif ($field_info["type"] == "boolean")
 		{
-			if ($info[$name])
+			if ($object->info($name))
 				echo "<td>OUI</td>\n";
 			else
 				echo "<td>NON</td>\n";
 		}
 		elseif ($field_info["type"] == "select")
 		{
-			if ($info[$name])
-				echo "<td>".$field_info["select_list"][$info[$name]]."</td>\n";
+			if ($object->info($name))
+				echo "<td>".$field_info["select_list"][$object->info($name)]."</td>\n";
 			else
 				echo "<td>".$info[$name]."</td>\n";
 		}
 		elseif ($field_info["type"] == "object")
 		{
 			$object_type = $field_info["object_type"];
-			if ($info[$name])
-				echo "<td>".$object_type($info[$name])->label()."</td>\n";
+			if ($object_type()->exists($id=$object->info($name)))
+				echo "<td>".$object_type()->get($id)->label()."</td>";
 			else
 				echo "<td><i>undefined</i></td>\n";
 		}
@@ -464,12 +526,14 @@ foreach ($this->list_detail as $id=>$info) if (true || $params === true)
 		{
 			$object_type = $field_info["object_type"];
 			$object_list = array();
-			if (count($info[$name])) foreach ($info[$name] as $id)
-				$object_list[] = $object_type($id)->label();
+			if (count($object->info($name))) foreach ($object->info($name) as $id) if ($object_type()->exists($id))
+			{
+				$object_list[] = $object_type()->get($id)->label();
+			}
 			echo "<td>".implode(", ", $object_list)."</td>\n";
 		}
 		else
-			echo "<td>".json_encode($info[$name])."</td>\n";
+			echo "<td>".json_encode($object->info($name))."</td>\n";
 	}
 	echo "</tr>\n";
 }
@@ -604,6 +668,9 @@ while($infos = $query->fetch_assoc())
 
 $this->query_info_more();
 
+if (OBJECT_CACHE)
+	object_cache_store($this->_type."_$this->id", $this, OBJECT_CACHE_GESTION_TTL);
+
 }
 protected function query_info_more()
 {
@@ -633,7 +700,7 @@ $query_info_lang = array();
 $query_objects = array();
 
 // unique name
-if (isset($infos["name"]) && (!is_string($infos["name"]) || !$infos["name"] || $type()->exists($infos["name"])))
+if (isset($infos["name"]) && (!is_string($infos["name"]) || !preg_match("/^([a-zA-Z0-9_\/-]+)$/",$infos["name"]) || $type()->exists($infos["name"])))
 	unset($infos["name"]);
 
 foreach ($info_detail as $name=>$field_info)
@@ -651,12 +718,12 @@ foreach ($info_detail as $name=>$field_info)
 		$filename = $field_info["folder"]."/".str_replace("{name}", $this->name, $field_info["filename"]);
 		if (isset($infos[$name]))
 		{
-			if ($infos[$name] && file_exists($filename))
-				fwrite(fopen($filename,"w"), htmlspecialchars_decode($infos[$name]));
+			if (is_string($infos[$name]) && strlen($infos[$name])>0)
+				fwrite(fopen($filename, "w"), htmlspecialchars_decode($infos[$name]));
 			else
 				unset($filename);
 		}
-		if (isset($infos["name"]) && ($this->name != $infos["name"]) && file_exists($filename))
+		if (isset($infos["name"]) && $this->name != $infos["name"] && file_exists($filename))
 		{
 			$filename_new = $field_info["folder"]."/".str_replace("{name}", $infos["name"], $field_info["filename"]);
 			rename($filename, $filename_new);
@@ -811,7 +878,7 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 
 /**
  * Page listing
- *
+ * 
  * @author mathieu
  */
 class page_listing
@@ -983,17 +1050,23 @@ $link_list = array();
 
 if (!is_numeric(strpos($this->url, "?")))
 	$url = $this->url."?";
-else
-	$url = $this->url;
+elseif (substr($this->url, -1, 1) != "&")
+	$url = $this->url."&";
+
+if (count($this->page_nb_list) > 1)
+	$url .= "page_nb=$this->page_nb&";
 
 foreach ($page_list as $i)
 {
 	if (!$i)
 		$link_list[] = "...";
 	elseif ($this->page == $i)
-		$link_list[] = "<input class=\"selected\" value=\"$i\" size=\"".strlen($i)."\" onchange=\"document.location.href='".$url."&page_nb=$this->page_nb&page='+this.value\" onkeyup=\"if (this.value.length) this.size=(this.value.length); else this.size='1';\" style=\"border:0;\" />";
+		if (in_array("", $page_list))
+			$link_list[] = "<input class=\"autosize\" value=\"$i\" onfocus=\"this.select()\" onchange=\"document.location.href='".$url."page='+this.value\" onkeyup=\"if (this.value.length) this.style.width=(this.value.length*0.75+0.75)+'em'; else this.style.width='1.5em';\" style=\"width:".(strlen($i)*0.75+0.75)."em;\" />";
+		else
+		$link_list[] = "<span class=\"selected\">$i</span>";
 	else
-		$link_list[] = "<a href=\"".$url."&page_nb=$this->page_nb&page=$i\">$i</a>";
+		$link_list[] = "<a href=\"".$url."page=$i\">$i</a>";
 }
 
 return $link_list;
@@ -1014,18 +1087,17 @@ function nb_end()
 {
 
 if ($this->page > 0)
-	return min($this->page*$this->page_nb - 1, $this->nb-1);
+	return min($this->page*$this->page_nb, $this->nb) - 1;
 else
 	return -1;
 
 }
 
+// Getter
 function __get($name)
 {
 
-$list = array("page", "page_default", "page_nb", "page_max");
-
-if (in_array($name, $list))
+if (in_array($name, array("page", "page_default", "page_nb", "page_max")))
 	return $this->{$name};
 
 }
@@ -1042,6 +1114,15 @@ class text
 
 const ACCENT = "ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûýýþÿ";
 const NOACCENT = "AAAAAAACEEEEIIIIDNOOOOOOUUUUYBsaaaaaaaceeeeiiiidnoooooouuuyyby";
+
+function remove_accent($str)
+{
+
+$a = array('À', 'Á', 'Â', 'Ã', 'Ä', 'Å', 'Æ', 'Ç', 'È', 'É', 'Ê', 'Ë', 'Ì', 'Í', 'Î', 'Ï', 'Ð', 'Ñ', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ø', 'Ù', 'Ú', 'Û', 'Ü', 'Ý', 'ß', 'à', 'á', 'â', 'ã', 'ä', 'å', 'æ', 'ç', 'è', 'é', 'ê', 'ë', 'ì', 'í', 'î', 'ï', 'ñ', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'ù', 'ú', 'û', 'ü', 'ý', 'ÿ', 'Ā', 'ā', 'Ă', 'ă', 'Ą', 'ą', 'Ć', 'ć', 'Ĉ', 'ĉ', 'Ċ', 'ċ', 'Č', 'č', 'Ď', 'ď', 'Đ', 'đ', 'Ē', 'ē', 'Ĕ', 'ĕ', 'Ė', 'ė', 'Ę', 'ę', 'Ě', 'ě', 'Ĝ', 'ĝ', 'Ğ', 'ğ', 'Ġ', 'ġ', 'Ģ', 'ģ', 'Ĥ', 'ĥ', 'Ħ', 'ħ', 'Ĩ', 'ĩ', 'Ī', 'ī', 'Ĭ', 'ĭ', 'Į', 'į', 'İ', 'ı', 'Ĳ', 'ĳ', 'Ĵ', 'ĵ', 'Ķ', 'ķ', 'Ĺ', 'ĺ', 'Ļ', 'ļ', 'Ľ', 'ľ', 'Ŀ', 'ŀ', 'Ł', 'ł', 'Ń', 'ń', 'Ņ', 'ņ', 'Ň', 'ň', 'ŉ', 'Ō', 'ō', 'Ŏ', 'ŏ', 'Ő', 'ő', 'Œ', 'œ', 'Ŕ', 'ŕ', 'Ŗ', 'ŗ', 'Ř', 'ř', 'Ś', 'ś', 'Ŝ', 'ŝ', 'Ş', 'ş', 'Š', 'š', 'Ţ', 'ţ', 'Ť', 'ť', 'Ŧ', 'ŧ', 'Ũ', 'ũ', 'Ū', 'ū', 'Ŭ', 'ŭ', 'Ů', 'ů', 'Ű', 'ű', 'Ų', 'ų', 'Ŵ', 'ŵ', 'Ŷ', 'ŷ', 'Ÿ', 'Ź', 'ź', 'Ż', 'ż', 'Ž', 'ž', 'ſ', 'ƒ', 'Ơ', 'ơ', 'Ư', 'ư', 'Ǎ', 'ǎ', 'Ǐ', 'ǐ', 'Ǒ', 'ǒ', 'Ǔ', 'ǔ', 'Ǖ', 'ǖ', 'Ǘ', 'ǘ', 'Ǚ', 'ǚ', 'Ǜ', 'ǜ', 'Ǻ', 'ǻ', 'Ǽ', 'ǽ', 'Ǿ', 'ǿ');
+$b = array('A', 'A', 'A', 'A', 'A', 'A', 'AE', 'C', 'E', 'E', 'E', 'E', 'I', 'I', 'I', 'I', 'D', 'N', 'O', 'O', 'O', 'O', 'O', 'O', 'U', 'U', 'U', 'U', 'Y', 's', 'a', 'a', 'a', 'a', 'a', 'a', 'ae', 'c', 'e', 'e', 'e', 'e', 'i', 'i', 'i', 'i', 'n', 'o', 'o', 'o', 'o', 'o', 'o', 'u', 'u', 'u', 'u', 'y', 'y', 'A', 'a', 'A', 'a', 'A', 'a', 'C', 'c', 'C', 'c', 'C', 'c', 'C', 'c', 'D', 'd', 'D', 'd', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'E', 'e', 'G', 'g', 'G', 'g', 'G', 'g', 'G', 'g', 'H', 'h', 'H', 'h', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'I', 'i', 'IJ', 'ij', 'J', 'j', 'K', 'k', 'L', 'l', 'L', 'l', 'L', 'l', 'L', 'l', 'l', 'l', 'N', 'n', 'N', 'n', 'N', 'n', 'n', 'O', 'o', 'O', 'o', 'O', 'o', 'OE', 'oe', 'R', 'r', 'R', 'r', 'R', 'r', 'S', 's', 'S', 's', 'S', 's', 'S', 's', 'T', 't', 'T', 't', 'T', 't', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'W', 'w', 'Y', 'y', 'Y', 'Z', 'z', 'Z', 'z', 'Z', 'z', 's', 'f', 'O', 'o', 'U', 'u', 'A', 'a', 'I', 'i', 'O', 'o', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'U', 'u', 'A', 'a', 'AE', 'ae', 'O', 'o');
+return str_replace($a, $b, $str);
+
+} 
 
 /**
  * Returns a string without any special char, with "-" in place of " ", perfectly designed for url's ;-)
@@ -1351,7 +1432,19 @@ $message .= "--$boundary\r\n";
 $message .= "Content-Type: text/plain; charset=\"".SITE_CHARSET."\"\r\n";
 $message .= "Content-Transfer-Encoding: quoted-printable\r\n";
 $message .= "\r\n";
-$message .= wordwrap(imap_8bit(strip_tags($message_html)))."\r\n";
+// suppress header
+$message_text = preg_replace("/\<head\>([^%]*)\<\/head\>/", "", $message_html);
+// convert <br />
+$message_text = str_replace("\r\n<br />", "\r\n", $message_text);
+$message_text = str_replace("<br />\r\n", "\r\n", $message_text);
+$message_text = str_replace("<br />", "\r\n", $message_text);
+// other tags
+$message_text = strip_tags($message_text);
+// unify spaces
+$message_text = preg_replace("/([[:space:]]+)/", " ", $message_text);
+// encode
+$message_text = wordwrap(imap_8bit($message_text));
+$message .= $message_text."\r\n";
 $message .= "\r\n";
 
 $message .= "\r\n--$boundary--\r\n";

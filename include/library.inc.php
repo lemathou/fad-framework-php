@@ -30,7 +30,8 @@ protected $info_detail = array
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_LIBRARY, "filename"=>"{name}.inc.php")
 );
 
-protected $retrieve_all = true;
+protected $retrieve_objects = true;
+protected $retrieve_details = false;
 
 /**
  * Load a library
@@ -53,14 +54,12 @@ public function loaded_list()
 {
 
 $return = array();
-foreach($this->list as $library)
+foreach($this->list as $id=>$library)
 {
 	if ($library->loaded())
-		$return[] = "<li>".$library->get("name")." : <b>LOADED</b></li>";
-	else
-		$return[] = "<li>".$library->get("name")." : NOT LOADED</li>";
+		$return[$id] = $library->label();
 }
-return "<ul>".implode("\n", $return)."</ul>";
+return $return;
 
 }
 
@@ -93,7 +92,7 @@ return array("id", "name", "label", "description", "dep_list");
 public function load()
 {
 
-if (!$this->loaded)
+if ($this->loaded === false)
 {
 	$filename = PATH_LIBRARY."/$this->name.inc.php";
 	if (file_exists($filename))
@@ -131,14 +130,10 @@ function library($id=0)
 
 if (!isset($GLOBALS["library_gestion"]))
 {
-	// APC
-	if (APC_CACHE)
+	if (OBJECT_CACHE)
 	{
-		if (!($GLOBALS["library_gestion"]=apc_fetch("library_gestion")))
-		{
+		if (!($GLOBALS["library_gestion"]=object_cache_retrieve("library_gestion")))
 			$GLOBALS["library_gestion"] = new library_gestion();
-			apc_store("library_gestion", $GLOBALS["library_gestion"], APC_CACHE_GESTION_TTL);
-		}
 	}
 	// Session
 	else

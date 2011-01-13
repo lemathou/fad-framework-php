@@ -113,6 +113,22 @@ td.label
 	color: orange;
 }
 
+.admin_link
+{
+	position: fixed;
+	margin-top: 25px;
+	width: 0px;
+}
+.admin_link a
+{
+	padding: 20px 0;
+	color: transparent;
+}
+.admin_link a:hover
+{
+	color: transparent;
+}
+
 /* Page */
 .page
 {
@@ -154,4 +170,10 @@ td.label
 {
 	position: relative;
 	height: 100%;
+}
+input.autosize
+{
+	font-size: 1em;
+	border: 1px gray solid;
+	font-family: monospace;
 }

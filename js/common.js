@@ -552,6 +552,7 @@ function date_maj(element_id)
 		var D = date.getDate();
 		if (D < 10) D = "0"+D;
 		var M = date.getMonth();
+		M++;
 		if (M < 10) M = "0"+M;
 		var Y = date.getFullYear();
 		var h = date.getHours();

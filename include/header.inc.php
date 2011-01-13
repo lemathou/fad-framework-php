@@ -10,41 +10,41 @@
   */
 
 // Performance & Optimisation
-include PATH_INCLUDE."/gentime.inc.php";
+if (DEBUG_GENTIME == true)
+	include PATH_INCLUDE."/gentime.inc.php";
 
-// Classes de base
+// Common classes
 include PATH_INCLUDE."/classes.inc.php";
 
-// Base de donnée
+// Database
 include PATH_INCLUDE."/db.inc.php";
 
-// Gestion des librairies de fonctions
+// Object cache
+include PATH_INCLUDE."/cache.inc.php";
+
+// Project libraries
 include PATH_INCLUDE."/library.inc.php";
 
-// Types de donnée, datamodels, agrégats et banques de données
+// Data types, data models, data banks
 include PATH_INCLUDE."/data.inc.php";
-//include PATH_INCLUDE."/data_verify.inc.php"; // DEPRECATED
 include PATH_INCLUDE."/data_model.inc.php";
 include PATH_INCLUDE."/data_display.inc.php";
 include PATH_INCLUDE."/data_bank.inc.php";
 
-// Conteneurs de maquettes
-//require_once "include/container.inc.php";
-
-// Formulaires
+// Forms
 //include "include/forms.inc.php";
 
-// Variables globales
+// GLobal variables
 include PATH_INCLUDE."/globals.inc.php";
 
 // Erreurs, exceptions
 //include "include/error.inc.php";
 //include "include/exceptions.inc.php";
 
-// Sécurité : banissement d'IP, logs, etc.
+// Security : banissement d'IP, logs, etc.
 //include "include/security.inc.php";
 
-// Réécriture d'URL : obsolète pour l'instant
+// URL rewriting : actually depreacated
 //include "include/rewriting.inc.php";
 
 // Permissions

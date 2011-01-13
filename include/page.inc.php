@@ -3,7 +3,7 @@
 /**
   * $Id: page.inc.php 76 2009-10-15 09:24:20Z mathieu $
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -25,6 +25,9 @@ protected $page_id = 0;
 protected $info_list = array("name", "type", "template_id", "redirect_url", "alias_page_id", "perm");
 protected $info_lang_list = array("label", "description", "url", "shortlabel");
 
+protected $retrieve_objects = true;
+protected $retrieve_details = false;
+
 protected $info_detail = array
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
@@ -43,10 +46,10 @@ protected function query_info_more()
 
 // Params
 $this->params_list = array();
-$query = db()->query("SELECT `page_id`, `name` , `value` , `update_pos` FROM `_page_params`");
+$query = db()->query("SELECT `page_id`, `name`, `value`, `update_pos` FROM `_page_params`");
 while ($param = $query->fetch_assoc())
 {
-	$this->list_detail[$param["page_id"]]["params_list"][] = array("name"=>$param["name"], "value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
+	$this->list_detail[$param["page_id"]]["params_list"][$param["name"]] = array("value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
 }
 
 }
@@ -84,7 +87,7 @@ else
 			$i = substr($i,0,$j);
 		}
 	}
-	if (!isset($this->list_detail[$i]))
+	if (!$this->exists($i))
 	{
 		define("PAGE_ID", 2);
 	}
@@ -166,7 +169,6 @@ protected $shortlabel = "";
 // Template and params
 protected $template_id = 0;
 protected $params_list = array();
-protected $params_default = array();
 protected $params_url = array();
 protected $params_get = array();
 // Effective parameters
@@ -201,33 +203,10 @@ $this->construct_params();
 
 }
 
-protected function construct_params()
-{
-
-$this->params = array();
-$this->params_default = array();
-$this->params_url = array();
-foreach($this->params_list as $param)
-{
-	$this->params[$param["name"]] = $param["value"];
-	$this->params_default[$param["name"]] = $param["value"];
-	if (is_numeric($param["update_pos"]))
-		$this->params_url[$param["update_pos"]] = $param["name"];
-}
-
-}
-
 protected function query_info_more()
 {
 
-// Params
-$this->params_list = array();
-$query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
-while ($param = $query->fetch_assoc())
-{
-	$this->params_list[] = array("name"=>$param["name"], "value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
-}
-
+$this->query_params();
 
 }
 
@@ -283,7 +262,6 @@ else
 }
 
 }
-
 public function perm_login()
 {
 
@@ -298,18 +276,54 @@ return $return;
 }
 
 /**
- * Access the associated template
+ * Retrieve the parameters list from database
  */
-function template()
+public function query_params()
 {
 
-if (false)
-	echo "<p>page(ID#$this->id) : Accessing to template ID#$this->template_id</p>\n";
+// Params
+$this->params = array();
+$this->params_url = array();
+$this->params_list = array();
+$query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
+while ($param = $query->fetch_assoc())
+{
+	// Update position may be null !
+	// Value is the default value, which is fixed if the parameter is not designed to be overloaded
+	$this->params_list[$param["name"]] = array("value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
+}
 
-return template($this->template_id);
+}
+/**
+ * Constructs the parameters list
+ */
+public function construct_params()
+{
+
+$this->params = array();
+$this->params_url = array();
+foreach($this->params_list as $name=>$param)
+{
+	$this->params[$name] = $param["value"];
+	if (is_numeric($param["update_pos"]))
+		$this->params_url[$param["update_pos"]] = $name;
+}
 
 }
 
+/**
+ * Returns if a param exists
+ * @param $name
+ */
+public function param_exists($name)
+{
+
+if (!is_string($name) || !isset($this->params_list[$name]))
+	return false;
+else
+	return true;
+
+}
 /**
  * Add a param
  * @param unknown_type $name
@@ -318,21 +332,33 @@ return template($this->template_id);
 public function param_add($name, $infos)
 {
 
-$this->params_default[$name] = json_decode($infos["value"]);
+if (!is_string($name) || isset($this->params_list[$name]))
+	return false;
 
-db()->query("INSERT INTO `_page_params` (`page_id`, `name`, `value`, `update_pos`) VALUES ('$this->id', '$name', '".db()->string_escape($infos["value"])."', NULL)");
+if (!is_array($infos))
+	$infos = array("value"=>null, "update_pos"=>null);
+elseif (!isset($infos["value"]))
+	$infos["value"] = null;
+elseif (!isset($infos["update_pos"]))
+	$infos["update_pos"] = null;
 
-if (is_numeric($n=$infos["update_pos"]))
+db()->query("INSERT INTO `_page_params` (`page_id`, `name`, `value`, `update_pos`) VALUES ('$this->id', '$name', '".db()->string_escape(json_encode(json_decode($infos["value"])))."', NULL)");
+
+// Position
+if (is_numeric($pos=$infos["update_pos"]))
 {
-	for ($i=count($this->params_url)-1;$i=$n;$i--)
-	{
-		$this->params_url[$i+1] = $this->params_url[$i];
-		unset($this->params_url[$i]);
-	}
-	$this->params_url[$n] = $name;
-	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`+1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
-	db()->query("UPDATE `_page_params` SET `update_pos`='$n' WHERE `page_id`='$this->id' AND `name`='$name'");
+	$pos_max = count($this->params_url);
+	if ($pos < 0 || $pos > $pos_max)
+		$pos = $pos_max;
+	if ($pos < $pos_max)
+		db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`+1 WHERE `page_id`='$this->id' AND `update_pos` >= $pos");
+	db()->query("UPDATE `_page_params` SET `update_pos`='$pos' WHERE `page_id`='$this->id' AND `name`='$name'");
 }
+
+$this->query_params();
+$this->construct_params();
+
+return true;
 
 }
 /**
@@ -343,9 +369,13 @@ if (is_numeric($n=$infos["update_pos"]))
 public function param_update($name, $infos)
 {
 
-$this->params_default[$name] = json_decode($infos["value"]);
+if (!is_string($name) || !isset($this->params_list[$name]))
+	return false;
 
-db()->query("UPDATE `_page_params` SET `value`='".db()->string_escape($infos["value"])."', `update_pos`= NULL WHERE `page_id`='$this->id' AND `name`='$name'");
+if (!is_array($infos) || !isset($infos["value"]) || !is_string($infos["value"]) || !isset($infos["update_pos"]))
+	return false;
+
+db()->query($query_string = "UPDATE `_page_params` SET `value`='".db()->string_escape($infos["value"])."', `update_pos`= NULL WHERE `page_id`='$this->id' AND `name`='$name'");
 if ($n=array_search($name, $this->params_url))
 {
 	unset($this->params_url[$n]);
@@ -369,22 +399,28 @@ if (is_numeric($n=$infos["update_pos"]))
 	db()->query("UPDATE `_page_params` SET `update_pos`='$n' WHERE `page_id`='$this->id' AND `name`='$name'");
 }
 
+$this->query_params();
+$this->construct_params();
+page()->query_info();
+
+return true;
+
 }
 /**
  * Delete a param
  * @param $name
  */
-public function param_delete($name)
+public function param_del($name)
 {
 
-unset($this->params_default[$name]);
-foreach ($this->params_url as $nb=>$i)
-	if ($name == $i)
-		unset($this->params_url[$nb]);
+if (!is_string($name) || !isset($this->params_list[$name]))
+	return false;
+
 db()->query("DELETE FROM `_page_params` WHERE `page_id`='$this->id' AND `name`='$name'");
 
-}
+return true;
 
+}
 /**
  * Returns list of actual params
  */
@@ -395,12 +431,12 @@ return $this->params;
 
 }
 /**
- * Returns list of default params
+ * Returns list of actual params
  */
-public function params_default_list()
+public function param_list_detail()
 {
 
-return $this->params_default;
+return $this->params_list;
 
 }
 
@@ -455,8 +491,6 @@ else
 public function params_update_url($params=array())
 {
 
-//trigger_error("coucou");
-
 // Retrieved from the URL
 foreach($params as $pos=>$value)
 {
@@ -468,7 +502,7 @@ foreach($params as $pos=>$value)
 	}
 }
 
-// Retrieved from _GET
+// Retrieved from $_GET
 foreach($_GET as $name=>$value)
 {
 	if (in_array($name, $this->params_url))
@@ -479,7 +513,9 @@ foreach($_GET as $name=>$value)
 	}
 }
 
-// Retrieved from _POST
+// Retrieved from $_POST
+// TODO : I think $_POST may only be used in script, not in template... Needs some work !
+/*
 foreach($_POST as $name=>$value)
 {
 	if (in_array($name, $this->params_url))
@@ -489,6 +525,7 @@ foreach($_POST as $name=>$value)
 		$this->params[$name] = $value;
 	}
 }
+*/
 
 }
 
@@ -520,6 +557,22 @@ foreach ($this->params as $name=>$value)
 }
 
 /**
+ * Access the associated template
+ */
+function template()
+{
+
+if (false)
+	echo "<p>page(ID#$this->id) : Accessing to template ID#$this->template_id</p>\n";
+
+if ($this->template_id)
+	return template($this->template_id);
+else
+	return false;
+
+}
+
+/**
  * Returns the associated template
  */
 function tpl()
@@ -540,7 +593,7 @@ public function action()
 
 if (file_exists("page/$this->name.inc.php"))
 {
-	extract($this->params);
+	extract($this->params, EXTR_REFS);
 	include "page/$this->name.inc.php";
 }
 
@@ -556,7 +609,6 @@ public function url($params=array(), $text="")
 
 if (!$text)
 	$text = $this->url;
-
 
 if ($this->alias_page_id)
 {
@@ -611,14 +663,10 @@ function page($id=0)
 
 if (!isset($GLOBALS["page_gestion"]))
 {
-	// APC
-	if (APC_CACHE)
+	if (OBJECT_CACHE)
 	{
-		if (!($GLOBALS["page_gestion"]=apc_fetch("page_gestion")))
-		{
+		if (!($GLOBALS["page_gestion"]=object_cache_retrieve("page_gestion")))
 			$GLOBALS["page_gestion"] = new page_gestion();
-			apc_store("page_gestion", $GLOBALS["page_gestion"], APC_CACHE_GESTION_TTL);
-		}
 	}
 	// Session
 	else

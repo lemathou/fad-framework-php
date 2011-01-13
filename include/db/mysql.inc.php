@@ -116,7 +116,7 @@ else
 	$fieldnames = array();
 	foreach ($fields as $key=>$value)
 		$filednames[] = $key;
-	return new db_query("INSERT INTO `$table` ( `".implode("` , `",$fieldnames)."` ) VALUES ( '".implode("' , '",$fields)."' )", $this->id);
+	return new db_query("INSERT INTO `".$this->string_escape($table)."` ( `".implode("` , `",$fieldnames)."` ) VALUES ( '".implode("' , '",$fields)."' )", $this->id);
 }
 
 }
@@ -125,7 +125,7 @@ public function update($table, $update, $where="", $order="", $limit="")
 {
 
 $this->queries++;
-return new db_query("UPDATE `$table` SET $update $where $order $limit", $this->id);
+return new db_query("UPDATE `".$this->string_escape($table)."` SET $update $where $order $limit", $this->id);
 
 }
 
@@ -133,7 +133,7 @@ public function delete($table, $where, $order, $limit)
 {
 
 $this->queries++;
-return new db_query("DELETE FROM `$table` $where $order $limit", $this->id);
+return new db_query("DELETE FROM `".$this->string_escape($table)."` $where $order $limit", $this->id);
 
 }
 
@@ -181,14 +181,13 @@ $key_list = array();
 
 foreach($fields as $fieldname=>$field)
 {
-	//echo "<p>$fieldname : $field[type]</p>\n";
 	if (!empty($field["key"]))
-		$key_list[] = "`$fieldname`";
+		$key_list[] = "`".$this->string_escape($fieldname)."`";
 	$fieldstruct[] = $this->field_struct($fieldname, $field);
 }
 
 if (count($key_list))
-	$fieldstruct[] = "PRIMARY KEY ( ".implode(" , ",$key_list)." )";
+	$fieldstruct[] = "PRIMARY KEY (".implode(", ",$key_list).")";
 
 if (isset($options["engine"]))
 	$tableoption[] = "ENGINE = $options[engine]";
@@ -199,8 +198,7 @@ if (isset($options["charset"]))
 else
 	$tableoption[] = "DEFAULT CHARSET = ".DB_CHARSET;
 
-//echo "CREATE TABLE IF NOT EXISTS `$tablename` ( ".implode(" , ",$fieldstruct)." ) ".implode(" ",$tableoption);
-$this->query("CREATE TABLE IF NOT EXISTS `$tablename` ( ".implode(" , ",$fieldstruct)." ) ".implode(" ",$tableoption));
+$this->query("CREATE TABLE IF NOT EXISTS `".$this->string_escape($tablename)."` (".implode(", ", $fieldstruct).") ".implode(" ", $tableoption));
 //$this->query("ALTER TABLE `$tablename` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci");
 
 }
@@ -214,43 +212,43 @@ $field["default"] = isset($field["default"]) ? " default '".addslashes($field["d
 switch ($field["type"])
 {
 	case ($field["type"]=="string" && !empty($field["size"]) && isset($field["autocomplete"])) :
-		return "`$fieldname` char($field[size])$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` char($field[size])$field[null]$field[default]";
 		break;
 	case ($field["type"]=="string" && !empty($field["size"])) :
-		return "`$fieldname` varchar($field[size])$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` varchar($field[size])$field[null]$field[default]";
 		break;
 	case "string" :
-		return "`$fieldname` text$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` text$field[null]$field[default]";
 		break;
 	case "richtext" :
-		return "`$fieldname` text$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` text$field[null]$field[default]";
 		break;
 	case "integer" :
-		return "`$fieldname` int($field[size])".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"].(!empty($field["auto_increment"])?" auto_increment":"");
+		return "`".$this->string_escape($fieldname)."` int($field[size])".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"].(!empty($field["auto_increment"])?" auto_increment":"");
 		break;
 	case "float" :
-		return "`$fieldname` float(".($field["size"]+$field["precision"]).",$field[precision])".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"];
+		return "`".$this->string_escape($fieldname)."` float(".($field["size"]+$field["precision"]).",$field[precision])".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"];
 		break;
 	case "date" :
-		return "`$fieldname` date$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` date$field[null]$field[default]";
 		break;
 	case "year" :
-		return "`$fieldname` year$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` year$field[null]$field[default]";
 		break;
 	case "time" :
-		return "`$fieldname` time$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` time$field[null]$field[default]";
 		break;
 	case "datetime" :
-		return "`$fieldname` datetime$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` datetime$field[null]$field[default]";
 		break;
 	case "select" :
-		return "`$fieldname` enum ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` enum ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
 		break;
 	case "fromlist" :
-		return "`$fieldname` set ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` set ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
 		break;
 	case "boolean" :
-		return "`$fieldname` BOOLEAN$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` BOOLEAN$field[null]$field[default]";
 		break;
 }
 
@@ -261,21 +259,21 @@ public function field_update($tablename, $fieldname_from, $fieldname_to, $field,
 
 //echo "ALTER TABLE `$tablename` CHANGE `$fieldname_from` ".$this->field_struct($fieldname_to, $field)." $position";
 
-$this->query("ALTER TABLE `$tablename` CHANGE `$fieldname_from` ".$this->field_struct($fieldname_to, $field)." $position"); 
+$this->query("ALTER TABLE `".$this->string_escape($tablename)."` CHANGE `".$this->string_escape($fieldname_from)."` ".$this->field_struct($fieldname_to, $field)." $position"); 
 
 }
 
 public function field_create($tablename, $fieldname, $field, $position="")
 {
 
-$this->query("ALTER TABLE `$tablename` ADD ".$this->field_struct($fieldname, $field)." $position"); 
+$this->query("ALTER TABLE `".$this->string_escape($tablename)."` ADD ".$this->field_struct($fieldname, $field)." $position"); 
 
 }
 
 public function field_delete($tablename, $fieldname)
 {
 	
-$this->query("ALTER TABLE `$tablename` DROP `$fieldname`"); 
+$this->query("ALTER TABLE `".$this->string_escape($tablename)."` DROP `".$this->string_escape($fieldname)."`"); 
 
 }
 
@@ -285,7 +283,17 @@ $this->query("ALTER TABLE `$tablename` DROP `$fieldname`");
 public function table_delete($tablename)
 {
 
-return $this->query(" DROP TABLE `$tablename` ");
+return $this->query("DROP TABLE `".$this->string_escape($tablename)."`");
+
+}
+
+/*
+ * EMpty a database table
+ */
+public function table_empty($tablename)
+{
+
+return $this->query("TRUNCATE TABLE `".$this->string_escape($tablename)."`");
 
 }
 
@@ -337,7 +345,6 @@ function __construct($query_string, $db_id)
 
 $this->db_id = $db_id;
 $this->query_string = $query_string;
-//echo "<p>$query_string</p>\n";
 
 if (!$this->id)
 	$this->execute();
@@ -425,6 +432,17 @@ switch($return)
 
 }
 
+public function fetch_all_row($nb=0)
+{
+
+$return = array();
+while ($row = $this->fetch_row())
+	$return[] = $row[$nb];
+
+return $return;
+
+}
+
 public function fetch_row()
 {
 
@@ -451,12 +469,12 @@ if (!$this->id)
 	$this->execute();
 
 $time1 = microtime(true);
-if ($return = mysql_fetch_array($this->id, MYSQL_ASSOC))
+if ($return = mysql_fetch_assoc($this->id))
 	db()->fetch_results++;
 $time2 = microtime(true);
 db()->time += ($time2 - $time1);
 
-if (mysql_error() && LOG_DB_ERROR)
+if (LOG_DB_ERROR && mysql_error())
 	$this->log_error();
 
 return $return;
@@ -475,7 +493,7 @@ if ($return = mysql_fetch_assoc($this->id))
 $time2 = microtime(true);
 db()->time += ($time2 - $time1);
 
-if (mysql_error() && LOG_DB_ERROR)
+if (LOG_DB_ERROR && mysql_error())
 	$this->log_error();
 
 return $return;
@@ -551,8 +569,10 @@ $this->execute();
 
 }
 
-// accès
 
+/**
+ * Database access function
+ */
 function db()
 {
 

@@ -102,43 +102,34 @@ if (isset($_POST["_db_create"]))
 }
 
 // Position maximale
-list($pos_max)=db()->query("SELECT MAX(`pos`) FROM `_datamodel_fields` WHERE `datamodel_id`='$id'")->fetch_row();
+$pos_max = count($object->fields());
+
+$data_list_detail = data()->list_detail_get();
 
 ?>
 
-<form method="post" action="?id=<?=$id?>">
+<form method="post" action="?id=<?=$id?>" class="object_list_form">
 <h3>Liste des champs :</h3>
-<table border="0" cellspacing="2" cellpadding="2">
-	<tr style="font-weight: bold;">
+<table border="0" cellspacing="0" cellpadding="1" width="100%">
+	<tr class="label">
 		<td>&nbsp;</td>
 		<td>Pos</td>
 		<td>Name</td>
 		<td>Label</td>
 		<td>Type</td>
-		<td>Defaultvalue / null</td>
+		<td>Default value (JSON)</td>
 		<td>Option</td>
 		<td>Index</td>
 		<td>langue</td>
 	</tr>
 <?php
 $field_opt_list = array("" , "key" , "required" , "calculated");
-
-list($pos_max) = db()->query("SELECT MAX(t1.`pos`) FROM `_datamodel_fields` as t1 WHERE t1.`datamodel_id`='$id'")->fetch_row();
-$query = db()->query("SELECT t1.`pos` , t1.`name` , t2.`label` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`query` , t1.`lang` , t1.`db_sync` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` AND t2.`lang_id`=".SITE_LANG_ID." WHERE t1.`datamodel_id`='$id' ORDER BY t1.`pos`");
-while ($field=$query->fetch_assoc())
+$nb = 0;
+foreach ($object->fields() as $name=>$field)
 {
-	//print_r($field);
-	if (isset($_GET["field_edit"]) && $field["name"]==$_GET["field_edit"])
+	$nb++;
+	if (isset($_GET["field_edit"]) && $name==$_GET["field_edit"])
 	{
-		$datatype = "data_$field[type]";
-		$datafield = new $datatype($field["name"], $field["defaultvalue"], $field["label"]);
-		$query_opt = db()->query("SELECT opt_type, opt_name, opt_value FROM _datamodel_fields_opt WHERE datamodel_id='$id' AND fieldname='$field[name]'");
-		while ($opt=$query_opt->fetch_assoc())
-		{
-			$method="$opt[opt_type]_opt_set";
-			$datafield->$method($opt["opt_name"], json_decode($opt["opt_value"], true));
-			//echo "<br />".json_decode($opt["opt_value"], true);
-		}
 	?>
 	<tr>
 		<td colspan="9"><hr /></td>
@@ -148,40 +139,37 @@ while ($field=$query->fetch_assoc())
 		<td><select name="pos">
 		<?php
 		for ($i=1;$i<=$pos_max;$i++)
-			if ($i==$field["pos"])
+			if ($i==$nb)
 				echo "<option value=\"$i\" selected>$i</option>\n";
 			else
 				echo "<option value=\"$i\">$i</option>\n";
 		?>
-		</select><input type="hidden" name="pos_orig" value="<?=$field["pos"]?>" /></td>
-		<td><input name="name" value="<?=$field["name"]?>" /><input type="hidden" name="name_orig" value="<?=$field["name"]?>" /></td>
-		<td><input name="label" value="<?=$field["label"]?>" /></td>
+		</select><input type="hidden" name="pos_orig" value="<?=$nb?>" /></td>
+		<td><input name="name" value="<?=$name?>" /><input type="hidden" name="name_orig" value="<?=$name?>" /></td>
+		<td><input name="label" value="<?=$field->label?>" /></td>
 		<td><select name="type"><?php
 		foreach (data()->list_detail_get() as $j)
 		{
-			if ($field["type"]==$j["name"])
+			if (substr(get_class($field), 5)==$j["name"])
 				echo "<option value=\"$j[name]\" selected>$j[label]</option>\n";
 			else
 				echo "<option value=\"$j[name]\">$j[label]</option>\n";
 		}
 		?></select></td>
-		<td><textarea name="defaultvalue"><?php echo $field["defaultvalue"]; ?></textarea><input type="checkbox" name="defaultvalue_null" <?php if ($field["defaultvalue"]===null) echo "checked"; ?> /></td>
-		<td><select name="opt"><?php
-		foreach($field_opt_list as $opt)
-		{
-			if($opt == $field["opt"])
-				echo "<option value=\"$opt\" selected>$opt</option>\n";
-			else
-				echo "<option value=\"$opt\">$opt</option>\n";
-		}
-		?></select></td>
+		<td><textarea name="defaultvalue"><?php echo json_encode($field->value); ?></textarea></td>
+		<td><select name="opt">
+			<option value=""></option>
+			<option value="key"<?php if (in_array($name, $object->fields_key())) echo " selected"; ?>>KEY</option>
+			<option value="required"<?php if (in_array($name, $object->fields_required())) echo " selected"; ?>>REQUIRED</option>
+			<option value="calculated">CALCULATED</option>
+		</select></td>
 		<td><select name="query">
-			<option value="0"<?php if (!$field["query"]) echo " selected"; ?>>NON</option>
-			<option value="1"<?php if ($field["query"]) echo " selected"; ?>>OUI</option>
+			<option value="0"<?php if (!in_array($name, $object->fields_index())) echo " selected"; ?>>NON</option>
+			<option value="1"<?php if (in_array($name, $object->fields_index())) echo " selected"; ?>>OUI</option>
 		</select></td>
 		<td><select name="lang">
-			<option value="0"<?php if (!$field["lang"]) echo " selected"; ?>>NON</option>
-			<option value="1"<?php if ($field["lang"]) echo " selected"; ?>>OUI</option>
+			<option value="0"<?php if (!$field->db_opt("lang")) echo " selected"; ?>>NON</option>
+			<option value="1"<?php if ($field->db_opt("lang")) echo " selected"; ?>>OUI</option>
 		</select></td>
 	</tr>
 	<tr> <td colspan="9"><hr /></td> </tr>
@@ -206,7 +194,7 @@ while ($field=$query->fetch_assoc())
 			<td valign="top">
 			<select id="<?=$type?>_opt_list"><option value="">-- Choisir --</option><?php
 			$f = $type."_opt_list_get";
-			foreach($datafield->$f() as $i=>$j)
+			foreach($field->$f() as $i=>$j)
 			{
 				$list[$i] = $j;
 			}
@@ -215,13 +203,13 @@ while ($field=$query->fetch_assoc())
 				if (!isset($list[$i]))
 					echo "<option>$i</option>\n";
 			}
-			?></select><input type="button" value="ADD" onclick="opt_add('<?=$type?>',document.getElementById('<?=$type?>_opt_list').value)" />
+			?></select><input type="button" value="ADD" onclick="datamodel_opt_add('<?=$type?>',document.getElementById('<?=$type?>_opt_list').value)" />
 			<div id="opt_<?=$type?>">
 			<?php
 			foreach($list as $i=>$j) if (in_array($i, data::${"${type}_opt_list"}))
 			{
 				echo "<div id=\"opt_".$type."_$i\">\n";
-				echo "<p style=\"margin-bottom: 0px;\">$i <a href=\"javascript:;\" onclick=\"opt_del('$type','$i')\" style=\"color:red;\">X</a></p> <p style=\"margin: 0px;\"><textarea name=\"optlist[$type][$i]\">".json_encode($j)."</textarea></p>\n";
+				echo "<p style=\"margin-bottom: 0px;\">$i <a href=\"javascript:;\" onclick=\"datamodel_opt_del('$type','$i')\" style=\"color:red;\">X</a></p> <p style=\"margin: 0px;\"><textarea name=\"optlist[$type][$i]\">".json_encode($j)."</textarea></p>\n";
 				echo "</div>\n";
 			}
 			?>
@@ -239,20 +227,21 @@ while ($field=$query->fetch_assoc())
 	else
 	{
 	?>
-	<tr>
-		<td><a href="?id=<?=$id?>&field_delete=<?=$field["name"]?>" onclick="return(confirm('Êtes-vous certain de vouloir supprimer ce champ ?'))" style="color:red;border:1px red solid;">X</a><?php if (false && $field["pos"]>1) { ?> <a href="?id=<?=$id?>&field_move_up=<?=$field["pos"]?>">U</a><?} ?></td>
-		<td><?=$field["pos"]?></td>
-		<td><a href="?id=<?=$id?>&field_edit=<?=$field["name"]?>"><?=$field["name"]?></a></td>
-		<td><input readonly value="<?=$field["label"]?>" /></td>
-		<td><input readonly value="<?=$field["type"]?>" /></td>
-		<td><?php if ($field["defaultvalue"] === null) { ?><i>NULL</i><?php } else { ?><textarea readonly rows="1"><?=$field["defaultvalue"]?></textarea><?php } ?></td>
-		<td><input readonly value="<?=$field["opt"]?>" size="10" /></td>
-		<td><input readonly value="<?php if ($field["query"]) echo "OUI"; else echo "NON"; ?>"<?php if ($field["query"]) echo " style=\"color:blue;\""; ?> size="3" /></td>
-		<td><input readonly value="<?php if ($field["lang"]) echo "OUI"; else echo "NON"; ?>" size="3" /></td>
+	<tr<?php if ($nb%2==1) echo " class=\"alt\""; ?>>
+		<td><a href="?id=<?=$id?>&field_delete=<?=$name?>" onclick="return(confirm('Êtes-vous certain de vouloir supprimer ce champ ?'))" class="delete_link">X</a></td>
+		<td><?=$nb?></td>
+		<td><a href="?id=<?=$id?>&field_edit=<?=$name?>"><?=$name?></a></td>
+		<td><input readonly value="<?=$field->label?>" /></td>
+		<td><?php echo data()->{substr(get_class($field), 5)}->label; ?></td>
+		<td><?php echo json_encode($field->value); ?></td>
+		<td><?php if (in_array($name, $object->fields_key())) echo "<span style=\"color:red;\">KEY</span>"; elseif (in_array($name, $object->fields_required())) echo "<span style=\"color:blue;\">REQUIRED</span>"; ?></td>
+		<td><?php if (in_array($name, $object->fields_index())) echo "<span style=\"color:blue;\">INDEX</span>"; ?></td>
+		<td><?php if ($field->db_opt("lang") == true) echo "<span style=\"color:blue;\">LANG</span>"; ?></td>
 	</tr>
 	<?php
 	}
 }
+
 if (!isset($_GET["field_edit"])) {
 ?>
 	<tr>
@@ -267,12 +256,12 @@ if (!isset($_GET["field_edit"])) {
 		<td><input name="name" value="" /><input type="hidden" name="id" value="<?=$id?>" /></td>
 		<td><input name="label" value="" /></td>
 		<td><select name="type"><?php
-		foreach (data()->list_detail_get() as $j)
+		foreach ($data_list_detail as $j)
 		{
 			echo "<option value=\"$j[name]\">$j[label]</option>\n";
 		}
 		?></select></td>
-		<td><textarea name="defaultvalue"></textarea><input type="checkbox" name="defaultvalue_null" /></td>
+		<td><textarea name="defaultvalue"></textarea></td>
 		<td><select name="opt"><?php
 		foreach($field_opt_list as $opt)
 		{
@@ -315,16 +304,3 @@ $_type()->table_list();
 }
 
 ?>
-<script type="text/javascript">
-function opt_add(type, name)
-{
-	if (type && name && !document.getElementById('opt_'+type+'_'+name))
-	{
-		$("#opt_"+type).append('<div id="opt_'+type+'_'+name+'"><p style="margin-bottom: 0px;">'+name+' <a href="javascript:;" onclick="opt_del(\''+type+'\',\''+name+'\')" style="color:red;">X</a></p> <p style="margin-top: 0px;"><textarea name="optlist['+type+']['+name+']"></textarea></p>');
-	}
-}
-function opt_del(type, name)
-{
-	$("#opt_"+type+'_'+name).remove();
-}
-</script>

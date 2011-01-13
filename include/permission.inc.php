@@ -9,64 +9,51 @@
   * 
   */
 
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
+
 /**
  * Global managing object for permissions
  * 
  * @author mathieu
  * 
  */
-
 class permission_gestion extends gestion
 {
 
 protected $type = "permission";
 
-protected $retrieve_all = true;
+protected $retrieve_objects = true;
+protected $retrieve_details = false;
 
 protected function query_info_more()
 {
 
 $query = db()->query("SELECT `perm_id`, `library_id`, `perm` FROM `_library_perm_ref`");
-if ($query->num_rows())
-{
-	while (list($perm_id, $library_id, $perm) = $query->fetch_row())
-		$this->list_detail[$perm_id]["library_perm"][$library_id] = $perm;
-}
+while (list($perm_id, $library_id, $perm) = $query->fetch_row())
+	$this->list_detail[$perm_id]["library_perm"][$library_id] = $perm;
 
 $query = db()->query("SELECT `perm_id`, `datamodel_id`, `perm` FROM `_datamodel_perm_ref`");
-if ($query->num_rows())
-{
-	while (list($perm_id, $datamodel_id, $perm) = $query->fetch_row())
-		$this->list_detail[$perm_id]["datamodel_perm"][$datamodel_id] = $perm;
-}
+while (list($perm_id, $datamodel_id, $perm) = $query->fetch_row())
+	$this->list_detail[$perm_id]["datamodel_perm"][$datamodel_id] = $perm;
 
 $query = db()->query("SELECT `perm_id`, `datamodel_id`, `object_id`, `perm` FROM `_dataobject_perm_ref`");
-if ($query->num_rows())
-{
-	while (list($perm_id, $datamodel_id, $object_id, $perm) = $query->fetch_row())
-		$this->list_detail[$perm_id]["dataobject_perm"][$datamodel_id][$object_id] = $perm;
-}
+while (list($perm_id, $datamodel_id, $object_id, $perm) = $query->fetch_row())
+	$this->list_detail[$perm_id]["dataobject_perm"][$datamodel_id][$object_id] = $perm;
 
 $query = db()->query("SELECT `perm_id`, `template_id`, `perm` FROM `_template_perm_ref`");
-if ($query->num_rows())
-{
-	while (list($perm_id, $template_id, $perm) = $query->fetch_row())
-		$this->list_detail[$perm_id]["template_perm"][$template_id] = $perm;
-}
+while (list($perm_id, $template_id, $perm) = $query->fetch_row())
+	$this->list_detail[$perm_id]["template_perm"][$template_id] = $perm;
 
 $query = db()->query("SELECT `perm_id`, `page_id`, `perm` FROM `_page_perm_ref`");
-if ($query->num_rows())
-{
-	while (list($perm_id, $page_id, $perm) = $query->fetch_row())
-		$this->list_detail[$perm_id]["page_perm"][$page_id] = $perm;
-}
+while (list($perm_id, $page_id, $perm) = $query->fetch_row())
+	$this->list_detail[$perm_id]["page_perm"][$page_id] = $perm;
 
 $query = db()->query("SELECT `perm_id`, `menu_id`, `perm` FROM `_menu_perm_ref`");
-if ($query->num_rows())
-{
-	while (list($perm_id, $menu_id, $perm) = $query->fetch_row())
-		$this->list_detail[$perm_id]["menu_perm"][$menu_id] = $perm;
-}
+while (list($perm_id, $menu_id, $perm) = $query->fetch_row())
+	$this->list_detail[$perm_id]["menu_perm"][$menu_id] = $perm;
 
 }
 
@@ -301,14 +288,10 @@ function permission($id=0)
 
 if (!isset($GLOBALS["permission_gestion"]))
 {
-	// APC
-	if (APC_CACHE)
+	if (OBJECT_CACHE)
 	{
-		if (!($GLOBALS["permission_gestion"]=apc_fetch("permission_gestion")))
-		{
+		if (!($GLOBALS["permission_gestion"]=object_cache_retrieve("permission_gestion")))
 			$GLOBALS["permission_gestion"] = new permission_gestion();
-			apc_store("permission_gestion", $GLOBALS["permission_gestion"], APC_CACHE_GESTION_TTL);
-		}
 	}
 	// Session
 	else
@@ -325,5 +308,10 @@ else
 	return $GLOBALS["permission_gestion"];
 
 }
+
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [end]");
+
 
 ?>

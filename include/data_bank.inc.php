@@ -21,6 +21,7 @@
 if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [begin]");
 
+
 /**
  * Agrégats de données
  *
@@ -156,13 +157,6 @@ elseif (isset($this->field_values[$name]))
 	$this->fields[$name]->value = $this->field_values[$name];
 	return $this->fields[$name];
 }
-/* Cas où l'object est en bdd => aller chercher la valeur !
-elseif (isset($this->datamodel()->{$name}) && isset($this->fields["id"]))
-{
-	$this->db_retrieve($name);
-	return $this->fields[$name];
-}
-*/
 elseif (isset($this->datamodel()->{$name}))
 {
 	$this->fields[$name] = clone $this->datamodel()->{$name};
@@ -556,8 +550,8 @@ if ($result = $this->datamodel()->db_update($fields))
 	foreach ($fields as $name=>$field)
 		$this->field_values[$name] = $field->value;
 	db()->query("INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel()->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )");
-	if (APC_CACHE)
-		apc_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this);
+	if (OBJECT_CACHE)
+		object_cache_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this, OBJECT_CACHE_DATAOBJECT_TTL);
 }
 
 return $result;
@@ -591,6 +585,7 @@ if (isset($action_list[$method]) && $action=$action_list[$method]["method"])
 }
 
 }
+
 
 if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [end]");

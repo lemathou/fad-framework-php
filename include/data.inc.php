@@ -3,7 +3,7 @@
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -96,13 +96,6 @@ protected $label="";
 protected $datamodel_id=0;
 
 /**
- * Datatype (audio, text, video, file, etc.)
- * 
- * @var string
- */
-protected $type="";
-
-/**
  * Données brutes dans le format dééfini et "contraint" le plus adapté
  * 
  * @var mixed
@@ -184,22 +177,16 @@ if (is_array($options)) foreach ($options as $i=>$j)
 public function datamodel_set($datamodel_id)
 {
 
-if (datamodel()->exists($datamodel_id))
-{
-	$this->datamodel_id = $datamodel_id;
-	return true;
-}
-else
-	return false;
+$this->datamodel_id = $datamodel_id;
 
 }
 public function datamodel()
 {
 
-if ($this->datamodel_id)
+if ($this->datamodel_id && datamodel()->exists($this->datamodel_id))
 	return datamodel($this->datamodel_id);
 else
-	return false;
+	return null;
 
 }
 
@@ -402,8 +389,10 @@ return $this->value;
 public function __get($name)
 {
 
-if (is_string($name) && in_array($name, array("name", "type", "label", "value", "opt_list", "datamodel_id", "structure_opt", "db_opt", "disp_opt")) && isset($this->{$name}))
+if (is_string($name) && in_array($name, array("name", "label", "value", "opt_list", "datamodel_id", "structure_opt", "db_opt", "disp_opt")) && isset($this->{$name}))
 	return $this->{$name};
+elseif ($name == "type")
+	return substr(get_called_class(), 5);
 elseif ($name == "datamodel")
 	return datamodel($this->datamodel_id);
 else
@@ -578,8 +567,6 @@ else
 class data_string extends data
 {
 
-protected $type = "string";
-
 protected $structure_opt = array
 (
 	"size" => 256
@@ -696,8 +683,6 @@ else
 class data_password extends data_string
 {
 
-protected $type = "password";
-
 protected $structure_opt = array
 (
 	"size" => 64,
@@ -727,8 +712,6 @@ else
  */
 class data_integer extends data_string
 {
-
-protected $type = "integer";
 
 protected $structure_opt = array
 (
@@ -829,8 +812,6 @@ $this->value++;
  */
 class data_float extends data_string
 {
-
-protected $type = "float";
 
 protected $structure_opt = array
 (
@@ -1012,7 +993,7 @@ else
 public function form_field_disp($print=true, $options=array())
 {
 
-$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\"".($this->value === false)?" checked":""." class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\"".($this->value === true)?" checked":""." class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
+$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\"".(($this->value === false)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\"".(($this->value === true)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->structure_opt["boolean"][1];
 
 if ($print)
 	print $return;
@@ -1041,8 +1022,6 @@ else
  */
 class data_text extends data_string
 {
-
-protected $type = "text";
 
 protected $structure_opt = array();
 
@@ -1100,8 +1079,6 @@ else
  */
 class data_date extends data_string
 {
-
-protected $type = "date";
 
 protected $structure_opt = array
 (
@@ -1264,8 +1241,6 @@ else
 class data_year extends data_string
 {
 
-protected $type = "year";
-
 protected $structure_opt = array
 (
 	"year" => "0000", // A CORRIGER
@@ -1331,8 +1306,6 @@ else
 class data_time extends data_string
 {
 
-protected $type = "time";
-
 protected $structure_opt = array
 (
 	"time" => ""
@@ -1390,8 +1363,6 @@ else
  */
 class data_datetime extends data_string
 {
-
-protected $type = "datetime";
 
 protected $structure_opt = array
 (
@@ -1536,8 +1507,6 @@ else
 class data_select extends data_string
 {
 
-protected $type = "select";
-
 protected $structure_opt = array
 (
 	"select" => array(),
@@ -1638,8 +1607,6 @@ else
 class data_list extends data
 {
 
-protected $type = "list";
-
 protected $structure_opt = array
 (
 	"list" => array("datatype"=>"string"),
@@ -1696,10 +1663,66 @@ else
 public function __tostring()
 {
 
-if ($this->value === null)
-	return "";
+if (is_array($this->value))
+	return (string)implode(", ", $this->value);
 else
-	return (string)count($this->value);
+	return "";
+
+}
+function form_field_disp($print=true)
+{
+
+if (isset($this->db_opt["order_field"]))
+	$order = array($this->db_opt["order_field"]=>"asc");
+else
+	$order = array();
+
+// Pas beaucoup de valeurs : liste simple
+if (!is_array($this->value) || count($this->value) == 0)
+{
+	$return = "NADA";
+}
+elseif (($nb=count($this->value)) < 20)
+{
+	if ($nb<10)
+		$size = $nb;
+	else
+		$size = 5;
+	$return = "<input name=\"$this->name\" type=\"hidden\" />";
+	$return .= "<select name=\"".$this->name."[]\" title=\"$this->label\" multiple size=\"$size\" class=\"".get_called_class()."\">\n";
+	if (is_array($this->value)) foreach ($this->value as $id)
+			$return .= "<option value=\"$id\" selected>$id</option>";
+	$return .= "</select>\n";
+}
+// Beaucoup de valeurs : liste Ajax complexe
+else
+{
+	$return = "<div style=\"display:inline;\">";
+	$return .= "<input name=\"$this->name\" type=\"hidden\" />";
+	$return .= "<div><select name=\"".$this->name."[]\" title=\"$this->label\" multiple class=\"".get_called_class()." q_id\">";
+	if (is_array($this->value) && count($this->value))
+	{
+		datamodel($this->structure_opt["databank"])->query(array(array("name"=>"id", "value"=>$this->value)));
+		foreach ($this->value as $id)
+			$return .= "<option value=\"$id\" selected>".datamodel($this->structure_opt["databank"])->get($id)."</option>";
+	}
+	$return .= "</select></div>";
+	$return .= "<input class=\"q_str\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
+	$return .= "<div class=\"q_select\"></div>";
+	$return .= "</div>";
+}
+
+}
+function form_field_select_disp($print=true)
+{
+
+$return = "<input name=\"$this->name\"  />";
+
+// DISP
+if ($print)
+	echo $return;
+else
+	return $return;
 
 }
 
@@ -1715,8 +1738,6 @@ else
 class data_fromlist extends data_list
 {
 
-protected $type = "fromlist";
-
 protected $structure_opt = array
 (
 	"fromlist" => array(),
@@ -1725,7 +1746,7 @@ protected $structure_opt = array
 public function db_field_create()
 {
 
-return array( "type" => "fromlist" , "value_list" => array_keys($this->structure_opt["fromlist"]) );
+return array("type" => "fromlist", "value_list" => array_keys($this->structure_opt["fromlist"]));
 
 }
 
@@ -1954,8 +1975,6 @@ data_text::__construct($name, $value, $label, $options);
  */
 class data_richtext extends data_text
 {
-
-protected $type = "richtext";
 
 protected $structure_opt = array
 (
@@ -2255,6 +2274,14 @@ if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($ma
 class data_url extends data_string
 {
 
+protected static $regex = '/^([a-zA-Z]+[:\/\/]+)*([A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+)$/i';
+
+protected $opt = array
+(
+	//"regex" => '/^([a-zA-Z]+[:\/\/]+)([A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+)$/i',
+	"urltype" => "http"
+);
+
 function __construct($name, $value, $label="URL", $options=array())
 {
 
@@ -2262,20 +2289,11 @@ data_string::__construct($name, $value, $label, array_merge(array("url"=>array()
 
 }
 
-function link($target="_blank")
-{
-	if ($target)
-		return "<a href=\"$this->value\" target=\"$target\">$this->value</a>";
-	else
-		return "<a href=\"$this->value\">$this->value</a>";
-}
-
+/* Convert */
 public function verify(&$value, $convert=false, $options=array())
 {
 
-$regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
-
-if (!is_string($value) || !preg_match($regex, $value))
+if (!is_string($value) || !preg_match(self::$regex, $value))
 {
 	if ($convert)
 		$value = "";
@@ -2285,15 +2303,27 @@ if (!is_string($value) || !preg_match($regex, $value))
 return true;
 
 }
-
 public function convert(&$value)
 {
 
-$regex = '/^[a-zA-Z]+[:\/\/]+[A-Za-z0-9\-_]+\\.+[A-Za-z0-9\.\/%&=\?\-_]+$/i';
-
-if (!is_string($value) || !preg_match($regex, $value))
+if (!is_string($value) || !preg_match(self::$regex, $value))
 	$value = "";
 
+}
+public function convert_after(&$value)
+{
+
+$value = preg_replace(self::$regex, "$2", $value);
+
+}
+
+/* View */
+function link($target="_blank")
+{
+	if ($target)
+		return "<a href=\"".$this->opt["urltype"]."://$this->value\" target=\"$target\">$this->value</a>";
+	else
+		return "<a href=\"".$this->opt["urltype"]."://$this->value\">$this->value</a>";
 }
 
 }
@@ -2330,8 +2360,6 @@ if (!is_string($value) || !preg_match($regex, $value))
 class data_file extends data
 {
 
-protected $type = "file";
-
 protected $disp_opt = array
 (
 	//"mime_type"=> "", // On doit pouvoir forcer la visualisation dans un autre format...
@@ -2354,8 +2382,6 @@ echo "<a href=\"$this->filelocation/$this->filename\">$this->filename</a>";
 class data_stream extends data
 {
 
-protected $type = "stream";
-
 }
 
 /**
@@ -2364,8 +2390,6 @@ protected $type = "stream";
  */
 class data_image extends data_file
 {
-
-protected $type = "image";
 
 static protected $format_list = array( "jpg"=>"image/jpeg" , "png"=>"image/png" , "gif"=>"image/gif" );
 
@@ -2400,8 +2424,6 @@ if (isset(self::$format_list[$format]))
 class data_audio extends data_file
 {
 
-protected $type = "audio";
-
 static protected $format_list = array( "mp3"=>"audio/mpeg-1" , "wav"=>"audio/wave" , "wma"=>"audio/wma" , "ogg"=>"audio/ogg" , "ogg"=>"image_gif" );
 
 protected $format = "mp3";
@@ -2428,8 +2450,6 @@ if (isset(self::$format_list[$format]))
  */
 class data_video extends data_file
 {
-
-protected $type = "video";
 
 static protected $format_list = array( "wmv"=>"video/wmv" , "avi"=>"video/avi" , "ogg"=>"video/ogg" , "flv"=>"video/flv" , "mp4"=>"video/mpeg-4" , "mov"=>"video/quicktime" );
 
@@ -2467,8 +2487,6 @@ if (isset(self::$format_list[$format]))
 class data_object extends data
 {
 
-protected $type = "object";
-
 protected $structure_opt = array
 (
 	"object" => array("type" => "objecttype"),
@@ -2497,8 +2515,6 @@ protected $db_opt = array
 class data_agregat extends data_object
 {
 
-protected $type = "agregat";
-
 protected $structure_opt = array
 (
 	"datamodel" => "datamodel_name",
@@ -2522,8 +2538,6 @@ protected $db_opt = array
  */
 class data_dataobject extends data_agregat
 {
-
-protected $type = "dataobject";
 
 protected $structure_opt = array
 (
@@ -2689,8 +2703,6 @@ return array( "type" => "integer", "size" => 10, "signed"=>false );
 class data_dataobject_select extends data_agregat
 {
 
-protected $type = "dataobject_select";
-
 protected $structure_opt = array
 (
 	"databank_select" => array(), // liste des databank concern�es
@@ -2803,8 +2815,6 @@ else
  */
 class data_dataobject_list extends data_list
 {
-
-protected $type = "dataobject_list";
 
 protected $structure_opt = array
 (
@@ -3042,14 +3052,10 @@ function data($id=0)
 
 if (!isset($GLOBALS["data_gestion"]))
 {
-	// APC
-	if (APC_CACHE)
+	if (OBJECT_CACHE)
 	{
-		if (!($GLOBALS["data_gestion"]=apc_fetch("datatype_gestion")))
-		{
+		if (!($GLOBALS["data_gestion"]=object_cache_retrieve("datatype_gestion")))
 			$GLOBALS["data_gestion"] = new data_gestion();
-			apc_store("datatype_gestion", $GLOBALS["data_gestion"], APC_CACHE_GESTION_TTL);
-		}
 	}
 	// Session
 	else

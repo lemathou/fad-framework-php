@@ -1,20 +1,30 @@
 <?php
 
-if (DEBUG_GENTIME ==  true)
+/**
+  * $Id$
+  * 
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  */
+
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 // Choix de la page à partir de l'url
 page()->set();
-gentime("PAGE_SET");
+if (DEBUG_GENTIME == true)
+	gentime("PAGE_SET");
 
 // Actions sur la page
 page_current()->action();
-gentime("PAGE_ACTION");
+if (DEBUG_GENTIME == true)
+	gentime("PAGE_ACTION");
 
 // Destruction des variables temporaires créees dans lang.inc.php
 unset($url); unset($url_e);
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

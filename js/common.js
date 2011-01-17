@@ -1,9 +1,17 @@
-// Access elements
+/**
+  * $Id$
+  * 
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  * 
+  */
+
+// DOM Access elements
 function getID(element_id)
 {
 	return document.getElementById(element_id);
 }
-
 
 // Lookup in arrays
 function in_array(a, val)
@@ -362,27 +370,19 @@ function databank_lookup(name)
 	});
 }
 
-function rpc_query(databank, params, callback_func, fields, time)
+function rpc_query(datamodel, params, callback_func, fields, time)
 {
 	var d = new Date();
 	var t = ""+d.getTime();
 	if (!time)
 	{
 		query_lasttime = t;
-		setTimeout(function(){rpc_query(databank, params, callback_func, fields, t);}, '250');
+		setTimeout(function(){rpc_query(datamodel, params, callback_func, fields, t);}, '250');
 	}
 	else if (query_lasttime==time)
 	{
 		query_lasttime = 0;
-		if (!fields)
-			fields_str = "";
-		else if (fields == "1")
-			fields_str = "&fields=1";
-		else
-			fields_str = "&fields[]";
-		var query_string = "/_rpc.php?"+fields_str;
-		//alert('rpc_query : '+query_string);
-		$.post(query_string, {"databank":databank, "params":params}, function(data){
+		$.post("/_rpc.php", {"datamodel":datamodel, "params":params, "fields":fields}, function(data){
 			//alert(data);
 			callback_func(data);
 		}, "json");
@@ -391,12 +391,12 @@ function rpc_query(databank, params, callback_func, fields, time)
 
 var query_lasttime = 0;
 
-//Requête sur une databank et renvoi des résultats vers une fonction
-function object_list_query(databank, params, field)
+// Requête sur une databank et renvoi des résultats vers une fonction
+function object_list_query(datamodel, params, field)
 {
-	rpc_query(databank, params, function(data){object_list_aff(data, field)}, 1);
+	rpc_query(datamodel, params, function(data){object_list_aff(data, field)}, 1);
 }
-//Affiche la liste des objects à partir de la liste
+// Affiche la liste des objects à partir de la liste
 function object_list_aff(list, field)
 {
 	if (list.length)
@@ -444,6 +444,8 @@ function field_control(field, type)
 	switch(type)
 	{
 	case "data_email":
+		break;
+	case "data_url":
 		break;
 	case "data_text":
 		break;

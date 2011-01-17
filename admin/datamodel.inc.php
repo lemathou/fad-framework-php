@@ -123,7 +123,7 @@ $data_list_detail = data()->list_detail_get();
 		<td>langue</td>
 	</tr>
 <?php
-$field_opt_list = array("" , "key" , "required" , "calculated");
+$field_opt_list = array("" , "required" , "calculated");
 $nb = 0;
 foreach ($object->fields() as $name=>$field)
 {
@@ -159,7 +159,6 @@ foreach ($object->fields() as $name=>$field)
 		<td><textarea name="defaultvalue"><?php echo json_encode($field->value); ?></textarea></td>
 		<td><select name="opt">
 			<option value=""></option>
-			<option value="key"<?php if (in_array($name, $object->fields_key())) echo " selected"; ?>>KEY</option>
 			<option value="required"<?php if (in_array($name, $object->fields_required())) echo " selected"; ?>>REQUIRED</option>
 			<option value="calculated">CALCULATED</option>
 		</select></td>
@@ -234,7 +233,7 @@ foreach ($object->fields() as $name=>$field)
 		<td><input readonly value="<?=$field->label?>" /></td>
 		<td><?php echo data()->{substr(get_class($field), 5)}->label; ?></td>
 		<td><?php echo json_encode($field->value); ?></td>
-		<td><?php if (in_array($name, $object->fields_key())) echo "<span style=\"color:red;\">KEY</span>"; elseif (in_array($name, $object->fields_required())) echo "<span style=\"color:blue;\">REQUIRED</span>"; ?></td>
+		<td><?php if (in_array($name, $object->fields_required())) echo "<span style=\"color:blue;\">REQUIRED</span>"; ?></td>
 		<td><?php if (in_array($name, $object->fields_index())) echo "<span style=\"color:blue;\">INDEX</span>"; ?></td>
 		<td><?php if ($field->db_opt("lang") == true) echo "<span style=\"color:blue;\">LANG</span>"; ?></td>
 	</tr>

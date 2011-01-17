@@ -99,13 +99,13 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 
 <body>
 
-<div class="admin_menu"><?php
+<div class="admin_menu"> <?php
 foreach ($admin_menu as $_page => $_name)
 {
 	if ($admin_page == $_page)
-		echo "<a href=\"/admin/$_page\" class=\"selected\">$_name</a>";
+		echo "<a href=\"/admin/$_page\" class=\"selected\">$_name</a> ";
 	else
-		echo "<a href=\"/admin/$_page\">$_name</a>";
+		echo "<a href=\"/admin/$_page\">$_name</a> ";
 }
 ?></div>
 

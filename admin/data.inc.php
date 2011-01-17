@@ -76,7 +76,7 @@ if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]))
 ?>
 <div style="display: inline;position: absolute;">
 Query:
-<select id="q_type" name="q_type"><?php
+<select id="q_type"><?php
 $opt_list = array("like"=>"LIKE", "fulltext"=>"Fulltext");
 foreach($opt_list as $i=>$j)
 	if (isset($_GET["q_type"]) && $_GET["q_type"] == $i)
@@ -84,7 +84,7 @@ foreach($opt_list as $i=>$j)
 	else
 		echo "<option value=\"$i\">$j</option>";
 ?></select>
-<input class="q_str" onkeyup="object_list_query($('#datamodel_id').val(), [{'type':$('#q_type').val(), 'value':this.value}], $(this).parent().parent().eq(0));" onblur="object_list_hide($(this).parent().eq(0))" onfocus="this.select();if(this.value) object_list_query($('#datamodel_id').val(), [{'type':$('#q_type').val(), 'value':this.value}], $(this).parent().parent().eq(0));" />
+<input class="q_str" onkeyup="admin_data_query(this)" onblur="object_list_hide($(this).parent().eq(0))" onfocus="this.select();admin_data_query(this)" />
 <a href="?datamodel_id=<?php echo $_GET["datamodel_id"]; ?>&list">Liste</a>
 <a href="?datamodel_id=<?php echo $_GET["datamodel_id"]; ?>&add">Ajouter</a>
 <div id="q_select" class="q_select"></div>

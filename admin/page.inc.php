@@ -176,11 +176,11 @@ if (is_numeric($page->info("template_id")))
 			?>
 			<td><textarea id="param[<?=$name?>][value]" cols="40" rows="4"></textarea></td>
 			<td>
-				<p>Position : <select id="param_add[update_pos]"><option value="">Aucune</option><?php
+				<p>Position : <select id="param[<?=$name?>][update_pos]"><option value="">Aucune</option><?php
 				for ($i=0;$i<=$posmax;$i++)
 					echo "<option value=\"$i\">$i</option>";
 				?></select></p>
-				<p><input type="submit" value="ADD" onclick="page_param_update('<?=$name?>')" /></p>
+				<p><input type="hidden" id="param[<?php echo $name; ?>][name]" value="<?php echo $name; ?>" /><input type="submit" value="ADD" onclick="page_param_add('<?=$name?>')" /></p>
 			<?
 			}
 			}

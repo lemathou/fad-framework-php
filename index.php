@@ -27,6 +27,8 @@
   *
   */
 
+define("ADMIN_LOAD",false);
+
 // Paramètres, Constantes, variables globales, constructeurs généraux, classes générales, fonctions diverses, etc.
 include PATH_INCLUDE."/header.inc.php";
 

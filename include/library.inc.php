@@ -1,9 +1,9 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -16,7 +16,7 @@ if (DEBUG_GENTIME == true)
  * Library gestion
  *
  */
-class library_gestion extends gestion
+class _library_gestion extends gestion
 {
 
 protected $type = "library";
@@ -71,7 +71,7 @@ return $return;
  * @author mathieu
  *
  */
-class library extends object_gestion
+class _library extends object_gestion
 {
 
 protected $_type = "library";
@@ -119,6 +119,20 @@ return $this->loaded;
 
 }
 
+}
+
+
+/*
+ * Specific classes for admin
+ */
+if (ADMIN_LOAD == true)
+{
+	include PATH_INCLUDE."/admin/library.inc.php";
+}
+else
+{
+	class library_gestion extends _library_gestion {};
+	class library extends _library {};
 }
 
 

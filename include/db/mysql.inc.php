@@ -198,7 +198,9 @@ if (isset($options["charset"]))
 else
 	$tableoption[] = "DEFAULT CHARSET = ".DB_CHARSET;
 
-$this->query("CREATE TABLE IF NOT EXISTS `".$this->string_escape($tablename)."` (".implode(", ", $fieldstruct).") ".implode(" ", $tableoption));
+$query_string = "CREATE TABLE IF NOT EXISTS `".$this->string_escape($tablename)."` (".implode(", ", $fieldstruct).") ".implode(" ", $tableoption);
+$this->query($query_string);
+echo $query_string;
 //$this->query("ALTER TABLE `$tablename` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci");
 
 }

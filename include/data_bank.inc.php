@@ -1,9 +1,9 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -42,7 +42,7 @@ protected $datamodel_id=0;
  * 
  * @var array
  */
-//protected $id = 0; TODO : change field[id] to a simple id var... lot of things to do !!
+protected $id=0;
 protected $fields = array();
 protected $field_values = array();
 
@@ -61,7 +61,7 @@ foreach ($this->fields as $name=>$field)
 	if ($field->value !== $this->field_values[$name])
 		$this->field_values[$name] = $field->value;
 
-return array("field_values");
+return array("id", "field_values");
 
 }
 public function __wakeup()
@@ -89,7 +89,9 @@ $this->datamodel_find();
 $this->datamodel_set();
 if (is_numeric($id) && $id>0)
 {
-	$this->db_retrieve(array("id"=>$id), $fields);
+	//$this->id = $id;
+	// $this->fields = $fields;
+	//$this->db_retrieve_all();
 }
 
 }
@@ -115,6 +117,7 @@ public function datamodel_set()
 
 $this->fields = array();
 $this->field_values = array();
+$this->id = 0;
 // Champs par défaut :
 /*
 foreach($this->datamodel()->fields_key() as $name)
@@ -147,7 +150,9 @@ return isset($this->datamodel()->{$name});
 public function __get($name)
 {
 
-if (isset($this->fields[$name]))
+if ($name == "id")
+	return $this->id;
+elseif (isset($this->fields[$name]))
 {
 	return $this->fields[$name];
 }
@@ -162,10 +167,6 @@ elseif (isset($this->datamodel()->{$name}))
 	$this->fields[$name] = clone $this->datamodel()->{$name};
 	$this->field_values[$name] = $this->fields[$name]->value;
 	return $this->fields[$name];
-}
-elseif (DEBUG_DATAMODEL)
-{
-	trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : Property '$name' not defined");
 }
 
 }
@@ -184,7 +185,7 @@ elseif (DEBUG_DATAMODEL)
 function __tostring()
 {
 
-return $this->datamodel()->label()." ID#".$this->fields["id"];
+return $this->datamodel()->label()." ID#$this->id";
 
 }
 
@@ -194,7 +195,11 @@ return $this->datamodel()->label()." ID#".$this->fields["id"];
 public function __set($name, $value)
 {
 
-if (isset($this->fields[$name]))
+if ($name == "id" && is_numeric($value) && $value>0)
+{
+	$this->id = (int)$value;
+}
+elseif (isset($this->fields[$name]))
 {
 	$this->fields[$name]->value = $value;
 }
@@ -209,9 +214,7 @@ elseif (isset($this->datamodel()->{$name}))
 	$this->field_values[$name] = $this->fields[$name]->value;
 	$this->fields[$name]->value = $value;
 }
-elseif (DEBUG_DATAMODEL)
-	trigger_error("Datamodel '$this->datamodel' agregat : Property '$name' not defined");
-	
+
 }
 
 /**
@@ -220,6 +223,7 @@ elseif (DEBUG_DATAMODEL)
 function __clone()
 {
 
+$this->id = 0;
 foreach ($this->fields as $name=>$field)
 	$this->fields[$name] = clone $field;
 
@@ -243,6 +247,7 @@ return $this->fields;
 public function init()
 {
 
+$this->id = 0;
 foreach ($this->datamodel()->fields() as $name=>$field)
 {
 	$this->fields[$name] = clone $field;
@@ -260,7 +265,11 @@ foreach ($this->datamodel()->fields() as $name=>$field)
 public function db_retrieve($fields, $force=false)
 {
 
-$query_ok = true;
+if (!$this->id)
+	return false;
+
+$params[] = array("name"=>"id", "type"=>"=", "value"=>$this->id);
+
 $params = array();
 if (!is_array($fields))
 	if (is_string($fields))
@@ -268,24 +277,13 @@ if (!is_array($fields))
 	else
 		$fields = array();
 
-// Verify params
-foreach ($this->datamodel()->fields_key() as $name)
-	if (!isset($this->fields[$name]) && !isset($this->field_values[$name]))
-	{
-		if (DEBUG_DATAMODEL)
-			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : missing key '$name' to retrieve fields");
-		$query_ok = false;
-	}
-	else
-		$params[] = array( "name"=>$name, "type"=>"=", "value"=> $this->fields[$name]->value_to_db());
-
-// Delete the fields we already have
+// Delete the fields we already have if we don't want all fields
 if (!$force) foreach ($fields as $i=>$name)
 	if (isset($this->fields[$name]))
 		unset($fields[$i]);
 
 // Effective Query
-if ($query_ok && count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
+if (count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
 {
 	if (count($list) == 1)
 	{
@@ -342,15 +340,18 @@ public function view($name="")
 if (!$name)
 	$name = $this->datamodel()->name();
 
-//$this->db_retrieve_all();
-
-// C'est un mega gros mix de toutes les façons de faire... va falloir choisir à un moment !
 if (template()->exists_name("datamodel/$name"))
 {
 	$view = template()->get_name("datamodel/$name");
 	$view->object_set($this);
 	return $view;
 }
+
+}
+public function display($name="")
+{
+
+return $this->view($name);
 
 }
 /**
@@ -361,18 +362,6 @@ public function disp($name="")
 {
 
 echo $this->display($name);
-
-}
-/**
- * Return the default view
- *
- * @param unknown_type $name
- * @return unknown
- */
-public function display($name="")
-{
-
-return $this->view($name);
 
 }
 /**
@@ -387,45 +376,40 @@ public function form($name="")
 if (!$name)
 	$name = $this->datamodel()->name();
 
-if (file_exists(PATH_TEMPLATE."/datamodel/".$name.".form.tpl.php"))
 {
-	$view = new datamodel_display_tpl_php($this->datamodel(), $this->fields);
-	$view->tplfile_set($name);
-}
-else
-{
-	$view = new datamodel_update_form($this->datamodel(), $this->fields);
+	$view = new datamodel_update_form($this);
 }
 
 return $view;
 
 }
+public function update_form($name="")
+{
 
-/**
- * Return the default form view
- *
- * @param unknown_type $name
- * @return unknown
- */
+if (!$name)
+	$name = $this->datamodel()->name();
+
+{
+	$view = new datamodel_update_form($this);
+}
+
+return $view;
+
+}
 public function insert_form($name="")
 {
 
 if (!$name)
 	$name = $this->datamodel()->name();
 
-if (file_exists(PATH_ROOT."/template/datamodel/".$name.".form.tpl.php"))
 {
-	$view = new datamodel_display_tpl_php($this->datamodel(), $this->fields);
-	$view->tplfile_set($name);
-}
-else
-{
-	$view = new datamodel_insert_form($this->datamodel(), $this->fields);
+	$view = new datamodel_insert_form($this);
 }
 
 return $view;
 
 }
+
 /**
  * Insert new data into database
  *
@@ -436,7 +420,7 @@ public function db_insert($options=array())
 
 if ($id=$this->datamodel()->db_insert($this->fields))
 {
-	$this->__set("id", $id);
+	$this->id = $id;
 	return true;
 }
 else
@@ -446,6 +430,34 @@ else
 
 }
 
+/**
+ * Update data fields from database
+ *
+ * @return unknown
+ */
+public function update_from_db($fields=array())
+{
+
+foreach ($fields as $name=>$value)
+{
+	if ($name == "id")
+	{
+		$this->id = (int)$value;
+	}
+	elseif (isset($this->fields[$name]))
+	{
+		$this->fields[$name]->value_from_db($value);
+		$this->field_values[$name] = $this->fields[$name]->value;
+	}
+	elseif (isset($this->field_values[$name]) || isset($this->datamodel()->{$name}))
+	{
+		$this->fields[$name] = clone $this->datamodel()->{$name};
+		$this->fields[$name]->value_from_db($value);
+		$this->field_values[$name] = $this->fields[$name]->value;
+	}
+}
+
+}
 /**
  * Update the object from a form
  * @param unknown_type $fields
@@ -457,9 +469,12 @@ if (is_array($fields) && count($fields) > 0)
 {
 	foreach($fields as $name=>$value)
 	{
-		if ($field=$this->__get($name))
+		if ($name == "id")
 		{
-			//echo "<p>$name : $value</p>";
+			$this->__set("id", $value);
+		}
+		elseif ($field=$this->__get($name))
+		{
 			$field->value_from_form($value);
 		}
 	}
@@ -506,30 +521,6 @@ if (is_array($fields) && count($fields) > 0)
 	
 }
 /**
- * Update data fields from database
- *
- * @return unknown
- */
-public function update_from_db($fields=array())
-{
-
-foreach ($fields as $name=>$value)
-{
-	if (isset($this->fields[$name]))
-	{
-		$this->fields[$name]->value_from_db($value);
-		$this->field_values[$name] = $this->fields[$name]->value;
-	}
-	elseif (isset($this->field_values[$name]) || isset($this->datamodel()->{$name}))
-	{
-		$this->fields[$name] = clone $this->datamodel()->{$name};
-		$this->fields[$name]->value_from_db($value);
-		$this->field_values[$name] = $this->fields[$name]->value;
-	}
-}
-
-}
-/**
  * Update data into database
  *
  * @param unknown_type $options
@@ -537,21 +528,26 @@ foreach ($fields as $name=>$value)
 public function db_update($options=array())
 {
 
-$fields = array("id"=>$this->fields["id"]);
+// Permission verification
+if (false)
+{
+	die("NOT ALLOWED TO UPDATE !");
+}
+
+$fields = array();
 foreach ($this->fields as $name=>$field)
 {
 	if ($this->field_values[$name] !== $field->value)
 		$fields[$name] = $field;
 }
 
-if ($result = $this->datamodel()->db_update($fields))
+if ($result = $this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id)), $fields))
 {
-	//echo "INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )";
 	foreach ($fields as $name=>$field)
 		$this->field_values[$name] = $field->value;
-	db()->query("INSERT INTO _databank_update ( databank_id , dataobject_id , account_id , action , datetime ) VALUES ( '".$this->datamodel()->id()."' , '".$this->fields["id"]->value."' , '".login()->id()."' , 'u' , NOW() )");
+	db()->query("INSERT INTO `_databank_update` (`databank_id`, `dataobject_id`, `account_id`, `action`, `datetime`) VALUES ('".$this->datamodel()->id()."', '".$this->id."', '".login()->id()."', 'u', NOW())");
 	if (OBJECT_CACHE)
-		object_cache_store("dataobject_".$this->datamodel_id."_".$this->fields["id"], $this, OBJECT_CACHE_DATAOBJECT_TTL);
+		object_cache_store("dataobject_".$this->datamodel_id."_".$this->id, $this, OBJECT_CACHE_DATAOBJECT_TTL);
 }
 
 return $result;
@@ -575,6 +571,8 @@ return $this->datamodel()->action_list();
  */
 public function action($method, $params)
 {
+
+// TODO : great potential with this concept !
 
 $action_list = &$this->datamodel()->action_list();
 if (isset($action_list[$method]) && $action=$action_list[$method]["method"])

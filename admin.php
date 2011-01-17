@@ -11,6 +11,7 @@
 
 define("SITE_LANG",SITE_LANG_DEFAULT);
 define("SITE_LANG_ID",SITE_LANG_DEFAULT_ID);
+define("ADMIN_LOAD",true);
 
 include PATH_INCLUDE."/header.inc.php";
 

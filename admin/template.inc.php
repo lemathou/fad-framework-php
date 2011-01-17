@@ -41,9 +41,9 @@ $_type()->retrieve_objects();
 foreach ($_type()->list_get() as $id=>$template)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] ".$template->info("type")." ".$template->label()."</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] ".$template->info("type")." : ".$template->label()."</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] ".$template->info("type")." ".$template->label()."</option>\n";
+		echo "	<option value=\"$id\">[$id] ".$template->info("type")." : ".$template->label()."</option>\n";
 }
 ?></select>
 <a href="?add">Ajouter</a>
@@ -159,7 +159,7 @@ if ($query->num_rows())
 				$aff = "ID#$object->id : $object->ref";
 			else
 				$aff = "ID#$object->id";
-			if ($param["defaultvalue"] == $object->id->value)
+			if ($param["defaultvalue"] == $object->id)
 				echo "<option value=\"$object->id\" selected>$aff</option>";
 			else
 				echo "<option value=\"$object->id\">$aff</option>";
@@ -246,8 +246,6 @@ if (isset($_POST["order_change"]) && is_array($_POST["order_change"]))
 	}
 }
 
-var_dump($template);
-
 foreach ($template->param_list_detail() as $nb=>$param)
 {
 ?>
@@ -265,7 +263,7 @@ foreach ($template->param_list_detail() as $nb=>$param)
 	<td><a href="?id=<?php echo $id; ?>&param_edit=<?=$param["name"]?>"><?=$param["name"]?></a></td>
 	<td><?=$param["label"]?></td>
 	<td><?=data()->get_name($param["datatype"])->label?></td>
-	<td><?=$param["value"]?></td>
+	<td><?=json_encode($param["value"])?></td>
 </tr>
 <?php
 }

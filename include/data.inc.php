@@ -1322,7 +1322,7 @@ return array("type" => "time");
 public function verify(&$value, $convert=false, $options=array())
 {
 
-if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+if (!is_string($value) || !preg_match("/^(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])$/",$value))
 {
 	if ($convert)
 		$value = "00:00:00";
@@ -1335,7 +1335,7 @@ return true;
 public function convert(&$value)
 {
 
-if (!is_string($value) || !preg_match("(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])",$value))
+if (!is_string($value) || !preg_match("/^(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])$/",$value))
 	$value = "00:00:00";
 
 }
@@ -1410,7 +1410,7 @@ return $return;
 public function convert(&$value)
 {
 
-if (!is_string($value) || !$value || count($e=explode(" ", $value)) != 2 || count($d=explode("/", $e[0])) != 3 || count($t=explode("/", $e[1])) != 3)
+if (!is_string($value) || count($e=explode(" ", $value)) != 2 || count($d=explode("/", $e[0])) != 3 || count($t=explode(":", $e[1])) != 3)
 	$value = null;
 
 }
@@ -1421,13 +1421,15 @@ if ($value !== null)
 {
 	$e = explode(" ", $value);
 	$d = explode("/", $e[0]);
-	$t = explode("/", $e[1]);
+	$t = explode(":", $e[1]);
 	$value = mktime($t[0], $t[1], $t[2], $d[1], $d[0], $d[2]);
 }
 
 }
 public function value_from_db($value)
 {
+
+$this->convert($value);
 
 if ($value === null || $value == "0000-00-00 00:00:00")
 	$this->value = null;
@@ -2621,7 +2623,7 @@ function form_field_disp($print=true, $option=array())
 {
 
 // Pas beaucoup de valeurs : liste simple
-if (($databank=datamodel($this->structure_opt["databank"])) && (($nb=$databank->count()) <= 50))
+if (($databank=datamodel()->get($this->structure_opt["databank"])) && (($nb=$databank->count()) <= 50))
 {
 	if (isset($option["order"]))
 		$query = $databank->query(array(), array(), $option["order"]);
@@ -2629,10 +2631,10 @@ if (($databank=datamodel($this->structure_opt["databank"])) && (($nb=$databank->
 		$query = $databank->query();
 
 	$return = "<select name=\"$this->name\" title=\"$this->label\" class=\"".get_called_class()."\">\n";
-	$return .= "<option value=\"\"></option>";
+	$return .= "<option></option>";
 	foreach($query as $object)
 	{
-		if ($this->value == $object->id->value)
+		if ($this->value == $object->id)
 		{
 			$return .= "<option value=\"$object->id\" selected=\"selected\">$object</option>";
 		}
@@ -2646,10 +2648,10 @@ else
 {
 	$return = "<div style=\"display:inline;\"><input name=\"$this->name\" value=\"$this->value\" type=\"hidden\" class=\"q_id\" />";
 	if ($this->value)
-		$value = (string)datamodel($this->structure_opt["databank"], $this->value, true);
+		$value = (string)datamodel()->get($this->structure_opt["databank"], $this->value, true);
 	else
 		$value = "";
-	$return .= "<input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
+	$return .= "<select class=\"q_type\"><option value=\"like\">Approx.</option><option value=\"fulltext\">Precis</option></select><input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" />";
 	$return .= "<div class=\"q_select\"></div>";
 	$return .= "</div>";
 }
@@ -2962,7 +2964,7 @@ if (($nb=datamodel($this->structure_opt["databank"])->db_count()) < 20)
 			$return .= "<option value=\"$id\" selected>".datamodel($this->structure_opt["databank"])->get($id)."</option>";
 	foreach($query as $object)
 	{
-		if (!is_array($this->value) || !in_array($object->id->value, $this->value))
+		if (!is_array($this->value) || !in_array($object->id, $this->value))
 			$return .= "<option value=\"$object->id\">$object</option>";
 	}
 	$return .= "</select>\n";
@@ -2980,7 +2982,7 @@ else
 			$return .= "<option value=\"$id\" selected>".datamodel($this->structure_opt["databank"])->get($id)."</option>";
 	}
 	$return .= "</select></div>";
-	$return .= "<input class=\"q_str\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':'like','value':this.value}], $(this).parent().get(0));\" />";
+	$return .= "<select class=\"q_type\"><option value=\"like\">Approx.</option><option value=\"fulltext\">Precis</option></select><input class=\"q_str\" onkeyup=\"object_list_query(".$this->structure_opt["databank"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->structure_opt["databank"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" />";
 	$return .= "<div class=\"q_select\"></div>";
 	$return .= "</div>";
 }

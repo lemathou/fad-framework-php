@@ -1,21 +1,22 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
-  * Many template caches are supported : APC, Memcached or directly in a cache folder
+  * Multiple template caches are supported : APC, Memcached, DB or directly in a cache folder
+  * TODO : correct APC and implement Memcached and Db (effectively MySQL)
   * 
   */
 
-
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
-class template_gestion extends gestion
+
+class _template_gestion extends gestion
 {
 
 protected $type = "template";
@@ -109,7 +110,7 @@ while ($opt = $query_opt->fetch_assoc())
  * Defines the display of the page, based on database infos and a template file
  * 
  */
-class template extends object_gestion
+class _template extends object_gestion
 {
 
 protected $_type = "template";
@@ -124,7 +125,7 @@ protected $cache_maxtime = 0;
 protected $login_dependant = 0;
 
 /*
- * Obsolète à terme
+ * Surely depreacated, except if I implement function libraries
  */
 protected $library_list = array();
 
@@ -142,9 +143,12 @@ protected $param = array();
 protected $tpl_filename = "";
 
 /*
- * Calculated fields
+ * Unique cache ID to store and retrieve each filled template
  */
 protected $cache_id = "";
+/*
+ * TODO : use distinct functions as for object cache, if possible
+ */
 protected $cache_folder = "";
 protected $cache_filename = "";
 
@@ -214,95 +218,6 @@ while ($opt = $query_opt->fetch_row())
 	$this->param_list_detail[$param_order[$opt[0]]]["opt"][$opt[1]] = json_decode($opt[2], true);
 }
 $this->construct_params();
-
-}
-
-/**
- * Add, remove and update template parameters
- */
-public function param_add($name, $info)
-{
-
-if (!login()->perm(6))
-	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
-if (!is_string($name) || !preg_match("/^([a-zA-Z_-]*)$/", $name) || isset($this->param[$name]) || !is_array($info) || !isset($info["datatype"]) || !data()->exists_name($info["datatype"]))
-	return false;
-if (!isset($info["defaultvalue"]) || !is_string($info["defaultvalue"]))
-	$info["defaultvalue"] = "null";
-if (!isset($info["description"]) || !is_string($info["description"]))
-	$info["description"] = "";
-
-list($info["order"]) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$this->id'")->fetch_row();
-db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `defaultvalue`) VALUES ('$this->id', '".$info["order"]."', '".$info["datatype"]."', '".$name."', '".db()->string_escape($info["defaultvalue"])."' )");
-db()->query("INSERT INTO `_template_params_lang` (`template_id`, `lang_id`, `name`, `description`) VALUES ('$this->id', '".SITE_LANG_ID."', '".db()->string_escape($name)."', '".db()->string_escape($info["description"])."' )");
-
-$this->query_info();
-template()->query_info();
-
-return true;
-
-}
-public function param_del($name)
-{
-
-if (!login()->perm(6))
-	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
-if (!is_string($name) || !isset($this->param[$name]))
-	return false;
-
-db()->query("DELETE FROM `_template_params` WHERE template_id='$this->id' AND name='$name'");
-db()->query("DELETE FROM `_template_params_lang` WHERE template_id='$this->id' AND name='$name'");
-db()->query("DELETE FROM `_template_params_opt` WHERE template_id='$this->id' AND name='$name'");
-
-$this->query_info();
-template()->query_info();
-
-return true;
-
-}
-public function param_update($name, $info)
-{
-
-if (!login()->perm(6))
-	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
-if (!is_string($name) || isset($this->param[$name]) || !is_array($info))
-	return false;
-
-$update_list = array();
-$update_lang_list = array();
-if (isset($info["datatype"]))
-	if (!data()->exists_name($info["datatype"]))
-		return false;
-	else
-		$update_list[] = "`datatype`='".$info["datatype"]."'";
-if (isset($info["defaultvalue"]))
-	if (!is_string($info["defaultvalue"]))
-		return false;
-	else
-		$update_list[] = "`defaultvalue`='".db()->string_escape($info["defaultvalue"])."'";
-if (isset($info["description"]))
-	if (!is_string($info["description"]))
-		return false;
-	else
-		$update_lang_list[] = "`description`='".db()->string_escape($info["description"])."'";
-list($posmax) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$this->id'")->fetch_row();
-if (isset($info["order"]))
-	if (!is_numeric($info["order"]) || $info["order"] < 0 || $info["order"] > $pos_max)
-		return false;
-
-if (count($update_list))
-{
-	db()->query("UPDATE `_template_params` SET ".implode($update_list)." WHERE `template_id`='$this->id' AND `name`='".$name."'");
-}
-if (count($update_lang_list))
-{
-	db()->query("UPDATE `_template_params_lang` SET ".implode($update_lang_list)." WHERE `template_id`='$this->id' AND `lang_id`='".SITE_LANG_ID."' AND `name`='".$name."'");
-}
-
-$this->query_info();
-template()->query_info();
-
-return true;
 
 }
 
@@ -379,12 +294,14 @@ public function disp()
 {
 
 /*
- * Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
+ * TODO : Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
+ * Nécessite une refonte de la génération des templates
  */
+//requires $tpl
 //header('Status: 304 Not Modified', false, 304);
-//header('Last-Modified: '.gmdate('D, d M Y H:i:s',filemtime($filename)).' GMT');
-//header('Expires: '.gmdate('D, d M Y H:i:s',filemtime($filename)+60).' GMT');
-//header('Content-Length: '.strlen($tpl));
+//header('Last-Modified: '.gmdate('D, d M Y H:i:s',$tpl["regentime"]).' GMT');
+//header('Expires: '.gmdate('D, d M Y H:i:s',$tpl["regentime"]+TEMPLATE_CACHE_MINTIME).' GMT');
+//header('Content-Length: '.strlen($tpl["html"]));
 
 echo $this->__tostring();
 
@@ -624,7 +541,7 @@ $_time = time();
 extract($this->param);
 ob_start();
 include PATH_TEMPLATE."/$this->name.tpl.php";
-if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
+if (TEMPLATE_CACHE_TYPE == "apc")
 	apc_store("tpl_$this->cache_id", $this->tpl="<!-- $_time -->".ob_get_contents(), TEMPLATE_CACHE_MAX_TIME);
 else
 	fwrite(fopen($this->cache_filename,"w"), ob_get_contents());
@@ -642,7 +559,7 @@ protected function cache_check()
 
 $time = time();
 
-if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
+if (TEMPLATE_CACHE_TYPE == "apc")
 {
 	//echo "<p>Fetching tpl_$this->cache_id : ".substr(apc_fetch("tpl_$this->cache_id"), 5, 10)."\n";
 	if (!($this->tpl=apc_fetch("tpl_$this->cache_id")))
@@ -758,7 +675,7 @@ if ($this->tpl)
 }
 else
 {
-	if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
+	if (TEMPLATE_CACHE_TYPE == "apc")
 	{
 		//echo "<p>template($this->id)::cache_return() using APC $this->cache_id</p>\n";
 		return $this->subtemplates_apply(apc_fetch("tpl_$this->cache_id"));
@@ -775,6 +692,21 @@ else
 }
 
 }
+
+
+/*
+ * Specific classes for admin
+ */
+if (ADMIN_LOAD == true)
+{
+	include PATH_INCLUDE."/admin/template.inc.php";
+}
+else
+{
+	class template_gestion extends _template_gestion {};
+	class template extends _template {};
+}
+
 
 /**
  * Specific configuration for container (alias primary) templates
@@ -834,6 +766,7 @@ foreach($this->param_list_detail as $param)
 
 }
 
+
 /**
  * Specific configuration for datamodel templates.
  * @author mathieu
@@ -849,7 +782,7 @@ protected $object = null;
 function object_set(data_bank_agregat $object)
 {
 
-$this->object_id = $object->id->value;
+$this->object_id = $object->id;
 $this->object = $object;
 
 $this->object_retrieve_values();
@@ -869,7 +802,9 @@ function object_retrieve_values()
 
 //echo "<p>TEMPLATE_DATAMODEL()::object_retrieve_values()</p>";
 
-$this->params = array();
+$this->param = array();
+$this->param["id"] = new data_id();
+$this->param["id"]->value = $this->object->id;
 foreach($this->object->datamodel()->fields() as $field)
 {
 	$this->param[$field->name] = $this->object->{$field->name};
@@ -881,7 +816,7 @@ protected function cache_id_set()
 {
 
 if ($this->object)
-	$params_str = "'$this->id','".$this->object->datamodel()->id()."','".$this->object->id->value."'";
+	$params_str = "'$this->id','".$this->object->datamodel()->id()."','".$this->object->id."'";
 else
 	$params_str = "'$this->id','0','0'";
 
@@ -903,7 +838,7 @@ if (TEMPLATE_CACHE_TYPE == "file")
 protected function cache_check()
 {
 
-if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
+if (TEMPLATE_CACHE_TYPE == "apc")
 {
 	if (!($this->tpl=apc_fetch("tpl_$this->cache_id")))
 	{
@@ -925,7 +860,7 @@ if (APC_CACHE && TEMPLATE_CACHE_TYPE == "apc")
 	}
 	else
 	{
-		$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$this->object->datamodel()->id()."' AND `dataobject_id`='".$this->object->id->value."' ORDER BY `datetime` DESC LIMIT 1");
+		$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$this->object->datamodel()->id()."' AND `dataobject_id`='".$this->object->id."' ORDER BY `datetime` DESC LIMIT 1");
 		if ($query->num_rows())
 		{
 			list($i) = $query->fetch_row();
@@ -977,7 +912,7 @@ else
 	// Paramètres du template modifiés
 	else
 	{
-		$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$this->object->datamodel()->id()."' AND `dataobject_id`='".$this->object->id->value."' ORDER BY `datetime` DESC LIMIT 1");
+		$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$this->object->datamodel()->id()."' AND `dataobject_id`='".$this->object->id."' ORDER BY `datetime` DESC LIMIT 1");
 		if ($query->num_rows())
 		{
 			list($i) = $query->fetch_row();
@@ -1003,7 +938,7 @@ else
 
 
 /**
- * Accès aux templates
+ * Access function
  * 
  * @param integer $id
  */
@@ -1033,7 +968,8 @@ else
 
 }
 
-if (DEBUG_GENTIME ==  true)
+
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

@@ -9,7 +9,7 @@
   * 
   */
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__);
 
 class error
@@ -40,18 +40,20 @@ while (list($cat, $list)=each($this->list))
 
 }
 
-// Acc�s � l'objet
+// Access function
 
 function error()
 {
+
+if (!isset($GLOBALS["error"]))
+	$GLOBALS["error"] = new error();
 
 return $GLOBALS["error"];
 
 }
 
-$GLOBALS["error"] = new error();
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__);
 
 ?>

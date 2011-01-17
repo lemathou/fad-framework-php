@@ -1,3 +1,12 @@
+/**
+  * $Id$
+  * 
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  * 
+  */
+
 @CHARSET "UTF-8";
 
 .admin_menu
@@ -9,6 +18,7 @@
 	padding: 4px 0px;
 	height: 20px;
 	border-bottom: 1px blue solid;
+	font-size: 0.9em;
 }
 .admin_menu a
 {
@@ -59,6 +69,26 @@ tr.header td
 	padding: 10px;
 }
 td.label
+{
+	font-weight: bold;
+}
+
+tr.alt td
+{
+	background-color: #ccf;
+}
+
+/* Objects specific list */
+.object_list_form > table
+{
+	font-size: 0.9em;
+}
+.object_list_form .delete_link
+{
+	color: red;
+	text-decoration: none;
+}
+tr.label
 {
 	font-weight: bold;
 }

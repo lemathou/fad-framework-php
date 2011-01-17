@@ -1,3 +1,12 @@
+/**
+  * $Id$
+  * 
+  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  * 
+  */
+
 @CHARSET "UTF-8";
 
 body
@@ -122,11 +131,12 @@ td.label
 .admin_link a
 {
 	padding: 20px 0;
-	color: transparent;
+	color: white;
+	background-color: white;
 }
 .admin_link a:hover
 {
-	color: transparent;
+	color: white;
 }
 
 /* Page */
@@ -137,13 +147,11 @@ td.label
 	height: 100%;
 }
 
-/* Types de donnée */
-
+/* OBJECTS */
 .object_list
 {
 	margin-top: 5px;
 }
-
 .object_form
 {
 	margin-top: 5px;
@@ -158,6 +166,22 @@ td.label
 {
 	width: 250px;
 }
+
+/* DATAOBJECTS */
+.datamodel_form
+{
+	width: 100%;
+}
+.datamodel_form > table
+{
+	width: 100%;
+}
+.datamodel_form > table td.label
+{
+	width: 250px;;
+}
+
+/* DATATYPES */
 
 .data_text, .data_richtext, .data_script
 {

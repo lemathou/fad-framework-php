@@ -1,4 +1,4 @@
-<?
+<?php
 
 /**
   * $Id$
@@ -9,8 +9,9 @@
   * 
   */
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
+
 
 /**
  * Gestion des menus
@@ -142,14 +143,17 @@ if (!isset($GLOBALS["menu_gestion"]))
 	}
 }
 
-if ($id)
+if (is_numeric($id))
 	return $GLOBALS["menu_gestion"]->get($id);
+elseif (is_string($id))
+	return $GLOBALS["menu_gestion"]->get_name($id);
 else
 	return $GLOBALS["menu_gestion"];
 
 }
 
-if (DEBUG_GENTIME ==  true)
+
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

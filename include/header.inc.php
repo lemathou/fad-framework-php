@@ -1,11 +1,13 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -27,11 +29,17 @@ include PATH_INCLUDE."/classes.inc.php";
 // Database
 include PATH_INCLUDE."/db.inc.php";
 
+if (HEADER_LOAD == "full")
+{
+
 // Object cache
 include PATH_INCLUDE."/cache.inc.php";
 
 // Object gestion classes
 include PATH_INCLUDE."/gestion.inc.php";
+
+// Global variables
+include PATH_INCLUDE."/globals.inc.php";
 
 // Project libraries
 include PATH_INCLUDE."/library.inc.php";
@@ -42,8 +50,28 @@ include PATH_INCLUDE."/datamodel.inc.php";
 include PATH_INCLUDE."/data_display.inc.php";
 include PATH_INCLUDE."/data_bank.inc.php";
 
-// GLobal variables
-include PATH_INCLUDE."/globals.inc.php";
+// Permissions
+include PATH_INCLUDE."/permission.inc.php";
+
+// Login
+include PATH_INCLUDE."/login.inc.php";
+
+// Templates
+include PATH_INCLUDE."/template.inc.php";
+
+// Menu & Pages
+include PATH_INCLUDE."/page.inc.php";
+include PATH_INCLUDE."/menu.inc.php";
+
+// Lang
+include PATH_INCLUDE."/lang.inc.php";
+
+// Mise en place des fonctions associées aucx banques de donnée !!
+datamodel();
+if (DEBUG_GENTIME == true)
+	gentime("Datamodel init");
+
+}
 
 // Errors, exceptions, feedbacks, etc.
 //include "include/error.inc.php";
@@ -55,18 +83,17 @@ include PATH_INCLUDE."/globals.inc.php";
 // URL rewriting : actually depreacated, but...
 //include "include/rewriting.inc.php";
 
-// Permissions
-include PATH_INCLUDE."/permission.inc.php";
+if (SESSION_START)
+{
 
-// Menu & Pages
-include PATH_INCLUDE."/page.inc.php";
-include PATH_INCLUDE."/menu.inc.php";
+// Session start
+session_start();
+// Login refresh
+login()->refresh();
+if (DEBUG_GENTIME == true)
+	gentime("Session refresh");
 
-// Login
-include PATH_INCLUDE."/login.inc.php";
-
-// Templates
-include PATH_INCLUDE."/template.inc.php";
+}
 
 
 if (DEBUG_GENTIME == true)

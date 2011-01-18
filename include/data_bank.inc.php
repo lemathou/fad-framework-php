@@ -3,7 +3,7 @@
 /**
   * $Id$
   * 
-  * Copyright 2011 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
@@ -43,6 +43,8 @@ protected $datamodel_id=0;
  * @var array
  */
 protected $id=0;
+protected $_update = null;
+
 protected $fields = array();
 protected $field_values = array();
 
@@ -61,7 +63,7 @@ foreach ($this->fields as $name=>$field)
 	if ($field->value !== $this->field_values[$name])
 		$this->field_values[$name] = $field->value;
 
-return array("id", "field_values");
+return array("id", "_update", "field_values");
 
 }
 public function __wakeup()
@@ -150,8 +152,8 @@ return isset($this->datamodel()->{$name});
 public function __get($name)
 {
 
-if ($name == "id")
-	return $this->id;
+if ($name == "id" || $name == "_update")
+	return $this->{$name};
 elseif (isset($this->fields[$name]))
 {
 	return $this->fields[$name];
@@ -196,6 +198,10 @@ public function __set($name, $value)
 {
 
 if ($name == "id" && is_numeric($value) && $value>0)
+{
+	$this->id = (int)$value;
+}
+elseif ($name == "_update")
 {
 	$this->id = (int)$value;
 }
@@ -418,15 +424,7 @@ return $view;
 public function db_insert($options=array())
 {
 
-if ($id=$this->datamodel()->db_insert($this->fields))
-{
-	$this->id = $id;
-	return true;
-}
-else
-{
-	return false;
-}
+return $this->datamodel()->db_insert($this);
 
 }
 
@@ -442,7 +440,14 @@ foreach ($fields as $name=>$value)
 {
 	if ($name == "id")
 	{
-		$this->id = (int)$value;
+		$this->{$name} = (int)$value;
+	}
+	elseif ($name == "_update")
+	{
+		$e = explode(" ", $value);
+		$d = explode("-", $e[0]);
+		$t = explode(":", $e[1]);
+		$this->{$name} = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
 	}
 	elseif (isset($this->fields[$name]))
 	{
@@ -541,16 +546,21 @@ foreach ($this->fields as $name=>$field)
 		$fields[$name] = $field;
 }
 
-if ($result = $this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id)), $fields))
+if (!count($fields))
+	return false;
+
+if ($this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id)), $fields))
 {
 	foreach ($fields as $name=>$field)
 		$this->field_values[$name] = $field->value;
+	$this->_update = time();
 	db()->query("INSERT INTO `_databank_update` (`databank_id`, `dataobject_id`, `account_id`, `action`, `datetime`) VALUES ('".$this->datamodel()->id()."', '".$this->id."', '".login()->id()."', 'u', NOW())");
 	if (OBJECT_CACHE)
 		object_cache_store("dataobject_".$this->datamodel_id."_".$this->id, $this, OBJECT_CACHE_DATAOBJECT_TTL);
+	return true;
 }
 
-return $result;
+return false;
 
 }
 

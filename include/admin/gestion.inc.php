@@ -6,6 +6,9 @@
   * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * 
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -171,8 +174,6 @@ foreach ($this->info_detail as $name=>$info)
 		else
 			echo "<option value=\"$i\">$j</option>";
 	?></select></td>
-<?php } elseif ($info["type"] == "script") { ?>
-	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php if (isset($info["default"])) echo $info["default"]; ?></textarea></td>
 <?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; ?>
 	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
 	foreach($object_type()->list_detail_get() as $i=>$j)
@@ -183,6 +184,8 @@ foreach ($this->info_detail as $name=>$info)
 	foreach($object_type()->list_detail_get() as $i=>$j)
 		echo "<option value=\"$i\">$j[label]</option>";
 	?></select></td>
+<?php } elseif ($info["type"] == "script") { ?>
+	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php if (isset($info["default"])) echo $info["default"]; ?></textarea></td>
 <?php } else { ?>
 	<td><textarea name="<?php echo $name; ?>" style="width:100%;" rows="5"></textarea></td>
 <?php } ?>
@@ -411,12 +414,6 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 		else
 			echo "<option value=\"$i\">$j</option>";
 	?></select></td>
-<?php } elseif ($info["type"] == "script") { ?>
-	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php
-	$filename =  $info["folder"]."/".str_replace("{name}", $this->name, $info["filename"]);
-	if (file_exists($filename) && ($filesize=filesize($filename)))
-		echo $content = htmlspecialchars(fread(fopen($filename,"r"),$filesize));
-	?></textarea></td>
 <?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
 	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" title="<?php echo $info["label"]; ?>" size="10" multiple class="data_fromlist"><?
 	foreach($object_type()->list_detail_get() as $i=>$j)
@@ -433,6 +430,12 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 		else
 			echo "<option value=\"$i\">$j[label]</option>";
 	?></select></td>
+<?php } elseif ($info["type"] == "script") { ?>
+	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php
+	$filename =  $info["folder"]."/".str_replace("{name}", $this->name, $info["filename"]);
+	if (file_exists($filename) && ($filesize=filesize($filename)))
+		echo $content = htmlspecialchars(fread(fopen($filename,"r"),$filesize));
+	?></textarea></td>
 <?php } else { ?>
 	<td><textarea name="<?php echo $name; ?>" style="width:100%;"><?php echo $this->{$name}; ?></textarea></td>
 <?php } ?>

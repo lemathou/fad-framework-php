@@ -1,7 +1,16 @@
-<?
+<?php
 
-if (DEBUG_GENTIME ==  true)
+/**
+  * $Id$
+  * 
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  */
+
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
+
 
 /**
  * datamodel display class
@@ -127,10 +136,20 @@ public function disp($print=true)
 
 $return = "<form id=\"".$this->datamodel->name()."_form\" class=\"datamodel_form datamodel_update_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this, new Array ('".implode("','",$this->datamodel->fields_required())."'))\">\n";
 $return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
+{
 		$return .= "<tr class=\"data_id\">\n";
 		$return .= "	<td class=\"label\"><label for=\"id\">ID</label> :</td>\n";
-		$return .= "	<td><input name=\"id\" size=\"6\" maxlength=\"6\" value=\"".$this->object->id."\" readonly /> <input type=\"button\" value=\"update\" onclick=\"admin_data_id_update_toggle(this)\" /></td>\n";
+		$return .= "	<td><input name=\"id\" size=\"6\" maxlength=\"6\" value=\"".$this->object->id."\" readonly /></td>\n";
+		//<input type=\"button\" value=\"update\" onclick=\"admin_data_id_update_toggle(this)\" />
 		$return .= "</tr>\n";
+}
+if ($this->datamodel->info("dynamic"))
+{
+		$return .= "<tr class=\"data_string\">\n";
+		$return .= "	<td class=\"label\"><label>Update datetime</label> :</td>\n";
+		$return .= "	<td><input size=\"17\" maxlength=\"17\" value=\"".date("d/m/Y H:i:s", $this->object->_update)."\" readonly /></td>\n";
+		$return .= "</tr>\n";
+}
 foreach ($this->object->field_list() as $name=>$field)
 {
 	if (in_array($name, $this->datamodel->fields_required()))
@@ -161,7 +180,7 @@ else
 }
 
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

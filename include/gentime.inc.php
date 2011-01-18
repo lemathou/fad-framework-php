@@ -10,9 +10,9 @@
   */
 
 // Durées en ms
-define("GENTIME_S",0.5);
-define("GENTIME_M",5);
-define("GENTIME_L",25);
+define("GENTIME_S",0.25);
+define("GENTIME_M",1);
+define("GENTIME_L",5);
 
 class gentime
 {
@@ -34,7 +34,7 @@ $this->timestamp = microtime(true);
 public function add($name="")
 {
 
-$this->list[] = array ( "$name" , microtime(true) );
+$this->list[] = array ("$name", microtime(true));
 
 }
 
@@ -70,30 +70,42 @@ foreach ($this->list as $time)
 
 echo "<table style=\"font-size:8pt;\" width=\"100%\">\n";
 echo "<p>Time MAX : $time_max</p>\n";
+$t = 0;
 foreach ($aff as $i)
 {
+	$t += $i["time"];
 	if ($i["time"] < 1)
 		$time = ($i["time"]*1000)." us";
 	else
 		$time = ($i["time"])." ms";
 	//$color = ($i["time"] >= GENTIME_S) ? ($i["time"] >= GENTIME_M) ? ($i["time"] >= GENTIME_L) ? "red" : "blue" : "green" : "black";
-	$colornum = 150-round(150*($i["time"]-$time_min)/($time_max));
 	if ($i["time"] >= GENTIME_L)
+	{
+		$colornum = round(255-255*($i["time"])/($time_max), -1);
 		$color = "rgb(255,$colornum,$colornum)";
+	}
 	elseif ($i["time"] >= GENTIME_M)
+	{
+		$colornum = round(255-255*($i["time"])/GENTIME_L, -1);
 		$color = "rgb($colornum,$colornum,255)";
+	}
 	elseif ($i["time"] >= GENTIME_S)
+	{
+		$colornum = round(255-255*($i["time"])/GENTIME_M, -1);
 		$color = "rgb($colornum,255,$colornum)";
+	}
 	else
 	{
-		$colornum = $colornum/2;
+		$colornum = round(255-255*($i["time"])/GENTIME_S, -1);
 		$color = "rgb($colornum,$colornum,$colornum)";
 	}
 	$width = round(log($i["time"]*1000)*50)-round(log($time_min*1000)*50);
-	echo "<tr> <td align=\"right\">$i[name]</td> <td><div style=\"float:left;background-color:$color;width:${width}px;margin-right:10px;\">&nbsp;</div><div style=\"color:black;\"> $time</div></td> </tr>\n";
+	echo "<tr>";
+	echo "<td align=\"right\">$i[name]</td>";
+	echo "<td><div style=\"float:left;background-color:$color;width:${width}px;margin-right:10px;\">&nbsp;</div><div style=\"color:black;\"> $time</div></td>";
+	echo "<td align=\"right\">".round($t, 4)." ms</td>";
+	echo "</tr>\n";
 }
-$time_ms = ($lasttime-$this->timestamp)*1000;
-echo "<tr> <td align=\"right\"><b>TOTAL</b></td> <td><div style=\"float:left;background-color:$color;width:".round(log($time_ms*1000)*50)."px;\">&nbsp;</div><div style=\"color:$color;\"> $time_ms ms</div></td></p>\n";
 echo "</table\n>";
 
 }

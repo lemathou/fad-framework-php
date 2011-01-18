@@ -6,6 +6,8 @@
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   * Multiple template caches are supported : APC, Memcached, DB or directly in a cache folder
   * TODO : correct APC and implement Memcached and Db (effectively MySQL)
@@ -606,7 +608,7 @@ if (TEMPLATE_CACHE_TYPE == "apc")
 		return $return;
 	}
 }
-else
+else // (TEMPLATE_CACHE_TYPE == "file")
 {
 	// Pas de fichier en cache
 	if (!file_exists($this->cache_filename))
@@ -639,15 +641,14 @@ else
 	// Paramètres du template modifiés
 	{
 		$return = true;
-		foreach($this->param_list_detail as $param)
+		reset ($this->param_list_detail);
+		while($return && (list($param)=each($this->param_list_detail)))
 		{
-			if ($param["datatype"] == "dataobject") // TODO : add directly a query function into the dataobject, for example $param->update_datetime_get() ...
+			if ($param["datatype"] == "dataobject" && ($datamodel=datamodel($param["opt"]["databank"])))
 			{
-				$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["opt"]["databank"]."' AND `dataobject_id`='".$this->param[$param["name"]]->value_to_db()."' ORDER BY `datetime` DESC LIMIT 1");
-				if ($query->num_rows())
+				if ($datamodel->info("dynamic"))
 				{
-					list($i) = $query->fetch_row();
-					if (strtotime($i)>$cache_datetime)
+					if ($datamodel->get($this->param[$param["name"]]->value)->_update > $tpl_datetime)
 						$return=false;
 				}
 			}
@@ -942,7 +943,7 @@ else
  * 
  * @param integer $id
  */
-function template($id=0)
+function template($id=null)
 {
 
 if (!isset($GLOBALS["template_gestion"]))
@@ -961,8 +962,10 @@ if (!isset($GLOBALS["template_gestion"]))
 	}
 }
 
-if ($id)
+if (is_numeric($id))
 	return $GLOBALS["template_gestion"]->get($id);
+elseif (is_string($id))
+	return $GLOBALS["template_gestion"]->get_name($id);
 else
 	return $GLOBALS["template_gestion"];
 

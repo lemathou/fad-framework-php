@@ -2,6 +2,9 @@
 
 session_start();
 
+function captcha_aff()
+{
+
 $_SESSION["captcha_code"] = "";
 $liste = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
 while(strlen($_SESSION["captcha_code"]) < 6)
@@ -10,15 +13,18 @@ while(strlen($_SESSION["captcha_code"]) < 6)
 header("Content-type: image/jpeg");
 header("Cache-Control: cache, must-revalidate");
 
-$img = imageCreate(65, 22); // Créér une image de 40x15 pixels
-$fond = imageColorAllocate($img , 0 , 0 , 0); // On choisit la couleur du fond (en RVB)
-$texte = imageColorAllocate($img , 255 , 255 , 255); // Idem, mais pour la couleur du texte
+$img = imagecreate(65, 22);
+$bg_color = imageColorAllocate($img , 0 , 0 , 0);
+$text_color = imageColorAllocate($img , 255 , 255 , 255);
 $police = 5; // L'ID de la police (entre 1 et 5, pré-inclues dans PHP)
 
-imageString($img , $police , 5 , 3 , $_SESSION["captcha_code"] , $texte);  // Ecrire le code sur l'image
-imagejpeg($img , "" , 30); // Image de mauvaise qualité histoire de tromper les bots
+imageString($img , $police , 5 , 3 , $_SESSION["captcha_code"] , $text_color);
+imagejpeg($img , "" , 25); // Mauvaise qualité pour tromper les robots
 
 imageDestroy($img);
 
+}
+
+captcha_aff();
 
 ?>

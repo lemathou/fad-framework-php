@@ -1,26 +1,21 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * 
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
-define("SITE_LANG",SITE_LANG_DEFAULT);
-define("SITE_LANG_ID",SITE_LANG_DEFAULT_ID);
-define("ADMIN_LOAD",true);
-
 include PATH_INCLUDE."/header.inc.php";
 
-// Session refresh
-session_start();
-login()->refresh();
-
 // Logged as super-admin
-if (login()->perm(6))
+if (login()->perm(2))
 {
 
 define("ADMIN_OK",true);

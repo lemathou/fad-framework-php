@@ -12,6 +12,7 @@
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
+
 /**
  * Library gestion
  *
@@ -139,7 +140,7 @@ else
 /**
  * Access function
  */
-function library($id=0)
+function library($id=null)
 {
 
 if (!isset($GLOBALS["library_gestion"]))
@@ -158,8 +159,10 @@ if (!isset($GLOBALS["library_gestion"]))
 	}
 }
 
-if ($id)
+if (is_numeric($id))
 	return $GLOBALS["library_gestion"]->get($id);
+elseif (is_string($id))
+	return $GLOBALS["library_gestion"]->get_name($id);
 else
 	return $GLOBALS["library_gestion"];
 
@@ -171,12 +174,15 @@ else
 function __autoload($class_name)
 {
 
+//echo "<p>$class_name</p>\n";
+
 if (substr($class_name, -7) == "agregat" && ($name=substr($class_name, 0, -8)) && datamodel()->exists_name($name))
 {
 	datamodel()->{$name};
 }
 
 }
+
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

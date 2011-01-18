@@ -574,7 +574,7 @@ else
  *
  * @return page_databank or page
  */
-function page($id=0)
+function page($id=null)
 {
 
 if (!isset($GLOBALS["page_gestion"]))
@@ -593,8 +593,10 @@ if (!isset($GLOBALS["page_gestion"]))
 	}
 }
 
-if ($id)
+if (is_numeric($id))
 	return $GLOBALS["page_gestion"]->get($id);
+elseif (is_string($id))
+	return $GLOBALS["page_gestion"]->get_name($id);
 else
 	return $GLOBALS["page_gestion"];
 

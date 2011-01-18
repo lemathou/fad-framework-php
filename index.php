@@ -27,30 +27,12 @@
   *
   */
 
-define("ADMIN_LOAD",false);
-
-// Paramètres, Constantes, variables globales, constructeurs généraux, classes générales, fonctions diverses, etc.
 include PATH_INCLUDE."/header.inc.php";
-
-// Gestion de la langue
-include PATH_INCLUDE."/lang.inc.php";
-
-// Démarrage de la session
-session_start();
-// Rafraichissement du login
-login()->refresh();
-if (DEBUG_GENTIME == true)
-	gentime("Session refresh");
-
-// Mise en place des fonctions associées aucx banques de donnée !!
-datamodel();
-if (DEBUG_GENTIME == true)
-	gentime("Datamodel init");
 
 // Controller (Warning !!)
 //include "include/data_controller.inc.php";
 
-if (REDIRECT)
+if (REDIRECT_LANG)
 {
 	header("Location: http://".SITE_DOMAIN."/".SITE_LANG."/");
 	die("Redirection en cours...");

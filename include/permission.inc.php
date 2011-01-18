@@ -283,7 +283,7 @@ return $this->list;
 /**
  * Global access function
  */
-function permission($id=0)
+function permission($id=null)
 {
 
 if (!isset($GLOBALS["permission_gestion"]))
@@ -302,8 +302,10 @@ if (!isset($GLOBALS["permission_gestion"]))
 	}
 }
 
-if ($id)
+if (is_numeric($id))
 	return $GLOBALS["permission_gestion"]->get($id);
+elseif (is_string($id))
+	return $GLOBALS["permission_gestion"]->get_name($id);
 else
 	return $GLOBALS["permission_gestion"];
 

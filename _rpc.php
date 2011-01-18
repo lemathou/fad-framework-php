@@ -1,18 +1,6 @@
 <?php
 
-define("ADMIN_LOAD",false);
-define("SITE_LANG",SITE_LANG_DEFAULT);
-define("SITE_LANG_ID",SITE_LANG_DEFAULT_ID);
-define("REDIRECT",false);
-
 include PATH_INCLUDE."/header.inc.php";
-
-// Démarrage de la session
-session_start();
-// Rafraichissement du login
-login()->refresh();
-
-datamodel();
 
 function action()
 {

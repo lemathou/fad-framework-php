@@ -48,6 +48,7 @@ protected $info_detail = array
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
 	"library_id"=>array("label"=>"Librairies", "type"=>"object", "object_type"=>"library", "lang"=>false),
+	"dynamic"=>array("label"=>"Dynamique", "type"=>"boolean", "lang"=>false),
 );
 
 protected $retrieve_details = false;
@@ -100,6 +101,11 @@ protected $_type = "datamodel";
  * @var integer
  */
 protected $library_id = 0;
+
+/**
+ * If objects are often updated, uses a specific _update field !
+ */
+protected $dynamic = 0;
 
 /**
  * Account default permissions.
@@ -189,7 +195,7 @@ protected $objects = array();
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "perm", "library_id", "fields", "fields_required", "fields_calculated", "fields_index");
+return array("id", "name", "label", "description", "dynamic", "perm", "library_id", "fields", "fields_required", "fields_calculated", "fields_index");
 
 }
 function __wakeup()
@@ -235,23 +241,15 @@ $this->fields_index = array();
 $query = db()->query("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t1.`query` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
-	// TODO : Temporary HACK : delete this lines
-	if ($field["opt"] == "key")
-	{
-		//$this->fields_key[] = $field["name"];
-	}
-	else
-	{
-		$datatype = "data_$field[type]";
-		$this->fields[$field["name"]] = new $datatype($field["name"], json_decode($field["defaultvalue"], true), $field["label"]);
-		$this->fields[$field["name"]]->datamodel_set($this->id);
-		if ($field["opt"] == "required")
-			$this->fields_required[] = $field["name"];
-		if ($field["query"])
-			$this->fields_index[] = $field["name"];
-		if ($field["lang"])
-			$this->fields[$field["name"]]->db_opt_set("lang",true);
-	}
+	$datatype = "data_$field[type]";
+	$this->fields[$field["name"]] = new $datatype($field["name"], json_decode($field["defaultvalue"], true), $field["label"]);
+	$this->fields[$field["name"]]->datamodel_set($this->id);
+	if ($field["opt"] == "required")
+		$this->fields_required[] = $field["name"];
+	if ($field["query"])
+		$this->fields_index[] = $field["name"];
+	if ($field["lang"])
+		$this->fields[$field["name"]]->db_opt_set("lang",true);
 }
 $query = db()->query("SELECT `fieldname`, `opt_type`, `opt_name`, `opt_value` FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
 while ($opt=$query->fetch_assoc())
@@ -476,15 +474,21 @@ else
 	return false;
 
 }
-public function db_insert($fields=array())
+public function db_insert($object)
 {
 
+$fields = &$object->field_list();
+
 // Verify required fields
-foreach ($this->fields_required as $name) if (!isset($fields[$name]))
-	return false;
+//foreach ($this->fields_required as $name) if (!$fields[$name]->nonempty())
+//	return false;
 
 // Verify fields and supress keys
 $query_list = array();
+$query_fields = array("`id`");
+$query_values = array("null");
+$query_fields_lang = array();
+$query_values_lang = array();
 foreach ($fields as $name=>$field)
 {
 	// Unknown field name
@@ -519,15 +523,38 @@ foreach ($fields as $name=>$field)
 	{
 		if (!isset($this->fields[$name]->db_opt["field"]) || !($fieldname=$this->fields[$name]->db_opt["field"]))
 			$fieldname = $name;
-		$query_fields[] = "`$fieldname`";
-		$query_values[] = "'".db()->string_escape($field->value_to_db())."'";
+		if (isset($this->fields[$name]->db_opt["lang"]))
+		{
+			$query_fields_lang[] = "`$fieldname`";
+			$query_values_lang[] = "'".db()->string_escape($field->value_to_db())."'";
+		}
+		else
+		{
+			$query_fields[] = "`$fieldname`";
+			$query_values[] = "'".db()->string_escape($field->value_to_db())."'";
+		}
 	}
+}
+
+if ($this->dynamic)
+{
+	$datetime = time();
+	$query_fields[] = "`_update`";
+	$query_values[] = "'".date("Y-m-d H:i:s", $datetime)."'";
 }
 
 $query_str = "INSERT INTO `".$this->name."` (".implode(", ", $query_fields).") VALUES (".implode(", ", $query_values).")";
 $query = db()->query($query_str);
 // db()->insert("$this->name","");
-$id = $query->last_id();
+
+if (!($id=$query->last_id()))
+	return false;
+
+if (count($query_fields_lang))
+{
+	$query_str = "INSERT INTO `".$this->name."_lang` (".implode(", ", $query_fields_lang).") VALUES (".implode(", ", $query_values_lang).")";
+	$query = db()->query($query_str);
+}
 
 if (count($query_list)>0)
 {
@@ -549,7 +576,9 @@ if (count($query_list)>0)
 	}
 }
 
-return $id;
+$object->id = $id;
+if ($this->dynamic)
+	$object->_update = $datetime;
 
 }
 
@@ -627,7 +656,13 @@ public function db_update($params=array(), $fields=array(), $sort=array(), $limi
 
 $query_ok = true;
 
-$query_base = array("update"=>array(), "having"=>array(), "where"=>array(), "from"=>array("`$this->name`"), "sort"=>array());
+$query_base = array("update"=>array(), "having"=>array(), "where"=>array(), "from"=>array("`$this->name` as n0"), "sort"=>array());
+// Timestamp field
+if ($this->dynamic)
+{
+	$datetime = time();
+	$query_base["update"]["_update"] = "n0.`_update` = '".date("Y-m-d H:i:s", $datetime)."'";
+}
 $query_list = array();
 
 foreach ($fields as $name=>$field)
@@ -665,13 +700,13 @@ foreach ($fields as $name=>$field)
 		//print $field->value;
 		if ($field->nonempty())
 		{
-			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["databank_field"]] = "`$fieldname` = '".db()->string_escape($field->value->datamodel()->name())."'";
-			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["field"]] = "`$fieldname` = '".db()->string_escape($field->value->id)."'";
+			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["databank_field"]] = "n0.`$fieldname` = '".db()->string_escape($field->value->datamodel()->name())."'";
+			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["field"]] = "n0.`$fieldname` = '".db()->string_escape($field->value->id)."'";
 		}
 		else
 		{
-			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["databank_field"]] = "`$fieldname` = NULL";
-			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["field"]] = "`$fieldname` = NULL";
+			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["databank_field"]] = "n0.`$fieldname` = NULL";
+			$query_base["update"][$fieldname=$this->fields[$name]->db_opt["field"]] = "n0.`$fieldname` = NULL";
 		}
 	}
 	// Primary table update
@@ -684,20 +719,20 @@ foreach ($fields as $name=>$field)
 			if (isset($fields[$name]->db_opt["lang"]))
 			{
 				$query_base["lang"] = true;
-				$query_base["update"][$name] = "`$fieldname` = '".db()->string_escape($value)."'";
+				$query_base["update"][$name] = "n1.`$fieldname` = '".db()->string_escape($value)."'";
 			}
 			else
-				$query_base["update"][$name] = "`$fieldname` = '".db()->string_escape($value)."'";
+				$query_base["update"][$name] = "n0.`$fieldname` = '".db()->string_escape($value)."'";
 		}
 		else
 		{
 			if (isset($fields[$name]->db_opt["lang"]))
 			{
 				$query_base["lang"] = true;
-				$query_base["update"][$name] = "`$fieldname` = NULL";
+				$query_base["update"][$name] = "n1.`$fieldname` = NULL";
 			}
 			else
-				$query_base["update"][$name] = "`$fieldname` = NULL";
+				$query_base["update"][$name] = "n0.`$fieldname` = NULL";
 		}
 	}
 }
@@ -717,13 +752,14 @@ else
 // Sort
 if (count($sort)>0)
 {
-	foreach($sort as $name=>$order) if (isset($this->fields[$name]) || $name == "relevance")
-	{
-		if (strtolower($order) == "desc")
-			$query_base["sort"][] = "`$name` DESC";
-		else
-			$query_base["sort"][] = "`$name` ASC";
-	}
+	foreach($sort as $name=>$order)
+		if (isset($this->fields[$name]) || $name == "relevance")
+		{
+			if (strtolower($order) == "desc")
+				$query_base["sort"][] = "`$name` DESC";
+			else
+				$query_base["sort"][] = "`$name` ASC";
+		}
 }
 if (count($query_base["sort"]))
 	$query_sort = "ORDER BY ".implode(",", $query_base["sort"]);
@@ -734,6 +770,13 @@ if (is_numeric($limit) && $limit>0 && is_numeric($start) && $start>=0)
 	$query_limit = " LIMIT $start, $limit";
 else
 	$query_limit = "";
+
+// Test number
+
+if (false)
+{
+	
+}
 
 // Primary query
 
@@ -758,7 +801,7 @@ foreach($query_list as $name=>$insert_list)
 {
 	if (($this->fields[$name]->type == "dataobject_list" || $this->fields[$name]->type == "list") && ($ref_field=$this->fields[$name]->db_opt("ref_field")) && ($ref_table=$this->fields[$name]->db_opt("ref_table")) && ($ref_id=$this->fields[$name]->db_opt("ref_id")))
 	{
-		$query_string = "DELETE `$ref_table` FROM ".implode(", ", array_merge(array("`$ref_table`"), $query_base["from"]))." WHERE ".implode(" AND ", array_merge(array("`$ref_table`.`$ref_id`=`$this->name`.`id`"), $query_base["where"]))." $query_having $query_sort $query_limit";
+		$query_string = "DELETE `$ref_table` FROM ".implode(", ", array_merge(array("`$ref_table`"), $query_base["from"]))." WHERE ".implode(" AND ", array_merge(array("`$ref_table`.`$ref_id`=n0.`id`"), $query_base["where"]))." $query_having $query_sort $query_limit";
 		//echo "<p>$query_string</p>\n";
 		db()->query($query_string);
 		//echo mysql_error();
@@ -766,7 +809,7 @@ foreach($query_list as $name=>$insert_list)
 		{
 			foreach($fields[$name]->value as $id)
 			{
-				$query_string = "INSERT INTO `$ref_table` (`$ref_id`, `$ref_field`) SELECT `$this->name`.`id`, '".db()->string_escape($id)."' FROM ".implode(", ", $query_base["from"])." $query_where $query_having $query_sort $query_limit";
+				$query_string = "INSERT INTO `$ref_table` (`$ref_id`, `$ref_field`) SELECT n0.`id`, '".db()->string_escape($id)."' FROM ".implode(", ", $query_base["from"])." $query_where $query_having $query_sort $query_limit";
 				//echo "<p>$query_string</p>\n";
 				db()->query($query_string);
 				//echo mysql_error();
@@ -965,7 +1008,9 @@ if (!is_array($params))
 }
 
 // Requete sur la table principale
-$query_base = array("fields"=>array("`id`"), "having"=>array(), "where"=>array(), "from"=>array("`$this->name`"), "sort"=>array());
+$query_base = array("fields"=>array("n0.`id`"), "having"=>array(), "where"=>array(), "join"=>array(), "groupby"=>array(), "from"=>array("`$this->name` as n0"), "sort"=>array());
+if ($this->dynamic)
+	$query_base["fields"][] = "`_update`";
 // Autres requetes
 $query_list = array();
 // Result
@@ -973,7 +1018,10 @@ $return = array();
 // Result params mapping
 $return_params = array();
 
+$fields_explode = array();
+
 $fields = array();
+$n = 2;
 // Verify fields to be retrieved :
 foreach($this->fields as $name=>$field)
 {
@@ -983,36 +1031,50 @@ foreach($this->fields as $name=>$field)
 		$fields[] = $name;
 		if ($field->type == "dataobject_select")
 		{
-			$tablename = $this->name;
 			$fieldname_1 = $field->db_opt["databank_field"];
 			$fieldname_2 = $field->db_opt["field"];
-			$query_base["fields"][] = "CONCAT(`$tablename`.`$fieldname_1`,',',`$tablename`.`$fieldname_2`) as $name";
+			$query_base["fields"][] = "CONCAT(n1.`$fieldname_1`,',',n1.`$fieldname_2`) as $name";
 		}
 		elseif ($field->type == "dataobject_list")
 		{
-			//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
-			$query_list[$name] = array( "field" => $name , "table" => $this->fields[$name]->db_opt("ref_table") );
+			$ref_field = $field->db_opt("ref_field");
+			$ref_table = $field->db_opt("ref_table");
+			$ref_id = $field->db_opt("ref_id");
+			$query_base["join"][] = "`$ref_table` as n$n ON n0.`id` = n$n.`$ref_id`";
+			if (!count($query_base["groupby"]))
+				$query_base["groupby"][] = "n0.`id`";
+			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE(n$n.`$ref_field`) SEPARATOR ',') as CHAR) as $name";
+			$fields_explode[] = $name;
+			$n++;
 		}
 		elseif ($field->type == "list")
 		{
-			//echo "<p>$name : ".$this->fields[$name]->db_opt("ref_table")."</p>";
-			$query_list[$name] = array( "field" => $this->fields[$name]->db_opt("ref_field") , "table" => $this->fields[$name]->db_opt("ref_table") );
+			$ref_field = $field->db_opt("ref_field");
+			$ref_table = $field->db_opt("ref_table");
+			$ref_id = $field->db_opt("ref_id");
+			$query_base["join"][] = "`$ref_table` as n$n ON n0.`id` = n$n.`$ref_id`";
+			if (!count($query_base["groupby"]))
+				$query_base["groupby"][] = "n0.`id`";
+			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE(n$n.`$ref_field`) SEPARATOR ',') as CHAR) as $name";
+			$fields_explode[] = $name;
+			$n++;
 		}
 		else
 		{
-			if (!isset($field->db_opt["table"]) || !($tablename = $field->db_opt["table"]))
-				$tablename = $this->name;
-			else
-				$query_base["join"][] = $tablename;
-			if (!isset($field->db_opt["field"]) || !($fieldname = $field->db_opt["field"]))
+			// Rare case...
+			/*
+			if (isset($field->db_opt["table"]) && ($tablename = $field->db_opt["table"]))
+				$query_base["join"][] = "`$tablename`";
+			*/
+			if (!isset($field->db_opt["field"]) || !($fieldname=$field->db_opt["field"]))
 				$fieldname = $name;
 			if (isset($field->db_opt["lang"]))
 			{
-				$query_lang = true;
-				$query_base["fields"][] = "`".$tablename."_lang`.`$fieldname` as `$name`";
+				$query_base["lang"] = true;
+				$query_base["fields"][] = "n1.`$fieldname` as `$name`";
 			}
 			else
-				$query_base["fields"][] = "`$tablename`.`$fieldname` as `$name`";
+				$query_base["fields"][] = "n0.`$fieldname` as `$name`";
 		}
 	}
 }
@@ -1031,6 +1093,16 @@ if (count($query_base["having"]))
 	$query_having = "HAVING ".implode(" AND ", $query_base["having"]);
 else
 	$query_having = "";
+// Join
+if (count($query_base["join"]))
+	$query_join = "LEFT JOIN ".implode(" LEFT JOIN ", $query_base["join"]);
+else
+	$query_join = "";
+// Group By
+if (count($query_base["groupby"]))
+	$query_groupby = "GROUP BY ".implode(", ", $query_base["groupby"]);
+else
+	$query_groupby = "";
 // Sort
 if (count($sort)>0)
 {
@@ -1052,7 +1124,7 @@ if (is_numeric($limit) && $limit>0 && is_numeric($start) && $start>=0)
 else
 	$query_limit = "";
 
-$query_string = "SELECT DISTINCT ".implode(" , ",$query_base["fields"])." FROM ".implode(" , ",$query_base["from"])." $query_where $query_having $query_sort $query_limit";
+$query_string = "SELECT DISTINCT ".implode(" , ",$query_base["fields"])." FROM ".implode(" , ",$query_base["from"])." $query_join $query_where $query_having $query_groupby $query_sort $query_limit";
 //echo "<p>$query_string</p>";
 
 // Effective Query
@@ -1066,6 +1138,23 @@ $list_id = array();
 $nb = 0;
 while ($row=$query->fetch_assoc())
 {
+	foreach($fields_explode as $name)
+	{
+		if ($row[$name] == "NULL")
+		{
+			$row[$name] = array();
+		}
+		else
+		{
+			$row[$name] = explode("','",substr($row[$name], 1, -1));
+			if ($this->fields[$name]->type == "list")
+				foreach($row[$name] as $i=>$value)
+					$row[$name][$i] = stripslashes($value);
+			elseif ($this->fields[$name]->type == "dataobject_list")
+				foreach($row[$name] as $i=>$value)
+					$row[$name][$i] = (int)$value;
+		}
+	}
 	$return[$nb] = $row;
 	$list_id[$nb] = $row["id"];
 	$map_id[$row["id"]] = $nb;
@@ -1074,6 +1163,7 @@ while ($row=$query->fetch_assoc())
 
 // Other queries
 
+/*
 foreach ($query_list as $name=>$detail)
 {
 	$field = $this->fields[$detail["field"]];
@@ -1129,7 +1219,7 @@ foreach ($query_list as $name=>$detail)
 				// Patch des fois qu'on ai des resultats en trop ^^
 				if (isset($return[$map_id[$row[0]]]))
 				{
-					$return[$map_id[$row[0]]][$name][] = $row[1];
+					$return[$map_id[$row[0]]][$name][] = (int)$row[1];
 				}
 			}
 		}
@@ -1142,6 +1232,7 @@ foreach ($query_list as $name=>$detail)
 		}
 	}
 }
+*/
 
 return $return;
 
@@ -1166,7 +1257,7 @@ if (!is_array($params))
 }
 
 // Requete sur la table principale
-$query_base = array ("where"=>array(), "from"=>array("`".$this->name."`"), "having"=>array(), "lang"=>false);
+$query_base = array ("where"=>array(), "from"=>array("`".$this->name."` as n0"), "having"=>array(), "lang"=>false);
 // Autres requetes
 $query_list = array();
 // Result
@@ -1221,7 +1312,7 @@ foreach($params as $param_nb=>$param)
 		if (!isset($param["type"]))
 			$param["type"] = "";
 		$data_id = new data_id();
-		$query_base["where"][] = "`".$this->name."`.".$data_id->db_query_param($param["value"], $param["type"]);
+		$query_base["where"][] = "n0.".$data_id->db_query_param($param["value"], $param["type"]);
 	}
 	elseif (isset($param["name"]) && isset($this->fields[$param["name"]]))
 	{
@@ -1231,7 +1322,7 @@ foreach($params as $param_nb=>$param)
 		// Champs "spéciaux"
 		if ($field->type == "dataobject_select")
 		{
-			$query_base["where"][] = "`".$field->db_opt["databank_field"]."` = '".db()->string_escape($param["value"])."'";
+			$query_base["where"][] = "n0.`".$field->db_opt["databank_field"]."` = '".db()->string_escape($param["value"])."'";
 		}
 		elseif ($field->type == "dataobject_list")
 		{
@@ -1240,7 +1331,7 @@ foreach($params as $param_nb=>$param)
 				$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_field"]."` IN ('".implode("', '",$param["value"])."')";
 			else
 				$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_field"]."` = '".db()->string_escape($param["value"])."'";
-			$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_id"]."` = `".$this->name."`.`id`";
+			$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_id"]."` = n0.`id`";
 			$query_table_nb++;
 			// TODO : FAIRE UN JOIN CAR CONDITIONS PARAMS AVEC AUTRES TABLES : genre entreprise qui embauche 
 		}
@@ -1251,7 +1342,7 @@ foreach($params as $param_nb=>$param)
 				$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_field"]."` IN ('".implode("', '",$param["value"])."')";
 			else
 				$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_field"]."` = '".db()->string_escape($param["value"])."'";
-			$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_id"]."` = `".$this->name."`.`id`";
+			$query_base["where"][] = "t$query_table_nb.`".$field->db_opt["ref_id"]."` = n0.`id`";
 			$query_table_nb++;
 			// TODO : Idem dataobject_list
 		}
@@ -1261,11 +1352,11 @@ foreach($params as $param_nb=>$param)
 			if (isset($field->db_opt["lang"]))
 			{
 				$query_base["lang"] = true;
-				$query_base["where"][] = "`".$this->name."_lang`.".$field->db_query_param($param["value"], $param["type"]);
+				$query_base["where"][] = "n1.".$field->db_query_param($param["value"], $param["type"]);
 			}
 			else
 			{
-				$query_base["where"][] = "`".$this->name."`.".$field->db_query_param($param["value"], $param["type"]);
+				$query_base["where"][] = "n0.".$field->db_query_param($param["value"], $param["type"]);
 			}
 		}
 	}
@@ -1276,7 +1367,7 @@ foreach($params as $param_nb=>$param)
 			$param["type"] = "like";
 		if ($param["type"] == "fulltext")
 		{
-			$query_base["fields"][] = "MATCH(`".implode("`, `", $this->fields_index)."`) AGAINST('".db()->string_escape($param["value"])."') as `relevance`";
+			$query_base["fields"][] = "MATCH(n0.`".implode("`, n0.`", $this->fields_index)."`) AGAINST('".db()->string_escape($param["value"])."') as `relevance`";
 			$query_base["having"][] = "relevance > 0";
 		}
 		else //if ($param["type"] == "like")
@@ -1297,9 +1388,9 @@ foreach($params as $param_nb=>$param)
 // Lang
 if (isset($query_base["lang"]) && $query_base["lang"] == true)
 {
-	$query_base["from"][] = "`".$this->name."_lang`";
-	$query_base["where"][] = "`".$this->name."`.`id` = `".$this->name."_lang`.`id`";
-	$query_base["where"][] = "`".$this->name."_lang`.`lang_id` = '".SITE_LANG_ID."'";
+	$query_base["from"][] = "`".$this->name."_lang` as n1";
+	$query_base["where"][] = "n0.`id` = n1.`id`";
+	$query_base["where"][] = "n1.`lang_id` = '".SITE_LANG_ID."'";
 }
 
 }
@@ -1418,21 +1509,23 @@ if (!isset($GLOBALS["datamodel_gestion"]))
 	}
 }
 
-if ($datamodel_id && $GLOBALS["datamodel_gestion"]->exists($datamodel_id))
+if ($datamodel_id === null)
 {
-	$datamodel = $GLOBALS["datamodel_gestion"]->get($datamodel_id);
-	if ($object_id)
-	{
-		if (is_a($object=$datamodel->get($object_id), "data_bank_agregat"))
-			return $object;
-		else
-			return false;	
-	}
-	else
-		return $datamodel;
-}
-else
 	return $GLOBALS["datamodel_gestion"];
+}
+
+if ( !(is_numeric($datamodel_id) && ($datamodel=$GLOBALS["datamodel_gestion"]->get($datamodel_id))) && !(is_string($datamodel_id) && ($datamodel=$GLOBALS["datamodel_gestion"]->get_name($datamodel_id))))
+{
+	return null;
+}
+
+if ($object_id === null)
+	return $datamodel;
+
+if ($object=$datamodel->get($object_id))
+	return $object;
+
+return null;	
 
 }
 

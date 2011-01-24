@@ -170,55 +170,34 @@ foreach ($object->fields() as $name=>$field)
 			<option value="1"<?php if (in_array($name, $object->fields_index())) echo " selected"; ?>>OUI</option>
 		</select></td>
 		<td><select name="lang">
-			<option value="0"<?php if (!$field->db_opt("lang")) echo " selected"; ?>>NON</option>
-			<option value="1"<?php if ($field->db_opt("lang")) echo " selected"; ?>>OUI</option>
+			<option value="0"<?php if (!isset($field->opt["lang"]) || !$field->opt["lang"]) echo " selected"; ?>>NON</option>
+			<option value="1"<?php if (isset($field->opt["lang"]) && $field->opt["lang"]) echo " selected"; ?>>OUI</option>
 		</select></td>
 	</tr>
 	<tr> <td colspan="9"><hr /></td> </tr>
 	<tr>
 		<td colspan="9"><?php
 		// Récupération des valeurs des champs par classe défaut puis reparamétrés
-		$opt = array
-		(
-			"structure"=>array(),
-			"db"=>array(),
-			"disp"=>array(),
-		);
 		?>
-		<table cellspacing="0" cellpadding="0" width="100%">
-		<tr>
-			<td>structure_opt</td>
-			<td>db_opt</td>
-			<td>disp_opt</td>
-		</tr>
-		<tr>
-		<?php foreach ($opt as $type=>$list) { ?>
-			<td valign="top">
-			<select id="<?=$type?>_opt_list"><option value="">-- Choisir --</option><?php
-			$f = $type."_opt_list_get";
-			foreach($field->$f() as $i=>$j)
-			{
-				$list[$i] = $j;
-			}
-			foreach(data::${"${type}_opt_list"} as $i)
-			{
-				if (!isset($list[$i]))
-					echo "<option>$i</option>\n";
-			}
-			?></select><input type="button" value="ADD" onclick="datamodel_opt_add('<?=$type?>',document.getElementById('<?=$type?>_opt_list').value)" />
-			<div id="opt_<?=$type?>">
-			<?php
-			foreach($list as $i=>$j) if (in_array($i, data::${"${type}_opt_list"}))
-			{
-				echo "<div id=\"opt_".$type."_$i\">\n";
-				echo "<p style=\"margin-bottom: 0px;\">$i <a href=\"javascript:;\" onclick=\"datamodel_opt_del('$type','$i')\" style=\"color:red;\">X</a></p> <p style=\"margin: 0px;\"><textarea name=\"optlist[$type][$i]\">".json_encode($j)."</textarea></p>\n";
-				echo "</div>\n";
-			}
-			?>
-			</div>
-			</td>
-		<?php } ?>
-		</tr></table>
+		<div>
+		<select id="opt_list"><option value="">-- Choisir --</option><?php
+		$list = array();
+		foreach($field->opt_list as $i)
+		{
+			if (!isset($field->opt[$i]))
+				echo "<option>$i</option>\n";
+		}
+		?></select><input type="button" value="ADD" onclick="datamodel_opt_add(document.getElementById('opt_list').value)" /></div>
+		<div>
+		<?php
+		foreach($field->opt as $i=>$j)
+		{
+			echo "<div id=\"opt_$i\">\n";
+			echo "<p style=\"margin-bottom: 0px;\">$i <a href=\"javascript:;\" onclick=\"datamodel_opt_del('$i')\" style=\"color:red;\">X</a></p> <p style=\"margin: 0px;\"><textarea style=\"width: 100%;\" name=\"optlist[$i]\">".json_encode($j)."</textarea></p>\n";
+			echo "</div>\n";
+		}
+		?>
+		</div>
 		</td>
 	</tr>
 	<tr>
@@ -238,7 +217,7 @@ foreach ($object->fields() as $name=>$field)
 		<td><?php echo json_encode($field->value); ?></td>
 		<td><?php if (in_array($name, $object->fields_required())) echo "<span style=\"color:blue;\">REQUIRED</span>"; ?></td>
 		<td><?php if (in_array($name, $object->fields_index())) echo "<span style=\"color:blue;\">INDEX</span>"; ?></td>
-		<td><?php if ($field->db_opt("lang") == true) echo "<span style=\"color:blue;\">LANG</span>"; ?></td>
+		<td><?php if ($field->opt_get("lang")) echo "<span style=\"color:blue;\">LANG</span>"; ?></td>
 	</tr>
 	<?php
 	}

@@ -189,7 +189,7 @@ foreach ($this->param_list_detail as $nb=>$param)
 	$datatype = "data_".$param["datatype"];
 	$this->param[$param["name"]] = new $datatype($param["name"], $param["value"], $param["label"]);
 	foreach ($param["opt"] as $i=>$j)
-		$this->param[$param["name"]]->structure_opt_set($i, $j);
+		$this->param[$param["name"]]->opt_set($i, $j);
 }
 
 }
@@ -454,7 +454,7 @@ if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $match
 					if (isset($this->param[$name_from]) && in_array($name, $param_list))
 					{
 						if (DEBUG_TEMPLATE)
-							echo "<p>--> $name_from : $name</p>\n";
+							echo "<p>----> $name_from : $name = ".$this->param[$name_from]->value_to_form()."</p>\n";
 						$template->__set($name, $this->param[$name_from]->value_to_form());
 					}
 				}
@@ -587,15 +587,14 @@ if (TEMPLATE_CACHE_TYPE == "apc")
 	else
 	{
 		$return = true;
-		foreach($this->param_list_detail as $param)
+		reset ($this->param_list_detail);
+		while($return && (list($param)=each($this->param_list_detail)))
 		{
-			if ($param["datatype"] == "dataobject") // TODO : add directly a query function into the dataobject, for example $param->update_datetime_get() ...
+			if ($param["datatype"] == "dataobject" && ($datamodel=datamodel($param["opt"]["databank"])))
 			{
-				$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$param["opt"]["databank"]."' AND `dataobject_id`='".$this->param[$param["name"]]->value."' ORDER BY `datetime` DESC LIMIT 1");
-				if ($query->num_rows())
+				if ($datamodel->info("dynamic"))
 				{
-					list($i) = $query->fetch_row();
-					if (strtotime($i)>$cache_datetime)
+					if ($datamodel->get($this->param[$param["name"]]->value)->_update > $tpl_datetime)
 						$return=false;
 				}
 			}
@@ -648,7 +647,7 @@ else // (TEMPLATE_CACHE_TYPE == "file")
 			{
 				if ($datamodel->info("dynamic"))
 				{
-					if ($datamodel->get($this->param[$param["name"]]->value)->_update > $tpl_datetime)
+					if ($datamodel->get($this->param[$param["name"]]->value)->_update > $cache_datetime)
 						$return=false;
 				}
 			}
@@ -784,6 +783,7 @@ function object_set(data_bank_agregat $object)
 {
 
 $this->object_id = $object->id;
+$this->datamodel_id = $object->datamodel()->id;
 $this->object = $object;
 
 $this->object_retrieve_values();
@@ -797,6 +797,12 @@ return $this->object;
 
 }
 
+function datamodel()
+{
+
+return datamodel()->get($this->datamodel_id);
+
+}
 
 function object_retrieve_values()
 {
@@ -861,17 +867,12 @@ if (TEMPLATE_CACHE_TYPE == "apc")
 	}
 	else
 	{
-		$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$this->object->datamodel()->id()."' AND `dataobject_id`='".$this->object->id."' ORDER BY `datetime` DESC LIMIT 1");
-		if ($query->num_rows())
+		$return = true;
+		if ($this->datamodel()->info("dynamic"))
 		{
-			list($i) = $query->fetch_row();
-			if (strtotime($i)>$cache_datetime)
+			if ($this->object->_update > $cache_datetime)
 				$return=false;
-			else
-				$return=true;
 		}
-		else
-			$return=true;
 		if (DEBUG_CACHE)
 			if ($return)
 				echo "<p>CACHE_CHECK : Params not updated -> TRUE</p>\n";
@@ -913,17 +914,12 @@ else
 	// Paramètres du template modifiés
 	else
 	{
-		$query = db()->query("SELECT `datetime` FROM `_databank_update` WHERE databank_id='".$this->object->datamodel()->id()."' AND `dataobject_id`='".$this->object->id."' ORDER BY `datetime` DESC LIMIT 1");
-		if ($query->num_rows())
+		$return = true;
+		if ($this->datamodel()->info("dynamic"))
 		{
-			list($i) = $query->fetch_row();
-			if (strtotime($i)>$cache_datetime)
+			if ($this->object->_update > $cache_datetime)
 				$return=false;
-			else
-				$return=true;
 		}
-		else
-			$return=true;
 		if (DEBUG_CACHE)
 			if ($return)
 				echo "<p>CACHE_CHECK : Params not updated -> TRUE</p>\n";

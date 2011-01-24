@@ -3,9 +3,11 @@
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -96,9 +98,9 @@ if (isset($_POST["param_edit"]))
 	{
 		db()->query("UPDATE `_template_params` SET name='$param[name]' , datatype='$param[datatype]' , defaultvalue='$param[defaultvalue]' WHERE template_id='$id' AND name='$name'");
 		db()->query("UPDATE `_template_params_lang` SET description='".addslashes($param["description"])."' WHERE template_id='$id' AND name='$name' AND lang_id='".SITE_LANG_ID."'");
-		if (isset($param["option_add"]["optname"]) && ($opt_add=$param["option_add"]) && isset($opt_add["opttype"]) && $opt_add["opttype"])
+		if (isset($param["option_add"]["optname"]) && ($opt_add=$param["option_add"]) && $opt_add["opttype"])
 		{
-			db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, opttype, optvalue) VALUES ('$id', '$name', '$opt_add[optname]', '$opt_add[opttype]', '".addslashes($opt_add["optvalue"])."')");
+			db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, optvalue) VALUES ('$id', '$name', '$opt_add[optname]', '".json_encode($opt_add["optvalue"])."')");
 		}
 		echo "<p>Le paramètre $name a bien été mis à jour.</p>\n";
 	}
@@ -109,12 +111,12 @@ if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_s
 {
 
 $optlist = array();
-$query = db()->query("SELECT opttype , optname , optvalue FROM _template_params_opt WHERE template_id='$id' AND name='$param_edit'");
+$query = db()->query("SELECT optname , optvalue FROM _template_params_opt WHERE template_id='$id' AND name='$param_edit'");
 if ($query->num_rows())
 {
 	while ($opt=$query->fetch_assoc())
 	{
-		$optlist[$opt["opttype"]][$opt["optname"]] = $opt["optvalue"];
+		$optlist[$opt["optname"]] = $opt["optvalue"];
 	}
 }
 
@@ -144,12 +146,11 @@ if ($query->num_rows())
 <tr>
 	<td>Valeur par défaut :<br />(JSON)</td>
 	<td><?php
-	if ($param["datatype"]=="dataobject" && isset($optlist["structure"]["databank"]) && datamodel()->exists($optlist["structure"]["databank"]))
+	if ($param["datatype"]=="dataobject" && isset($optlist["datamodel"]) && ($datamodel=datamodel($optlist["datamodel"])))
 	{
-		$databank = datamodel($optlist["structure"]["databank"]);
 		echo "<select name=\"param_edit[$param[name]][defaultvalue]\">";
 			echo "<option value=\"0\">-- Choisir si besoin --</option>";
-		foreach($databank->query() as $object)
+		foreach($datamodel->query() as $object)
 		{
 			if (isset($object->title))
 				$aff = "ID#$object->id : $object->title";
@@ -177,12 +178,12 @@ if ($query->num_rows())
 <tr>
 	<td>Options :</td>
 	<td><?php
-	$query = db()->query("SELECT opttype , optname , optvalue FROM _template_params_opt WHERE template_id='$id' AND name='$param_edit'");
+	$query = db()->query("SELECT optname , optvalue FROM _template_params_opt WHERE template_id='$id' AND name='$param_edit'");
 	if ($query->num_rows())
 	{
 		while ($opt=$query->fetch_assoc())
 		{
-			echo "<p><a href=\"?id=$id&param_edit=$param_edit&option_del=$opt[optname]\" style=\"color:red;\">X</a>$opt[opttype] / $opt[optname] : $opt[optvalue]<br /></p>";
+			echo "<p><a href=\"?id=$id&param_edit=$param_edit&option_del=$opt[optname]\" style=\"color:red;\">X</a>$opt[optname] : $opt[optvalue]<br /></p>";
 		}
 	}
 	?></td>
@@ -190,21 +191,11 @@ if ($query->num_rows())
 	<td>Ajouter une option :</td>
 	<td><table cellspacing="0" cellpadding="0">
 	<tr>
-		<td>Type : </td>
-		<td><select name="param_edit[<?=$param["name"]?>][option_add][opttype]">
-			<option value="">-- Choisir --</option>
-			<option value="structure">structure</option>
-			<option value="db">db</option>
-			<option value="disp">disp</option>
-			<option value="form">form</option>
-		</select></td>
-	</tr>
-	<tr>
 		<td>Name : </td>
 		<td><input name="param_edit[<?=$param["name"]?>][option_add][optname]" /></td>
 	</tr>
 	<tr>
-		<td>Value : </td>
+		<td>Value (JSON) : </td>
 		<td><input name="param_edit[<?=$param["name"]?>][option_add][optvalue]" /></td>
 	</tr>
 	</table></td>

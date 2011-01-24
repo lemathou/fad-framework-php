@@ -83,9 +83,9 @@ function page_nb_default_set($page_nb_default)
 {
 
 if (is_numeric($page_nb_default) && in_array($page_nb_default, $this->page_nb_list))
-	$this->$page_nb_default = $page_nb_default;
+	$this->page_nb_default = $page_nb_default;
 else
-	$this->$page_nb_default = $this->page_nb_list[0];
+	$this->page_nb_default = $this->page_nb_list[0];
 
 }
 
@@ -115,7 +115,7 @@ function page_nb_set($page_nb)
 if (is_numeric($page_nb) && in_array($page_nb, $this->page_nb_list))
 	$this->page_nb = $page_nb;
 else
-	$this->page_nb = $this->$page_nb_default;
+	$this->page_nb = $this->page_nb_default;
 
 $this->page_max = ceil($this->nb/$this->page_nb);
 

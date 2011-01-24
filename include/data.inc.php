@@ -166,19 +166,31 @@ else
 public function opt_set($name, $value)
 {
 
-// TODO : verify the type of the value given in each case
+//var_dump($value);
 
-if (isset(self::$opt_list[$name]))
+// TODO : verify the type of the value given in each case
+if (in_array($name, self::$opt_list))
 	$this->opt[$name] = $value;
+
+}
+public function opt($name)
+{
+
+if (isset($this->opt[$name]))
+	return $this->opt[$name];
+else
+	return null;
+/*
+TODO : default values ..?
+elseif (in_array($name, self::$opt_list))
+	return self::$opt_list[$name];
+*/
 
 }
 public function opt_get($name)
 {
 
-if (isset($this->opt[$name]))
-	return $this->opt[$name];
-elseif (isset(self::$opt_list[$name]))
-	return self::$opt_list[$name];
+return $this->opt($name);
 
 }
 
@@ -255,10 +267,7 @@ return ($this->value === null);
 public function nonempty()
 {
 
-if ($this->value !== null && $this->value !== $this->empty_value)
-	return true;
-else
-	return false;
+return ($this->value !== null && $this->value !== $this->empty_value);
 
 }
 
@@ -281,8 +290,10 @@ return $this->value;
 public function __get($name)
 {
 
-if (is_string($name) && in_array($name, array("name", "label", "value", "opt_list", "datamodel_id", "opt")) && isset($this->{$name}))
+if (in_array($name, array("name", "label", "value", "datamodel_id", "opt")))
 	return $this->{$name};
+elseif ($name == "opt_list")
+	return self::${$name};
 elseif ($name == "type")
 	return substr(get_called_class(), 5);
 elseif ($name == "datamodel")
@@ -299,10 +310,10 @@ else
 public function __tostring()
 {
 
-if ($this->value === null)
-	return "";
-else
+if ($this->nonempty())
 	return (string)$this->value;
+else
+	return "";
 
 }
 
@@ -323,10 +334,7 @@ $this->value = $value;
 public function value_to_db()
 {
 
-if ($this->value === null)
-	return null;
-else
-	return "$this->value";
+return $this->value;
 
 }
 /**
@@ -367,10 +375,7 @@ else
 public function db_field_create()
 {
 
-return array
-(
-	"type"=>"string"
-);
+return array("type"=>"string");
 
 }
 
@@ -396,10 +401,10 @@ $this->value_set($value, true);
 public function value_to_form()
 {
 
-if ($this->value === null)
-	return "";
-else
+if ($this->nonempty())
 	return $this->value;
+else
+	return "";
 
 }
 /**
@@ -483,7 +488,7 @@ if (!is_string($value))
 {
 	if ($convert)
 	{
-		$value = "";
+		$value = $this->empty_value;
 		$return = false;
 	}
 	else
@@ -505,7 +510,7 @@ if (isset($this->opt["ereg"]) && ($ereg=$this->opt["ereg"]) && !preg_match($ereg
 {
 	if ($convert)
 	{
-		$value = null;
+		$value = $this->empty_value;
 		$return = false;
 	}
 	else
@@ -544,9 +549,9 @@ else
 public function form_field_disp($print=true, $options=array())
 {
 
-$attrib_size = ( isset($this->opt["size"]) && $this->opt["size"] > 0 && $this->opt["size"] < 32 )
-	? " size=\"".$this->opt["size"]."\""
-	: "";
+$attrib_size = ( !isset($this->opt["size"]) || !$this->opt["size"]) ? ""
+	: ($this->opt["size"] < 32) ? " size=\"".$this->opt["size"]."\""
+	: " style=\"width: 100%;\"";
 $attrib_maxlength = ( isset($this->opt["size"]) && $this->opt["size"] > 0 )
 	? " maxlength=\"".$this->opt["size"]."\""
 	: "";
@@ -798,7 +803,7 @@ class data_boolean extends data_string
 
 protected $empty_value = null;
 
-protected $opt = array("boolean"=>array("NO","YES"));
+protected $opt = array("value_list"=>array("NO","YES"));
 
 function __construct($name, $value, $label="Boolean", $options=array())
 {
@@ -824,19 +829,19 @@ $this->value = ($value) ? true : false;
 public function value_to_db()
 {
 
-if ($this->value === null)
-	return null;
-else
+if ($this->nonempty())
 	return ($this->value) ? "1" : "0";
+else
+	return null;
 
 }
 public function value_to_form()
 {
 
-if ($this->value === null)
-	return "";
-else
+if ($this->nonempty())
 	return ($this->value) ? "1" : "0";
+else
+	return "";
 
 }
 public function verify(&$value, $convert=false, $options=array())
@@ -871,7 +876,7 @@ else
 public function form_field_disp($print=true, $options=array())
 {
 
-$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\"".(($this->value === false)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["boolean"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\"".(($this->value === true)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["boolean"][1];
+$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\"".(($this->value === false)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["value_list"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\"".(($this->value === true)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["value_list"][1];
 
 if ($print)
 	print $return;
@@ -885,7 +890,7 @@ public function __tostring()
 if ($this->value === null)
 	return "";
 else
-	return $this->opt["boolean"][($this->value)?1:0];
+	return $this->opt["value_list"][($this->value)?1:0];
 
 }
 
@@ -960,6 +965,7 @@ protected $empty_value = "00/00/0000";
 
 protected $opt = array
 (
+	"ereg" => '/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/',
 	"date_format" => "%A %d %B %G", // Defined for strftime()
 	"size" => 10,
 );
@@ -972,27 +978,6 @@ return array("type" => "date");
 }
 
 /* Convert */
-public function verify(&$value, $convert=false, $options=array())
-{
-
-if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
-{
-	if ($convert)
-		$value = $this->empty_value;
-	return false;
-}
-
-return true;
-
-}
-function convert(&$value)
-{
-
-if (!is_string($value) || !preg_match('/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/', $value))
-	$value = $this->empty_value;
-
-
-}
 function value_to_db()
 {
 
@@ -1265,14 +1250,14 @@ public function value_from_db($value)
 $this->convert($value);
 
 if ($this->nonempty())
-	$this->value = null;
-else
 {
 	$e = explode(" ", $value);
 	$d = explode("-", $e[0]);
 	$t = explode(":", $e[1]);
 	$this->value = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
 }
+else
+	$this->value = null;
 
 }
 public function value_to_db()
@@ -1514,7 +1499,7 @@ if (!is_array($this->value) || count($this->value) == 0)
 {
 	$return = "NADA";
 }
-elseif (true || ($nb=count($this->value)) < 20)
+elseif (($nb=count($this->value)) < 20)
 {
 	if ($nb<10)
 		$size = $nb;
@@ -1530,6 +1515,12 @@ else
 {
 	// TODO : liste ajax
 }
+
+// DISP
+if ($print)
+	echo $return;
+else
+	return $return;
 
 }
 function form_field_select_disp($print=true)
@@ -1867,7 +1858,7 @@ protected $opt = array
 	"size"=>1,
 );
 
-function __construct($name, $value, $label="Priority", $options)
+function __construct($name, $value, $label="Priority", $options=array())
 {
 
 data_integer::__construct($name, $value, $label, $options);
@@ -2351,7 +2342,7 @@ data::__construct($name, $value, $label, $options);
 function __tostring()
 {
 
-if ($this->value && ($datamodel=datamodel($this->opt["datamodel"])) && ($object=$datamodel($this->value)))
+if ($this->value && ($datamodel=datamodel($this->opt["datamodel"])) && ($object=$datamodel->get($this->value)))
 {
 	if (($fieldname=$this->opt["ref_field_disp"]) && isset($datamodel->{$fieldname}))
 	{
@@ -2531,7 +2522,8 @@ else
 
 }
 
-function value_from_db($value) // ICI on r�cup�re un champ string de la forme "datatype,id"
+// We retrieve the list (datamodel_id, object_id)
+function value_from_db($value)
 {
 
 if (!is_string($value) || count($list=explode(",",$value)) != 2)

@@ -186,23 +186,20 @@ db()->query($query_str);
 // Options réellement à sauver (<> opt par défaut)
 if (isset($field["optlist"]))
 {
+	var_dump($field["optlist"]);
 	$query_opt_list = array();
-	foreach($field["optlist"] as $type=>$list)
+	$opt_list = $datafield->opt_list;
+	var_dump($opt_list);
+	foreach($field["optlist"] as $optname=>$optvalue)
 	{
-		$field_type = $datafield->{$type."_opt_list_get"}();
-		foreach ($list as $i=>$j)
+		if (in_array($optname, $opt_list) && (!isset($datafield->opt[$optname]) || $datafield->opt[$optname] !== json_decode($optvalue, true)))
 		{
-			if (!isset($field_type[$i]) || $field_type[$i] !== json_decode($j, true))
-			{
-				$datafield->{$type."_opt_set"}($i, json_decode($j, true));
-				//$finalvalue = json_encode($datafield->{$type."_opt"}[$i]);
-				$query_opt_list[] = "('$this->id' , '".$field["name"]."' , '$type' , '$i' , '".db()->string_escape($j)."' )";
-			}
+			$query_opt_list[] = "('$this->id', '".$field["name"]."', '$optname' , '".db()->string_escape($optvalue)."' )";
 		}
 	}
 	if (count($query_opt_list))
 	{
-		$query_str = "INSERT INTO `_datamodel_fields_opt` (`datamodel_id`, `fieldname`, `opt_type`, `opt_name`, `opt_value`) VALUES ".implode(", ", $query_opt_list);
+		$query_str = "INSERT INTO `_datamodel_fields_opt` (`datamodel_id`, `fieldname`, `opt_name`, `opt_value`) VALUES ".implode(", ", $query_opt_list);
 		db()->query($query_str);
 	}
 }

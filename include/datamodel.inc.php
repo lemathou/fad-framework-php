@@ -551,7 +551,19 @@ if ($this->dynamic)
 public function exists($id)
 {
 
-return (is_numeric($id) && (isset($this->objects[$id]) || db()->query("SELECT 1 FROM `".$this->name."` WHERE `id`='".db()->string_escape($id)."'")->num_rows()));
+if (!is_numeric($id) || $id <= 0)
+	return false;
+elseif (isset($this->objects[$id]))
+	return true;
+elseif (OBJECT_CACHE && ($object=object_cache_retrieve("dataobject_".$this->id."_".$id)))
+{
+	$this->objects[$id] = $object;
+	return true;
+}
+elseif (db()->query("SELECT 1 FROM `".$this->name."` WHERE `id`='".db()->string_escape($id)."'")->num_rows())
+	return true;
+else
+	return false;
 
 }
 

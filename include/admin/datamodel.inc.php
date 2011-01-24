@@ -186,13 +186,11 @@ db()->query($query_str);
 // Options réellement à sauver (<> opt par défaut)
 if (isset($field["optlist"]))
 {
-	var_dump($field["optlist"]);
 	$query_opt_list = array();
 	$opt_list = $datafield->opt_list;
-	var_dump($opt_list);
 	foreach($field["optlist"] as $optname=>$optvalue)
 	{
-		if (in_array($optname, $opt_list) && (!isset($datafield->opt[$optname]) || $datafield->opt[$optname] !== json_decode($optvalue, true)))
+		if (in_array($optname, $opt_list) && ($datafield->opt[$optname] !== json_decode($optvalue, true)))
 		{
 			$query_opt_list[] = "('$this->id', '".$field["name"]."', '$optname' , '".db()->string_escape($optvalue)."' )";
 		}
@@ -274,7 +272,7 @@ foreach ($this->fields as $name=>$field)
 		{
 			$f["null"] = true;
 		}
-		if ($field->db_opt("lang"))
+		if (isset($field->opt["lang"]))
 			$fields_lang[$name] = $f;
 		else
 			$fields[$name] = $f;
@@ -291,7 +289,7 @@ if (count($fields_lang)>0)
 {
 	$fields_lang["id"] = $fields["id"];
 	unset($fields_lang["id"]["auto_increment"]);
-	$fields_lang["lang_id"] = array ("type"=>"integer", "size"=>"3", "null"=>true, "key"=>true);
+	$fields_lang["lang_id"] = array("type"=>"integer", "size"=>"3", "null"=>true, "key"=>true);
 	db()->table_create($this->name."_lang", $fields_lang, $options);
 }
 

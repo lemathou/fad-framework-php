@@ -2326,6 +2326,8 @@ protected $opt = array
 class data_dataobject extends data_agregat
 {
 
+protected $empty_value = 0;
+
 protected $opt = array
 (
 	"datamodel" => 0,
@@ -2342,7 +2344,7 @@ data::__construct($name, $value, $label, $options);
 function __tostring()
 {
 
-if ($this->value && ($datamodel=datamodel($this->opt["datamodel"])) && ($object=$datamodel->get($this->value)))
+if ($this->nonempty() && ($datamodel=datamodel($this->opt["datamodel"])) && ($object=$datamodel->get($this->value)))
 {
 	if (($fieldname=$this->opt["ref_field_disp"]) && isset($datamodel->{$fieldname}))
 	{
@@ -2362,7 +2364,7 @@ else
 function object()
 {
 
-if ($this->value)
+if ($this->nonempty())
 	return datamodel($this->opt["datamodel"])->get($this->value);
 else
 	return null;
@@ -2378,6 +2380,11 @@ if (!is_numeric($value) || !datamodel($this->opt["datamodel"])->exists($value))
 		$value = null;
 	return false;
 }
+else
+{
+	$value = (int)$value;
+	return true;
+}
 
 return true;
 
@@ -2388,6 +2395,18 @@ function convert(&$value)
 
 if (!is_numeric($value) || !datamodel($this->opt["datamodel"])->exists($value))
 	$value = null;
+else
+	$value = (int)$value;
+
+}
+
+function value_from_db($value)
+{
+
+if ($value === null)
+	$this->value = null;
+else
+	$this->value = (int)$value;
 
 }
 
@@ -2419,7 +2438,7 @@ if (($databank=datamodel($this->opt["datamodel"])) && (($nb=$databank->count()) 
 else
 {
 	$return = "<div style=\"display:inline;\"><input name=\"$this->name\" value=\"$this->value\" type=\"hidden\" class=\"q_id\" />";
-	if ($this->value)
+	if ($this->nonempty())
 		$value = (string)datamodel()->get($this->opt["datamodel"], $this->value, true);
 	else
 		$value = "";
@@ -2464,7 +2483,7 @@ else
 public function db_field_create()
 {
 
-return array("type" => "integer", "size" => 10, "signed"=>false);
+return array("type"=>"integer", "size"=>10, "signed"=>false);
 
 }
 

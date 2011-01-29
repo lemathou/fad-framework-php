@@ -58,43 +58,30 @@ $_type_list = $_type()->list_detail_get();
 
 $library_list = library()->list_detail_get();
 
-if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
+if (isset($_GET["id"]) && ($object=$_type($id=$_GET["id"])))
 {
 
-?>
-<div class="admin_menu admin_submenu">
-	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" <?php if (empty($_GET["field_edit"])) echo "class=\"selected\""; ?>>Formulaire</a>
-	<a href="javascript:;" name="field_list" onclick="admin_submenu(this.name)" <?php if (!empty($_GET["field_edit"])) echo "class=\"selected\""; ?>>Champs de donnée</a>
-</div>
-
-<div id="update_form" class="subcontents"<?php if (!empty($_GET["field_edit"])) echo " style=\"display:none;\""; ?>>
-<?php
-$_type($id)->update_form();
-?>
-</div>
-
-<div id="field_list" class="subcontents"<?php if (empty($_GET["field_edit"])) echo " style=\"display:none;\""; ?>>
-<?php
-$object = $_type($id);
-
-list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$id'")->fetch_row();
+$submenu = "update_form";
 
 // Datamodel field add
 if (isset($_POST["_field_add"]))
 {
 	$object->field_add($_POST);
+	$submenu = "field_list";
 }
 
 // Datamodel field update
 if (isset($_POST["_field_update"]))
 {
 	$object->field_update($_POST["name_orig"], $_POST);
+	$submenu = "field_list";
 }
 
 // Datamodel field delete
 if (isset($_GET["field_delete"]))
 {
 	$object->field_delete($_GET["field_delete"]);
+	$submenu = "field_list";
 }
 
 // Datamodel db create
@@ -104,13 +91,73 @@ if (isset($_POST["_db_create"]))
 	$object->db_create();
 }
 
+?>
+<div class="admin_menu admin_submenu">
+	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" <?php if ($submenu == "update_form") echo "class=\"selected\""; ?>>Formulaire</a>
+	<a href="javascript:;" name="field_list" onclick="admin_submenu(this.name)" <?php if ($submenu == "field_list") echo "class=\"selected\""; ?>>Champs de donnée</a>
+	<a href="javascript:;" name="references" onclick="admin_submenu(this.name)" <?php if ($submenu == "references") echo "class=\"selected\""; ?>>Références</a>
+	<a href="javascript:;" name="actions" onclick="admin_submenu(this.name)" <?php if ($submenu == "actions") echo "class=\"selected\""; ?>>Actions</a>
+</div>
+
+<div id="update_form" class="subcontents"<?php if ($submenu != "update_form") echo " style=\"display:none;\""; ?>>
+<?php
+$_type($id)->update_form();
+?>
+</div>
+
+<div id="references" class="subcontents"<?php if ($submenu != "references") echo " style=\"display:none;\""; ?>>
+<h3>Références dans d'autres datamodels</h3>
+<table>
+<tr class="label">
+	<td colspan="2">Other Datamodel</td>
+	<td colspan="2">This datamodel</td>
+</tr>
+<tr class="label">
+	<td></td>
+	<td>Field</td>
+	<td></td>
+	<td>Field</td>
+</tr>
+<?php
+// TODO : opération inverse pour avoir la correspondance
+$query_string = "SELECT t1.`datamodel_id` as id, t1.`fieldname` as name, t2.`fieldname` as ref_name FROM `_datamodel_fields_opt` as t1 LEFT JOIN `_datamodel_fields_opt` as t2 ON t2.`datamodel_id`='$id' AND t2.`opt_name`='datamodel' AND t2.`opt_value`=t1.`datamodel_id` WHERE t1.`datamodel_id` != '$id' AND t1.`opt_name`='datamodel' AND t1.`opt_value` IN ('$id', '\"".$object->name()."\"')";
+$query = db($query_string);
+//echo "<p>$query_string</p>\n";
+while($ref=$query->fetch_assoc())
+{
+	echo "<tr>";
+	echo "<td><a href=\"datamodel?id=".$ref["id"]."\">".datamodel($ref["id"])->name()."</a></td>";
+	echo "<td>".$ref["name"]."</td>";
+	if ($ref["ref_name"])
+	{
+		echo "<td>&lt;--&gt;</td>";
+		echo "<td>".$ref["ref_name"]."</td>";
+	}
+	echo "</tr>\n";
+}
+?>
+</table>
+<h3>Références dans les paramètres de templates</h3>
+<?php
+$query_string = "SELECT t1.`template_id` as id, t1.`name` as name FROM `_template_params_opt` as t1 WHERE t1.`optname`='datamodel' AND t1.`optvalue` IN ('$id', '\"".$object->name()."\"')";
+$query = db($query_string);
+//echo "<p>$query_string</p>\n";
+while($ref=$query->fetch_assoc())
+{
+	echo "<p><a href=\"datamodel?id=".$ref["id"]."\">".template($ref["id"])->name()."</a> : champ ".$ref["name"]."</p>\n";
+}
+?>
+</div>
+
+<div id="field_list" class="subcontents"<?php if ($submenu != "field_list") echo " style=\"display:none;\""; ?>>
+<?php
+
+list($db_sync) = db()->query("SELECT db_sync FROM _datamodel WHERE id='$id'")->fetch_row();
 // Position maximale
 $pos_max = count($object->fields());
-
 $data_list_detail = data()->list_detail_get();
 
 ?>
-
 <form method="post" action="?id=<?=$id?>" class="object_list_form">
 <h3>Liste des champs :</h3>
 <table border="0" cellspacing="0" cellpadding="1" width="100%">
@@ -180,15 +227,15 @@ foreach ($object->fields() as $name=>$field)
 		// Récupération des valeurs des champs par classe défaut puis reparamétrés
 		?>
 		<div>
-		<select id="opt_list"><option value="">-- Choisir --</option><?php
+		<select id="_opt_list"><option value="">-- Choisir --</option><?php
 		$list = array();
 		foreach($field->opt_list as $i)
 		{
 			if (!isset($field->opt[$i]))
 				echo "<option>$i</option>\n";
 		}
-		?></select><input type="button" value="ADD" onclick="datamodel_opt_add(document.getElementById('opt_list').value)" /></div>
-		<div>
+		?></select><input type="button" value="ADD" onclick="datamodel_opt_add(document.getElementById('_opt_list').value)" /></div>
+		<div id="_opt">
 		<?php
 		foreach($field->opt as $i=>$j)
 		{
@@ -265,6 +312,12 @@ if (!isset($_GET["field_edit"])) {
 <form method="post" action="?id=<?=$id?>">
 <p><input type="submit" name="_db_create" value="Créer les tables associées en base de donnée" /></p>
 </form>
+</div>
+
+<div id="actions" class="subcontents"<?php if ($submenu != "actions") echo " style=\"display:none;\""; ?>>
+<h3>Actions définies sur les objets</h3>
+<?php
+?>
 </div>
 
 <?php

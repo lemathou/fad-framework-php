@@ -116,11 +116,13 @@ protected $opt = array();
 protected static $opt_list = array
 (
 	// structure
-	"size", "ereg", "numeric_signed", "numeric_precision", "value_list", "boolean", "date_format", "datetime_format" , "object_type" , "datamodel", "email_strict", "urltype",
+	"size", "ereg", "numeric_signed", "numeric_precision", "value_list", "boolean", "date_format", "datetime_format", "object_type", "datamodel", "email_strict", "urltype",
 	// db
-	"db_table", "db_field" , "db_type" , "db_ref_table" , "db_ref_field" , "db_ref_id", "db_order_field" , "databank_field" , "select_params" , "lang" , "auto_increment",
+	"db_table", "db_field", "db_ref_table", "db_ref_field", "db_ref_id", "db_order_field", "db_databank_field", "db_type", "select_params",
 	// disp
 	"ref_field_disp", "preg_replace", "template_datamodel",
+	// Other
+	"lang", "auto_increment",
 );
 
 /**
@@ -246,13 +248,13 @@ public function verify(&$value, $convert=false, $options=array())
 return true;
 
 }
+public function convert_before(&$value)
+{
+}
 public function convert(&$value, $options=array())
 {
 }
 public function convert_after(&$value)
-{
-}
-public function convert_before(&$value)
 {
 }
 /**
@@ -679,6 +681,16 @@ else
 
 }
 
+function value_from_db($value)
+{
+
+if ($value === null)
+	$this->value = null;
+else
+	$this->value = (int)$value;
+
+}
+
 public function increment()
 {
 
@@ -715,7 +727,7 @@ public function db_field_create()
 $return = array
 (
 	"type" => "float",
-	"size" => $this->sopt["size"],
+	"size" => $this->opt["size"],
 	"precision" => $this->opt["numeric_precision"],
 	
 );
@@ -738,7 +750,7 @@ if (!is_numeric($value) || (float)$value != $value)
 	if ($convert)
 	{
 		$value = str_replace(",", ".", $value);
-		$value = (float)$value;
+		$value = floatval($value);
 		$return = false;
 	}
 	else
@@ -770,6 +782,16 @@ function convert(&$value)
 
 if (!preg_match('/^?[-]?([0-9]*)(\.([0-9]*)){0,1}$/', $value))
 	$value = null;
+
+}
+
+function value_from_db($value)
+{
+
+if ($value === null)
+	$this->value = null;
+else
+	$this->value = floatval($value);
 
 }
 
@@ -1655,38 +1677,9 @@ else
   * Extended data types
   *
   * - ID (for auto-incremented unique ID's)
-  * - Numbers
   * - Name (label, title)
+  * - Description
   */
-
-
-/**
- * Number
- * 
- * Used to count objects, with method to help
- * Integer unsigned
- * 
- * TODO : supress
- * 
- */
-class data_number extends data_integer
-{
-
-protected $opt = array
-(
-	"integer_signed"=>false,
-	"size"=>10,
-	"auto_increment"=>true,
-);
-
-function __construct($name, $value, $label="Number", $options=array())
-{
-
-data_integer::__construct($name, $value, $label, $options);
-
-}
-
-}
 
 /**
  * ID
@@ -1854,7 +1847,7 @@ class data_priority extends data_integer
 
 protected $opt = array
 (
-	"signed"=>false,
+	"numeric_signed"=>false,
 	"size"=>1,
 );
 
@@ -1878,15 +1871,34 @@ class data_measure extends data_float
 
 protected $opt = array
 (
-	"signed"=>false,
+	"numeric_signed"=>false,
 	"size"=>10,
-	"number_precision"=>4
+	"numeric_precision"=>4,
+	"numeric_type"=>"Km/h"
 );
 
 function __construct($name, $value, $label="Measure", $options=array())
 {
 
 data_float::__construct($name, $value, $label, $options);
+
+}
+
+function __tostring()
+{
+
+if ($this->nonempty())
+	return $this->value." ".$this->opt["numeric_type"];
+else
+	return "";
+
+}
+
+function type_change($type)
+{
+
+// TODO !!
+$this->opt["numeric_type"] = $type;
 
 }
 
@@ -1898,16 +1910,18 @@ data_float::__construct($name, $value, $label, $options);
  * Float unsigned
  * 
  */
-class data_money extends data_float
+class data_money extends data_measure
 {
 
 protected $opt = array
 (
-	"signed"=>true,
+	"numeric_signed"=>true,
 	"size"=>8,
-	"number_precision"=>2,
-	"numeric_type"=>"amount"
+	"numeric_precision"=>2,
+	"numeric_type"=>"&euro;"
 );
+
+protected $empty_value = null;
 
 function __construct($name, $value, $label="Amount", $options=array())
 {
@@ -1916,37 +1930,28 @@ data_float::__construct($name, $value, $label, $options);
 
 }
 
-function __tostring()
-{
-
-if ($this->nonempty())
-	return "";
-else
-	return $this->value." &euro;";
-
-}
-
 }
 
 /**
  * Percent
  */
-class data_percent extends data_float
+class data_percent extends data_measure
 {
+
+protected $opt = array
+(
+	"numeric_signed"=>true,
+	"size"=>6,
+	"numeric_precision"=>2,
+	"numeric_type"=>"%"
+);
 
 protected $empty_value = null;
 
 function __construct($name, $value, $label="Percent", $options=array())
 {
 
-data::__construct($name, $value, $label, $options);
-
-}
-
-public function db_field_create()
-{
-
-return array("type" => "float", "size" => 5, "precision" => 2);
+data_float::__construct($name, $value, $label, $options);
 
 }
 
@@ -1964,6 +1969,8 @@ if (!is_numeric($value) || $value < 0 || $value > 1)
 	}
 	return false;
 }
+
+$value = floatval($value);
 
 return true;
 
@@ -1999,21 +2006,17 @@ else
 public function form_field_disp($print=true, $options=array())
 {
 
-$return = "<input type=\"text\" name=\"$this->name\" value=\"".($this->value*100)."\" size=\"4\" maxlength=\"5\" class=\"".get_called_class()."\" />";
+if ($this->value === null)
+	$value = "";
+else
+	$value = $this->value*100;
+
+$return = "<input type=\"text\" name=\"$this->name\" value=\"$value\" size=\"4\" maxlength=\"5\" class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;
 else
 	return $return;
-
-}
-function __tostring()
-{
-
-if ($this->value === null)
-	return "";
-else
-	return ($this->value*100)." %";
 
 }
 
@@ -2180,13 +2183,6 @@ class data_file extends data
 
 protected $opt = array("fileformat"=>"");
 
-public function download_link_disp()
-{
-
-echo "<a href=\"$this->filelocation/$this->filename\">$this->filename</a>";
-
-}
-
 }
 
 /**
@@ -2205,7 +2201,7 @@ class data_stream extends data
 class data_image extends data_file
 {
 
-static protected $format_list = array( "jpg"=>"image/jpeg" , "png"=>"image/png" , "gif"=>"image/gif" );
+static protected $format_list = array("jpg"=>"image/jpeg", "png"=>"image/png", "gif"=>"image/gif");
 
 protected $opt = array("fileformat"=>"jpg", "imgquality"=>90);
 
@@ -2231,9 +2227,9 @@ if (isset(self::$format_list[$format]))
 class data_audio extends data_file
 {
 
-static protected $format_list = array( "mp3"=>"audio/mpeg-1" , "wav"=>"audio/wave" , "wma"=>"audio/wma" , "ogg"=>"audio/ogg" , "ogg"=>"image_gif" );
+static protected $format_list = array("mp3"=>"audio/mpeg-1", "wav"=>"audio/wave", "wma"=>"audio/wma", "ogg"=>"audio/ogg", "ogg"=>"image_gif");
 
-protected $opt = array("fileformat" => "mp3");
+protected $opt = array("fileformat"=>"mp3");
 
 function format_convert($format)
 {
@@ -2252,9 +2248,9 @@ if (isset(self::$format_list[$format]))
 class data_video extends data_file
 {
 
-static protected $format_list = array( "wmv"=>"video/wmv" , "avi"=>"video/avi" , "ogg"=>"video/ogg" , "flv"=>"video/flv" , "mp4"=>"video/mpeg-4" , "mov"=>"video/quicktime" );
+static protected $format_list = array("wmv"=>"video/wmv", "avi"=>"video/avi", "ogg"=>"video/ogg", "flv"=>"video/flv", "mp4"=>"video/mpeg-4", "mov"=>"video/quicktime");
 
-protected $opt = array("fileformat" => "flv");
+protected $opt = array("fileformat"=>"flv");
 
 function format_convert($format)
 {
@@ -2272,6 +2268,7 @@ if (isset(self::$format_list[$format]))
   * 
   * - Object
   * - Dataobject
+  * - Dataobject select (from datatype list)
   * - Dataobject list
   */
 
@@ -2290,30 +2287,6 @@ protected $opt = array
 	"db_format" => ""
 );
 
-/* Dire qu'on veut en entr�e un objet r�pondant � une interface donn�e
- * Pour cela on cr�� une classe abstraite r�pondant � la question
- * et tout objet instanci� doit en �tre surcharg�.
- */
-
-}
-
-/**
- * Agregat/Datamodel
- * 
- * Used to store an object created using a datamodel
- *
- */
-class data_agregat extends data_object
-{
-
-protected $opt = array
-(
-	"datamodel" => "datamodel_name",
-	"db_tablename" => "",
-	"db_fieldname" => "",
-	"db_type" => "blob",
-);
-
 }
 
 /**
@@ -2323,7 +2296,7 @@ protected $opt = array
  * corresponding to a datamodel associated to a database.
  * Thoses objects needs only an ID to be retrieved
  */
-class data_dataobject extends data_agregat
+class data_dataobject extends data_object
 {
 
 protected $empty_value = 0;
@@ -2341,33 +2314,10 @@ data::__construct($name, $value, $label, $options);
 
 }
 
-function __tostring()
+public function db_field_create()
 {
 
-if ($this->nonempty() && ($datamodel=datamodel($this->opt["datamodel"])) && ($object=$datamodel->get($this->value)))
-{
-	if (($fieldname=$this->opt["ref_field_disp"]) && isset($datamodel->{$fieldname}))
-	{
-		return (string)$object->{$fieldname};
-	}
-	else
-		return (string)$object;
-}
-else
-	return "";
-
-}
-
-/**
- * Returns the object
- */
-function object()
-{
-
-if ($this->nonempty())
-	return datamodel($this->opt["datamodel"])->get($this->value);
-else
-	return null;
+return array("type"=>"integer", "size"=>10, "signed"=>false);
 
 }
 
@@ -2380,12 +2330,8 @@ if (!is_numeric($value) || !datamodel($this->opt["datamodel"])->exists($value))
 		$value = null;
 	return false;
 }
-else
-{
-	$value = (int)$value;
-	return true;
-}
 
+$value = (int)$value;
 return true;
 
 }
@@ -2480,10 +2426,33 @@ else
 
 }
 
-public function db_field_create()
+function __tostring()
 {
 
-return array("type"=>"integer", "size"=>10, "signed"=>false);
+if ($this->nonempty() && ($datamodel=datamodel($this->opt["datamodel"])) && ($object=$datamodel->get($this->value)))
+{
+	if (($fieldname=$this->opt["ref_field_disp"]) && isset($datamodel->{$fieldname}))
+	{
+		return (string)$object->{$fieldname};
+	}
+	else
+		return (string)$object;
+}
+else
+	return "";
+
+}
+
+/**
+ * Returns the object
+ */
+function object()
+{
+
+if ($this->nonempty())
+	return datamodel($this->opt["datamodel"])->get($this->value);
+else
+	return null;
 
 }
 
@@ -2492,7 +2461,7 @@ return array("type"=>"integer", "size"=>10, "signed"=>false);
 /**
  * Donnée de type dataobject avec choix du type de dataobject en param
  */
-class data_dataobject_select extends data_agregat
+class data_dataobject_select extends data_object
 {
 
 protected $value_empty = array();
@@ -2500,8 +2469,8 @@ protected $value_empty = array();
 protected $opt = array
 (
 	"datamodel_list" => array(), // liste des databank concern�es
-	"databank_field" => "",
-	"db_field" => ""
+	"db_databank_field" => "",
+	"db_id_field" => ""
 );
 
 function __construct($name, $value, $label="Object (from a list)", $options=array())
@@ -2625,59 +2594,49 @@ data::__construct($name, $value, $label, $options);
 
 }
 
-function __tostring()
+public function db_query_param($value, $type="=")
 {
 
-if ($this->opt["db_order_field"])
-	$order = array($this->opt["db_order_field"]=>"asc");
-else
-	$order = array();
+$type_list = array( "=", "LIKE", "<", ">", "<=", ">=", "NOT LIKE" );  
+if (!in_array($type, $type_list))
+	$type = "=";
 
-if (!is_array($this->value) || !count($this->value))
-{
-	return "";
-}
-elseif ($this->opt["ref_field_disp"])
-{
-	$query = datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order);
-	$return = array();
-	foreach($query as $object)
-	{
-		$return[] = $object->{$this->opt["ref_field_disp"]};
-	}
-	return implode(", ", $return);
-}
+$fieldname = $this->opt["db_ref_id"];
+
+if (is_array($value) && count($value))
+	return "`".$fieldname."` IN (".implode(", ",$this->value).")";
 else
-{
-	return implode(", ", datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order));
-}
+	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
 
 }
 
 /**
- * Returns objets in a list
+ * Data to create the associated database 
  */
-function object_list()
+public function db_create()
 {
 
-if ($this->opt["db_order_field"])
-	$order = array($this->opt["db_order_field"]=>"asc");
-else
-	$order = array();
-
-if (is_array($this->value) && count($this->value))
+if ($this->opt["db_ref_table"])
 {
-	// Retrieve objects in databank
-	datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true);
-	// Sort by order
-	$return = array();
-	foreach ($this->value as $nb=>$id)
-		$return[] = datamodel($this->opt["datamodel"])->get($id);
+	$return = array
+	(
+		"name" => $this->opt["db_ref_table"],
+		"options" => array(),
+	);
+	if ($this->opt["db_order_field"])
+		$return["fields"] = array
+		(
+			$this->opt["db_ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
+			$this->opt["db_ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>false),
+			$this->opt["db_order_field"] = array("type"=>"integer", "size"=>2, "signed"=>false, "null"=>false, "key"=>true)
+		);
+	else
+		$return["fields"] = array
+		(
+			$this->opt["db_ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
+			$this->opt["db_ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true)
+		);
 	return $return;
-}
-else
-{
-	return array();
 }
 
 }
@@ -2777,51 +2736,60 @@ else
 
 }
 
-public function db_query_param($value, $type="=")
+function __tostring()
 {
 
-$type_list = array( "=", "LIKE", "<", ">", "<=", ">=", "NOT LIKE" );  
-if (!in_array($type, $type_list))
-	$type = "=";
-
-$fieldname = $this->opt["db_ref_id"];
-
-if (is_array($value) && count($value))
-	return "`".$fieldname."` IN (".implode(", ",$this->value).")";
+if ($this->opt["db_order_field"])
+	$order = array($this->opt["db_order_field"]=>"asc");
 else
-	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
+	$order = array();
+
+if (!is_array($this->value) || !count($this->value))
+{
+	return "";
+}
+elseif ($this->opt["ref_field_disp"])
+{
+	$query = datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order);
+	$return = array();
+	foreach($query as $object)
+	{
+		$return[] = $object->{$this->opt["ref_field_disp"]};
+	}
+	return implode(", ", $return);
+}
+else
+{
+	return implode(", ", datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order));
+}
 
 }
 
 /**
- * Data to create the associated database 
+ * Returns objets in a list
  */
-public function db_create()
+function object_list()
 {
 
-if ($this->opt["db_ref_table"])
+if ($this->opt["db_order_field"])
+	$order = array($this->opt["db_order_field"]=>"asc");
+else
+	$order = array();
+
+if (is_array($this->value) && count($this->value))
 {
-	$return = array
-	(
-		"name" => $this->opt["db_ref_table"],
-		"options" => array(),
-	);
-	if ($this->opt["db_order_field"])
-		$return["fields"] = array
-		(
-			$this->opt["db_ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
-			$this->opt["db_order_field"] = array("type"=>"integer", "size"=>3, "signed"=>false, "null"=>false, "key"=>true),
-			$this->opt["db_ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>false)
-		);
-	else
-		$return["fields"] = array
-		(
-			$this->opt["db_ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
-			$this->opt["db_ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true)
-		);
+	// Retrieve objects in databank
+	datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true);
+	// Sort by order
+	$return = array();
+	foreach ($this->value as $nb=>$id)
+		$return[] = datamodel($this->opt["datamodel"])->get($id);
+	return $return;
 }
-
-return $return;
+else
+{
+	return array();
+}
 
 }
 

@@ -1,16 +1,17 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * 
   */
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
+
 
 /**
  * Compte utilisateur
@@ -520,7 +521,8 @@ return $GLOBALS["login"];
 
 }
 
-if (DEBUG_GENTIME ==  true)
+
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

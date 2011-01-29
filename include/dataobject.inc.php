@@ -1,11 +1,13 @@
 <?php
 
 /**
-  * $Id$
+  * $Id: dataobject.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   * Data Objects (agregat)
   * 
@@ -99,15 +101,30 @@ if (is_numeric($id) && $id>0)
 }
 
 /**
+ * Correct the problem of fields
+ */
+function __clone()
+{
+
+$this->id = 0;
+$this->_update = time();
+foreach ($this->fields as $name=>$field)
+{
+	$this->fields[$name] = clone $field;
+}
+
+}
+
+/**
  * Retrieve the datamodel id from the class name
  */
 protected function datamodel_find()
 {
 
 $datamodel_name = substr(get_called_class(),0,-8);
-if (datamodel()->exists_name($datamodel_name))
+if ($datamodel=datamodel($datamodel_name))
 {
-	$this->datamodel_id = datamodel()->get_name($datamodel_name)->id();
+	$this->datamodel_id = $datamodel->id();
 }
 
 }
@@ -120,6 +137,7 @@ public function datamodel_set()
 $this->fields = array();
 $this->field_values = array();
 $this->id = 0;
+$this->_update = time();
 
 }
 public function datamodel()
@@ -132,7 +150,58 @@ return datamodel($this->datamodel_id);
 public function __isset($name)
 {
 
-return isset($this->datamodel()->{$name});
+return (array_key_exists($name, $this->fields) || array_key_exists($name, $this->field_values) || isset($this->datamodel()->{$name}));
+
+}
+
+/**
+ * Unset (to null value) a data field
+ */
+public function __unset($name)
+{
+
+if (array_key_exists($name, $this->fields))
+{
+	$this->fields[$name]->value = null;
+}
+elseif (array_key_exists($name, $this->field_values))
+{
+	$this->fields_values[$name] = null;
+}
+
+}
+
+/**
+ * Update a data field
+ */
+public function __set($name, $value)
+{
+
+if ($name == "id")
+{
+	if (is_numeric($value) && $value>0)
+		$this->id = (int)$value;
+}
+elseif ($name == "_update")
+{
+	if (is_numeric($value) && $value > $this->_update)
+		$this->_update = (int)$value;
+}
+elseif (array_key_exists($name, $this->fields))
+{
+	$this->fields[$name]->value = $value;
+}
+elseif (array_key_exists($name, $this->field_values))
+{
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name]->value = $value;
+}
+elseif (isset($this->datamodel()->{$name}))
+{
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->field_values[$name] = $this->fields[$name]->value;
+	$this->fields[$name]->value = $value;
+}
 
 }
 
@@ -174,54 +243,6 @@ return $this->datamodel()->label()." ID#$this->id";
 }
 
 /**
- * Update a data field
- */
-public function __set($name, $value)
-{
-
-if ($name == "id")
-{
-	if (is_numeric($value) && $value>0)
-		$this->id = (int)$value;
-}
-elseif ($name == "_update")
-{
-	if (is_numeric($value) && $value > $this->_update)
-		$this->_update = (int)$value;
-}
-elseif (isset($this->fields[$name]))
-{
-	$this->fields[$name]->value = $value;
-}
-elseif (isset($this->field_values[$name]))
-{
-	$this->fields[$name] = clone $this->datamodel()->{$name};
-	$this->fields[$name]->value = $value;
-}
-elseif (isset($this->datamodel()->{$name}))
-{
-	$this->fields[$name] = clone $this->datamodel()->{$name};
-	$this->field_values[$name] = $this->fields[$name]->value;
-	$this->fields[$name]->value = $value;
-}
-
-}
-
-/**
- * Correct the problem of fields
- */
-function __clone()
-{
-
-$this->id = 0;
-foreach ($this->fields as $name=>$field)
-{
-	$this->fields[$name] = clone $field;
-}
-
-}
-
-/**
  * Returns field list
  */
 public function field_list()
@@ -239,7 +260,7 @@ public function init()
 {
 
 $this->id = 0;
-$this->_update = 0;
+$this->_update = time();
 foreach ($this->datamodel()->fields() as $name=>$field)
 {
 	$this->fields[$name] = clone $field;
@@ -302,18 +323,17 @@ else
 }
 /**
  * Retrieve all data fields from database
- *
- * @return unknown
+ * @return boolean
  */
 public function db_retrieve_all()
 {
 
 $fields = array();
 foreach ($this->datamodel()->fields() as $name=>$field)
-	if (!isset($this->field_values[$name]) && !isset($this->fields[$name]))
-		$fields[]=$name;
+	if (!array_key_exists($name, $this->field_values) && !array_key_exists($name, $this->fields))
+		$fields[] = $name;
 
-if (count($fields)>0)
+if (count($fields) > 0)
 {
 	return $this->db_retrieve($fields);
 }
@@ -402,7 +422,7 @@ return $view;
 }
 
 /**
- * Insert new data into database
+ * Insert data into database as a new object
  *
  * @param unknown_type $options
  */
@@ -434,12 +454,12 @@ foreach ($fields as $name=>$value)
 		$t = explode(":", $e[1]);
 		$this->{$name} = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
 	}
-	elseif (isset($this->fields[$name]))
+	elseif (array_key_exists($name, $this->fields))
 	{
 		$this->fields[$name]->value_from_db($value);
 		$this->field_values[$name] = $this->fields[$name]->value;
 	}
-	elseif (isset($this->field_values[$name]) || isset($this->datamodel()->{$name}))
+	elseif (array_key_exists($name, $this->field_values) || isset($this->datamodel()->{$name}))
 	{
 		$this->fields[$name] = clone $this->datamodel()->{$name};
 		$this->fields[$name]->value_from_db($value);
@@ -568,11 +588,34 @@ public function action($method, $params)
 {
 
 // TODO : great potential with this concept !
+// datamodel()::action_exists()
+// datamodel()::action_get()
+// etc.
 
 $action_list = &$this->datamodel()->action_list();
 if (isset($action_list[$method]) && $action=$action_list[$method]["method"])
 {
 	$this->$action($params);
+}
+
+}
+
+/**
+ * The most simple action...
+ * Create an (almost) empty linked object
+ * @param string $datamodel_name
+ * @return dataobject
+ */
+public function ref_create($datamodel_name)
+{
+
+$name = $this->datamodel()->name();
+
+if ($datamodel=datamodel($datamodel_name) && isset($datamodel->{$name}))
+{
+	$object = $datamodel->create();
+	$object->{$name} = $this->id;
+	return $object;
 }
 
 }

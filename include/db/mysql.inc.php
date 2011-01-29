@@ -6,6 +6,8 @@
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -39,7 +41,7 @@ $this->queries_total += $this->queries;
 $this->fetch_results_total += $this->fetch_results;
 $this->time_total += $this->time;
 
-return array("infos", "options", "queries_total", "fetch_results_total", "time_total");
+return array("queries_total", "fetch_results_total", "time_total");
 
 }
 public function __wakeup()
@@ -58,11 +60,8 @@ if ($this->id)
 }
 
 }
-function __construct($infos=array(), $options=array())
+function __construct()
 {
-
-$this->infos = $infos;
-$this->options = $options;
 
 $this->connect();
 
@@ -72,16 +71,16 @@ function connect()
 {
 
 // On ne se connecte qu'une seule fois
-if (in_array("permanent", $this->options))
-	$this->id = mysql_pconnect($this->infos["hostname"], $this->infos["username"], $this->infos["password"]);
+if (DB_PERSISTANT == true)
+	$this->id = mysql_pconnect(DB_HOST, DB_USERNAME, DB_PASSWORD);
 else
-	$this->id = mysql_connect($this->infos["hostname"], $this->infos["username"], $this->infos["password"]);
+	$this->id = mysql_connect(DB_HOST, DB_USERNAME, DB_PASSWORD);
 
 // Choix base de donnée
-mysql_select_db($this->infos["database"], $this->id);
+mysql_select_db(DB_BASE, $this->id);
 
 // Encoding
-if ($this->infos["charset"] == "UTF8")
+if (DB_CHARSET == "UTF8")
 {
 	mysql_query("SET NAMES 'UTF8'");
 }
@@ -179,20 +178,27 @@ $fieldstruct = array();
 $tableoption = array();
 $key_list = array();
 
+if (!is_string($tablename) || !$tablename)
+	return false;
+if (!is_array($fields))
+	return false;
+
+// Fields
 foreach($fields as $fieldname=>$field)
 {
 	if (!empty($field["key"]))
 		$key_list[] = "`".$this->string_escape($fieldname)."`";
 	$fieldstruct[] = $this->field_struct($fieldname, $field);
 }
-
+// Primary Key
 if (count($key_list))
 	$fieldstruct[] = "PRIMARY KEY (".implode(", ",$key_list).")";
-
+// Engine
 if (isset($options["engine"]))
 	$tableoption[] = "ENGINE = $options[engine]";
 else
 	$tableoption[] = "ENGINE = ".DB_ENGINE;
+// Charset
 if (isset($options["charset"]))
 	$tableoption[] = "DEFAULT CHARSET = $options[charset]";
 else
@@ -200,7 +206,7 @@ else
 
 $query_string = "CREATE TABLE IF NOT EXISTS `".$this->string_escape($tablename)."` (".implode(", ", $fieldstruct).") ".implode(" ", $tableoption);
 $this->query($query_string);
-echo $query_string;
+echo "<p>$query_string</p>\n";
 //$this->query("ALTER TABLE `$tablename` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci");
 
 }
@@ -209,45 +215,54 @@ public function field_struct($fieldname, $field)
 {
 
 $field["null"] = empty($field["null"]) ? " NOT NULL" : " NULL";
-$field["default"] = isset($field["default"]) ? " default '".addslashes($field["default"])."'" : "";
+$field["default"] = isset($field["default"]) ? " DEFAULT '".$this->string_escape($field["default"])."'" : "";
 
+// http://dev.mysql.com/doc/refman/5.0/fr/silent-column-changes.html
 switch ($field["type"])
 {
 	case ($field["type"]=="string" && !empty($field["size"]) && isset($field["autocomplete"])) :
-		return "`".$this->string_escape($fieldname)."` char($field[size])$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` CHAR($field[size])$field[null]$field[default]";
 		break;
 	case ($field["type"]=="string" && !empty($field["size"])) :
-		return "`".$this->string_escape($fieldname)."` varchar($field[size])$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` VARCHAR($field[size])$field[null]$field[default]";
 		break;
 	case "string" :
-		return "`".$this->string_escape($fieldname)."` text$field[null]$field[default]";
-		break;
+	case "text" :
 	case "richtext" :
-		return "`".$this->string_escape($fieldname)."` text$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` TEXT$field[null]$field[default]";
 		break;
 	case "integer" :
-		return "`".$this->string_escape($fieldname)."` int($field[size])".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"].(!empty($field["auto_increment"])?" auto_increment":"");
+		if ($field["size"]>=11) // limit is 19 digits...
+			$type = "BIGINT";
+		elseif ($field["size"]>=5)
+			$type = "INT";
+		elseif ($field["size"]>=3) // TODO : not optimal... in many cases a tinyint should be OK with a length of 3
+			$type = "SMALLINT";
+		else
+			$type = "TINYINT";
+		return "`".$this->string_escape($fieldname)."` $type($field[size])".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"].(!empty($field["auto_increment"])?" auto_increment":"");
 		break;
 	case "float" :
-		return "`".$this->string_escape($fieldname)."` float(".($field["size"]+$field["precision"]).",$field[precision])".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"];
+		if ($field["precision"]>=24) // limit is 19 digits...
+			$type = "DOUBLE";
+		else
+			$type = "FLOAT";
+		return "`".$this->string_escape($fieldname)."` $type(".($field["size"]+$field["precision"]).",".$field["precision"].")".(empty($field["signed"])?" unsigned":"").$field["null"].$field["default"];
+		break;
+	case ($field["type"]=="datetime" && !empty($field["autoupdate"])) :
+		return "`".$this->string_escape($fieldname)."` TIMESTAMP ON UPDATE CURRENT_TIMESTAMP$field[null] DEFAULT CURRENT_TIMESTAMP";
 		break;
 	case "date" :
-		return "`".$this->string_escape($fieldname)."` date$field[null]$field[default]";
-		break;
 	case "year" :
-		return "`".$this->string_escape($fieldname)."` year$field[null]$field[default]";
-		break;
 	case "time" :
-		return "`".$this->string_escape($fieldname)."` time$field[null]$field[default]";
-		break;
 	case "datetime" :
-		return "`".$this->string_escape($fieldname)."` datetime$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` ".strtoupper($field["type"]).$field["null"].$field["default"];
 		break;
 	case "select" :
-		return "`".$this->string_escape($fieldname)."` enum ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` ENUM('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
 		break;
 	case "fromlist" :
-		return "`".$this->string_escape($fieldname)."` set ('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
+		return "`".$this->string_escape($fieldname)."` SET('".implode("' , '",$field["value_list"])."')$field[null]$field[default]";
 		break;
 	case "boolean" :
 		return "`".$this->string_escape($fieldname)."` BOOLEAN$field[null]$field[default]";
@@ -575,18 +590,24 @@ $this->execute();
 /**
  * Database access function
  */
-function db()
+function db($query=null)
 {
 
 if (!isset($GLOBALS["db"]))
 {
 	if (!isset($_SESSION["db"]))
-		$_SESSION["db"] = new db(array("hostname"=>DB_HOST, "username"=>DB_USERNAME, "password"=>DB_PASSWORD, "database"=>DB_BASE, "charset"=>DB_CHARSET));
+		$_SESSION["db"] = new db();
 	$GLOBALS["db"] = $_SESSION["db"];
-	// TODO : destroy db password & co and so do not.
 }
 
-return $GLOBALS["db"];
+if (is_string($query))
+{
+	return $GLOBALS["db"]->query($query);
+}
+else
+{
+	return $GLOBALS["db"];
+}
 
 }
 

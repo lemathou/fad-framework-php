@@ -11,8 +11,9 @@
   * 
   */
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
+
 
 /**
  * Defines the accessible pages
@@ -617,7 +618,7 @@ return page(PAGE_ID);
 }
 
 
-if (DEBUG_GENTIME ==  true)
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

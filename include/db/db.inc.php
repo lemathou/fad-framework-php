@@ -1,11 +1,13 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - iProspective - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -30,7 +32,7 @@
 interface db_i
 {
 
-function __construct($infos=array(), $options=array());
+function __construct();
 
 function connect();
 
@@ -81,7 +83,7 @@ function __wakeup();
 interface db_query_i
 {
 
-// On effectue la requ�te
+// On effectue la requête
 function __construct($query_string, $db_id);
 
 function num_rows();

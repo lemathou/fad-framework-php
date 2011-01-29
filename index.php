@@ -6,6 +6,8 @@
   * « Copyright 2008 Mathieu Moulin - lemathou@free.fr »
   * 
   * This file is part of PHP FAD FRAMEWORK
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   * PHP FAD FRAMEWORK is free software; you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by

@@ -47,8 +47,8 @@ include PATH_INCLUDE."/library.inc.php";
 // Data types, data models, data banks
 include PATH_INCLUDE."/data.inc.php";
 include PATH_INCLUDE."/datamodel.inc.php";
+include PATH_INCLUDE."/dataobject.inc.php";
 include PATH_INCLUDE."/data_display.inc.php";
-include PATH_INCLUDE."/data_bank.inc.php";
 
 // Permissions
 include PATH_INCLUDE."/permission.inc.php";

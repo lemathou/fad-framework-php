@@ -779,7 +779,7 @@ protected $datamodel_id = null;
 protected $object_id = null;
 protected $object = null;
 
-function object_set(data_bank_agregat $object)
+function object_set(dataobject $object)
 {
 
 $this->object_id = $object->id;

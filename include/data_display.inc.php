@@ -24,7 +24,7 @@ class datamodel_display
 protected $datamodel = NULL;
 protected $object = NULL;
 
-public function __construct(data_bank_agregat $object)
+public function __construct(dataobject $object)
 {
 
 $this->object = $object;

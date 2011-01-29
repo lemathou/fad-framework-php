@@ -1,16 +1,20 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * 
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
+
 
 /**
  * Page listing
@@ -643,7 +647,8 @@ if (isset($options["width"]) && is_numeric($width2=$options["width"]) && isset($
 
 }
 
-if (DEBUG_GENTIME ==  true)
+
+if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");
 
 ?>

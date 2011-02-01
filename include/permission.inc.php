@@ -300,6 +300,8 @@ if (!isset($GLOBALS["permission_gestion"]))
 			$_SESSION["permission_gestion"] = new permission_gestion();
 		$GLOBALS["permission_gestion"] = $_SESSION["permission_gestion"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve permission()");
 }
 
 if (is_numeric($id))

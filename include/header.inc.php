@@ -67,9 +67,11 @@ include PATH_INCLUDE."/menu.inc.php";
 include PATH_INCLUDE."/lang.inc.php";
 
 // Mise en place des fonctions associées aucx banques de donnée !!
+if (DEBUG_GENTIME == true)
+	gentime("Datamodel init [begin]");
 datamodel();
 if (DEBUG_GENTIME == true)
-	gentime("Datamodel init");
+	gentime("Datamodel init [end]");
 
 }
 
@@ -86,12 +88,14 @@ if (DEBUG_GENTIME == true)
 if (SESSION_START)
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("Session refresh [begin]");
 // Session start
 session_start();
 // Login refresh
 login()->refresh();
 if (DEBUG_GENTIME == true)
-	gentime("Session refresh");
+	gentime("Session refresh [end]");
 
 }
 

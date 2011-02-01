@@ -9,6 +9,9 @@
   * 
   */
 
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
 
 class library_gestion extends _library_gestion
 {
@@ -20,5 +23,9 @@ class library extends _library
 
 
 };
+
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [end]");
 
 ?>

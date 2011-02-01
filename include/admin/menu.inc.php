@@ -9,6 +9,10 @@
   * 
   */
 
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
+
 class menu_gestion extends _menu_gestion
 {
 
@@ -59,5 +63,9 @@ if (isset($this->list[$pos_from]) && isset($this->list[$pos_to]))
 }
 
 };
+
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [end]");
 
 ?>

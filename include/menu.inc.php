@@ -141,6 +141,8 @@ if (!isset($GLOBALS["menu_gestion"]))
 			$_SESSION["menu_gestion"] = new menu_gestion();
 		$GLOBALS["menu_gestion"] = $_SESSION["menu_gestion"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve menu()");
 }
 
 if (is_numeric($id))

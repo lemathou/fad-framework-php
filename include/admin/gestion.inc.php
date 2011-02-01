@@ -12,6 +12,10 @@
   * 
   */
 
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
+
 class gestion extends _gestion
 {
 
@@ -154,6 +158,8 @@ if (!login()->perm(6))
 <?php
 foreach ($this->info_detail as $name=>$info)
 {
+	if (!isset($info["default"]))
+		$info["default"] = null;
 ?>
 <tr>
 	<td class="label"><label for="<?php echo $name; ?>"><?php echo $info["label"]; ?> :</label></td>
@@ -176,13 +182,13 @@ foreach ($this->info_detail as $name=>$info)
 	?></select></td>
 <?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; ?>
 	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
-	foreach($object_type()->list_detail_get() as $i=>$j)
-		echo "<option value=\"$i\">$j[label]</option>";
+	foreach($object_type()->list_get() as $i=>$object)
+		echo "<option value=\"$i\">".$object->label()."</option>";
 	?></select></td>
 <?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
 	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" size="10" multiple class="data_fromlist"><?
-	foreach($object_type()->list_detail_get() as $i=>$j)
-		echo "<option value=\"$i\">$j[label]</option>";
+	foreach($object_type()->list_get() as $i=>$object)
+		echo "<option value=\"$i\">".$object->label()."</option>";
 	?></select></td>
 <?php } elseif ($info["type"] == "script") { ?>
 	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php if (isset($info["default"])) echo $info["default"]; ?></textarea></td>
@@ -416,19 +422,19 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 	?></select></td>
 <?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
 	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" title="<?php echo $info["label"]; ?>" size="10" multiple class="data_fromlist"><?
-	foreach($object_type()->list_detail_get() as $i=>$j)
+	foreach($object_type()->list_get() as $i=>$object)
 		if (in_array($i, $this->{$name}))
-			echo "<option value=\"$i\" selected>$j[label]</option>";
+			echo "<option value=\"$i\" selected>".$object->label()."</option>";
 		else
-			echo "<option value=\"$i\">$j[label]</option>";
+			echo "<option value=\"$i\">".$object->label()."</option>";
 	?></select></td>
 <?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; ?>
 	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
-	foreach($object_type()->list_detail_get() as $i=>$j)
+	foreach($object_type()->list_get() as $i=>$object)
 		if ($i == $this->{$name})
-			echo "<option value=\"$i\" selected>$j[label]</option>";
+			echo "<option value=\"$i\" selected>".$object->label()."</option>";
 		else
-			echo "<option value=\"$i\">$j[label]</option>";
+			echo "<option value=\"$i\">".$object->label()."</option>";
 	?></select></td>
 <?php } elseif ($info["type"] == "script") { ?>
 	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php
@@ -453,5 +459,9 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 }
 
 };
+
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [end]");
 
 ?>

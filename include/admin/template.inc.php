@@ -9,6 +9,10 @@
   * 
   */
 
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
+
 class template_gestion extends _template_gestion
 {
 
@@ -117,5 +121,11 @@ return true;
 }
 
 }
+
+//class template_container extends _template_container {};
+//class template_datamodel extends _template_datamodel {};
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [end]");
 
 ?>

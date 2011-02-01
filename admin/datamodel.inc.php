@@ -14,7 +14,6 @@
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 
-
 $_type = "datamodel";
 $_label = "Datamodel";
 
@@ -33,18 +32,20 @@ if (isset($_POST["_delete"]) && $_type()->exists($_POST["_delete"]))
 	$_type()->del($_POST["_delete"]);
 }
 
+$_type()->retrieve_objects();
+
 ?>
 <form method="get" class="page_form">
 <input type="submit" value="<?php echo $_label; ?>" />
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach ($_type()->list_detail_get() as $id=>$info)
+foreach ($_type()->list_get() as $id=>$object)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] $info[label]</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] ".$object->label()."</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $info[label]</option>\n";
+		echo "	<option value=\"$id\">[$id] ".$object->label()."</option>\n";
 }
 ?>
 </select>
@@ -73,7 +74,14 @@ if (isset($_POST["_field_add"]))
 // Datamodel field update
 if (isset($_POST["_field_update"]))
 {
+	//var_dump($_POST);
 	$object->field_update($_POST["name_orig"], $_POST);
+	$submenu = "field_list";
+}
+
+// Datamodel db create
+if (isset($_GET["field_edit"]))
+{
 	$submenu = "field_list";
 }
 

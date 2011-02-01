@@ -39,7 +39,7 @@ protected $info_detail = array
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.inc.php")
 );
 
-protected $info_required = array("name", "label", "type");
+protected $info_required = array("name", "type");
 
 protected $retrieve_details = false;
 
@@ -245,31 +245,26 @@ return $this->param_list_detail;
 function __isset($name)
 {
 
-return isset($this->param[$name]);
+return array_key_exists($name, $this->param);
 
 }
 function __get($name)
 {
 
-if (isset($this->param[$name]))
+if (array_key_exists($name, $this->param))
+{
 	return $this->param[$name];
-else
-	return null;
+}
 
 }
 public function __set($name, $value)
 {
 
-if (in_array($name, $this->param_list))
+if (array_key_exists($name, $this->param))
 {
 	if (DEBUG_TEMPLATE)
 		echo "<p>DEBUG : template(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
 	$this->param[$name]->value_from_form($value);
-}
-else
-{
-	if (DEBUG_TEMPLATE)
-		echo "<p>DEBUG : TEMPLATE($this->id)->__set NOT DEFINED : $name</p>\n";
 }
 
 }
@@ -387,7 +382,7 @@ public static function subtemplates($tpl)
 
 $return = array();
 
-if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
+if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]*)(,(.*)){0,1}--\>/", $tpl, $matches, PREG_SET_ORDER))
 {
 	$list_name = template()->list_name_get();
 	foreach($matches as $match)
@@ -417,68 +412,55 @@ return $return;
 protected function subtemplates_apply($tpl)
 {
 
-if (preg_match_all("/\[\[TEMPLATE:([a-zA-Z_\/]*)(,(.*)){0,1}\]\]/", $tpl, $matches, PREG_SET_ORDER))
+if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(.+)){0,1}--\>/", $tpl, $matches, PREG_SET_ORDER))
 {
-	$list_name = template()->list_name_get();
-	foreach($matches as $match)
+	$replace_from = $replace_to = array();
+	foreach($matches as $match) if ($template=template($match[1]))
 	{
-		if (template()->exists_name($match[1]))
+		if (DEBUG_TEMPLATE)
+			echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#".$template->id()." ".$match[1]."</p>\n";
+		// TODO : VOIR SI PB DE RECURSION !!!!
+		$template->reset();
+		// Passage des paramètres
+		if (isset($match[3]) && ($params=json_decode($match[3], true)))
 		{
-			$id = $list_name[$match[1]];
-			$template = template($id);
-			if (DEBUG_TEMPLATE)
-				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id ".$match[1]."</p>\n";
-			// TODO : VOIR SI PB DE RECURSION !!!!
-			$template->reset();
-			// Passage des paramètres
-			if (isset($match[3]))
+			if ($template->info("type") == "datamodel")
 			{
-				$param_list = $template->param_list();
-				$params = json_decode($match[3], true);
-				if ($params === true) // On tente de passer tous les paramètres
+				if (is_array($params))
+					foreach($params as $name=>$value)
+						$template->__set($name, $value);
+			}
+			// TODO : Simplify and find something else than value_to_form()
+			elseif ($params === true) // On tente de passer tous les paramètres
+			{
+				foreach($template->param_list() as $nb=>$name)
 				{
-					foreach($param_list as $nb=>$name)
-					{
-						if (isset($this->param[$name]))
-						{
-							if (DEBUG_TEMPLATE)
-								echo "<p>--> Param : $name</p>\n";
-							$template->__set($name, $this->param[$name]->value_to_form());
-						}
-					}
-				}
-				elseif (is_array($params)) foreach ($params as $name=>$name_from)
-				{
-					if (DEBUG_TEMPLATE)
-						echo "<p>--> $name_from : $name</p>\n";
-					if (isset($this->param[$name_from]) && in_array($name, $param_list))
+					if (array_key_exists($name, $this->param))
 					{
 						if (DEBUG_TEMPLATE)
-							echo "<p>----> $name_from : $name = ".$this->param[$name_from]->value_to_form()."</p>\n";
-						$template->__set($name, $this->param[$name_from]->value_to_form());
+							echo "<p>--> Param : $name</p>\n";
+						$template->__set($name, $this->param[$name]->value_to_form());
 					}
 				}
 			}
-			$tpl = str_replace($match[0], $template, $tpl);
+			elseif (is_array($params)) foreach($params as $name=>$name_from)
+			{
+				if (DEBUG_TEMPLATE)
+					echo "<p>--> $name_from : $name</p>\n";
+				if (array_key_exists($name_from, $this->param) && isset($template->{$name}))
+				{
+					if (DEBUG_TEMPLATE)
+						echo "<p>----> $name_from : $name = ".$this->param[$name_from]->value_to_form()."</p>\n";
+					$template->__set($name, $this->param[$name_from]->value_to_form());
+				}
+			}
 		}
+		$replace_from[] = $match[0];
+		$replace_to[] = (string) $template;
 	}
-}
-
-if (preg_match_all("/\[\[INCLUDE_DATAMODEL:(.*),(.*),(.*)\]\]/", $tpl, $matches, PREG_SET_ORDER))
-{
-	$list_name = template()->list_name_get();
-	foreach($matches as $match)
+	if (count($replace_from))
 	{
-		if (template()->exists_name("datamodel/$match[1]"))
-		{
-			$id = $list_name["datamodel/$match[1]"];
-			$template = template($id);
-			if (DEBUG_TEMPLATE)
-				echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#$id, for datamodel ID#$match[2], object ID#$match[3]</p>\n";
-			$template->reset();
-			$template->object_set(datamodel($match[2])->get($match[3]));
-			$tpl = str_replace($match[0], $template, $tpl);
-		}
+		$tpl = str_replace($replace_from, $replace_to, $tpl);
 	}
 }
 
@@ -587,7 +569,7 @@ if (TEMPLATE_CACHE_TYPE == "apc")
 	else
 	{
 		$return = true;
-		reset ($this->param_list_detail);
+		reset($this->param_list_detail);
 		while($return && (list($param)=each($this->param_list_detail)))
 		{
 			if ($param["datatype"] == "dataobject" && ($datamodel=datamodel($param["opt"]["databank"])))
@@ -640,7 +622,7 @@ else // (TEMPLATE_CACHE_TYPE == "file")
 	// Paramètres du template modifiés
 	{
 		$return = true;
-		reset ($this->param_list_detail);
+		reset($this->param_list_detail);
 		while($return && (list($param)=each($this->param_list_detail)))
 		{
 			if ($param["datatype"] == "dataobject" && ($datamodel=datamodel($param["opt"]["databank"])))
@@ -722,7 +704,7 @@ public function __set($name, $value)
 if (DEBUG_TEMPLATE)
 	echo "<p>DEBUG : template_container(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
 
-if (isset($this->param[$name]))
+if (array_key_exists($name, $this->param))
 	$this->param[$name]->value = $value;
 else
 	$this->param[$name] = new data($name, $value, $name);
@@ -779,6 +761,24 @@ protected $datamodel_id = null;
 protected $object_id = null;
 protected $object = null;
 
+function __set($name, $value)
+{
+
+// TODO : Not clear, because we need here to configure first the datamodel...
+
+if ($name == "datamodel_id" && ($datamodel=datamodel($value)))
+{
+	$this->datamodel_id = $datamodel->id();
+}
+elseif ($name == "object_id" && ($datamodel=datamodel()->get($this->datamodel_id)) && ($object=$datamodel->get($value)))
+{
+	$this->object_id = $object->id;
+	$this->object = $object;
+	$this->object_retrieve_values();
+}
+
+}
+
 function object_set(dataobject $object)
 {
 
@@ -807,12 +807,13 @@ return datamodel()->get($this->datamodel_id);
 function object_retrieve_values()
 {
 
-//echo "<p>TEMPLATE_DATAMODEL()::object_retrieve_values()</p>";
+if (DEBUG_TEMPLATE)
+	echo "<p>[DEBUG] template_datamodel::object_retrieve_values()</p>\n";
 
 $this->param = array();
 $this->param["id"] = new data_id();
-$this->param["id"]->value = $this->object->id;
-foreach($this->object->datamodel()->fields() as $field)
+$this->param["id"]->value = $this->object_id;
+foreach(datamodel($this->datamodel_id)->fields() as $field)
 {
 	$this->param[$field->name] = $this->object->{$field->name};
 }
@@ -823,7 +824,7 @@ protected function cache_id_set()
 {
 
 if ($this->object)
-	$params_str = "'$this->id','".$this->object->datamodel()->id()."','".$this->object->id."'";
+	$params_str = "'$this->id','".$this->datamodel_id."','".$this->object_id."'";
 else
 	$params_str = "'$this->id','0','0'";
 
@@ -956,6 +957,8 @@ if (!isset($GLOBALS["template_gestion"]))
 			$_SESSION["template_gestion"] = new template_gestion();
 		$GLOBALS["template_gestion"] = $_SESSION["template_gestion"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve template()");
 }
 
 if (is_numeric($id))

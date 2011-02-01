@@ -9,6 +9,10 @@
   * 
   */
 
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
+
 class datamodel_gestion extends _datamodel_gestion
 {
 
@@ -80,7 +84,8 @@ db()->query("INSERT INTO _datamodel_fields_lang (datamodel_id, lang_id, fieldnam
 // Gestion du repositionnement
 if ($field["pos"] < $pos_max)
 {
-	db()->query("UPDATE `_datamodel_fields` SET `pos` = pos+1 WHERE `datamodel_id` = '$this->id' AND `pos` >= '".(int)$field["pos"]."'");
+	db()->query("UPDATE `_datamodel_fields` SET `pos` = '0' WHERE `datamodel_id` = '$this->id' AND `name` = '".$field["name"]."'");
+	db()->query("UPDATE `_datamodel_fields` SET `pos` = pos+1 WHERE `datamodel_id` = '$this->id' AND `pos` >= '".(int)$field["pos"]."' ORDER BY `pos` DESC");
 	db()->query("UPDATE `_datamodel_fields` SET `pos` = '".(int)$field["pos"]."' WHERE `datamodel_id` = '$this->id' AND `name` = '".$field["name"]."'");
 }
 
@@ -116,10 +121,15 @@ if (!login()->perm(6))
 if (!isset($this->fields[$name]))
 	die("datamodel(ID#$this->id)::field_delete() : Field $name does not exists");
 
+
+
+list($pos) = db()->query("SELECT `pos` FROM `_datamodel_fields` WHERE `name`='$name' AND `datamodel_id`='$this->id'")->fetch_row();
 db()->query("DELETE FROM `_datamodel_fields` WHERE `name`='$name' AND `datamodel_id`='$this->id'");
 db()->query("DELETE FROM `_datamodel_fields_lang` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
 db()->query("DELETE FROM `_datamodel_fields_opt` WHERE `fieldname`='$name' AND `datamodel_id`='$this->id'");
 db()->field_delete($this->name, $name);
+
+db()->query("UPDATE `_datamodel_fields` SET `pos`=pos-1 WHERE `pos`>'$pos' AND `datamodel_id`='$this->id'");
 
 $this->query_fields();
 
@@ -203,6 +213,7 @@ if (isset($field["optlist"]))
 }
 
 // Gestion du repositionnement
+//echo "<p>$field[pos] / $pos</p>\n";
 if ($field["pos"] < $pos)
 {
 	db()->query("UPDATE _datamodel_fields SET pos=pos+1 WHERE datamodel_id='$this->id' AND pos >= ".($field["pos"])." AND pos < $pos");
@@ -258,6 +269,15 @@ $fields["id"] = array
 	"key"=>true,
 	"auto_increment"=>true
 );
+if ($this->dynamic)
+{
+	$fields["_update"] = array
+	(
+		"type"=>"datetime",
+		"autoupdate"=>true
+	);
+}
+
 // Other fields
 foreach ($this->fields as $name=>$field)
 {
@@ -298,6 +318,7 @@ if (count($fields_ref))
 	foreach($fields_ref as $table)
 	{
 		db()->table_create($table["name"], $table["fields"], $table["options"]);
+		// TODO : alternate INDEX for reverse queries
 	}
 }
 
@@ -509,5 +530,9 @@ foreach($list as $nb=>$object)
 }
 
 }
+
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [end]");
 
 ?>

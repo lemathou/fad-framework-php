@@ -39,7 +39,7 @@ class _datamodel_gestion extends gestion
 
 protected $type = "datamodel";
 
-protected $info_list = array("name", "library_id", "perm");
+protected $info_list = array("name", "library_id", "perm", "dynamic", "shared");
 
 protected $info_detail = array
 (
@@ -112,6 +112,7 @@ protected $dynamic = 0;
  * Be carefull that the mysql user must have select/insert/update/etc. right correctly defined !
  */
 protected $shared = false;
+protected $db = null;
 
 /**
  * Account default permissions.
@@ -163,27 +164,7 @@ protected $fields_index = array();
 /*
  * Public actions / Kind of controller part of a MVC-like design
  */
-protected $action_list = array
-(
-	"update" => array
-	(
-		"label" => "Mettre à jour",
-		"method" => "update_from_form",
-		"params" => array(),
-	),
-	"delete" => array
-	(
-		"label" => "Supprimer",
-		"method" => "delete",
-		"params" => array(),
-	),
-	"view" => array
-	(
-		"label" => "Afficher",
-		"method" => "view",
-		"params" => array(),
-	),
-);
+protected $action_list = array();
 
 /**
  * Objects
@@ -199,12 +180,22 @@ return array("id", "name", "label", "description", "dynamic", "shared", "perm", 
 function __wakeup()
 {
 
+if ($this->shared)
+	$this->db = DB_SHARED_BASE;
+else
+	$this->db = DB_BASE;
+
 $this->library_load();
 
 }
 
 protected function construct_more($infos)
 {
+
+if ($this->shared)
+	$this->db = DB_SHARED_BASE;
+else
+	$this->db = DB_BASE;
 
 $this->query_fields();
 $this->library_load();
@@ -289,6 +280,17 @@ if ($this->library_id)
 {
 	library($this->library_id)->load();
 }
+
+}
+
+/**
+ * Returns database name
+ * in case of shared datamodel
+ */
+public function db()
+{
+
+return $this->db;
 
 }
 
@@ -515,7 +517,7 @@ if ($this->dynamic)
 	$query_values[] = "'".date("Y-m-d H:i:s", $datetime)."'";
 }
 
-$query_str = "INSERT INTO `".$this->name."` (".implode(", ", $query_fields).") VALUES (".implode(", ", $query_values).")";
+$query_str = "INSERT INTO `".$this->db."`.`".$this->name."` (".implode(", ", $query_fields).") VALUES (".implode(", ", $query_values).")";
 $query = db()->query($query_str);
 // db()->insert("$this->name","");
 
@@ -524,7 +526,7 @@ if (!($id=$query->last_id()))
 
 if (count($query_fields_lang))
 {
-	$query_str = "INSERT INTO `".$this->name."_lang` (".implode(", ", $query_fields_lang).") VALUES (".implode(", ", $query_values_lang).")";
+	$query_str = "INSERT INTO `".$this->db."`.`".$this->name."_lang` (".implode(", ", $query_fields_lang).") VALUES (".implode(", ", $query_values_lang).")";
 	$query = db()->query($query_str);
 }
 
@@ -541,7 +543,7 @@ if (count($query_list)>0)
 			}
 			if (count($details["query_values"])>0)
 			{
-				$query_str = "INSERT INTO `$ref_table` (`$ref_field`, `$ref_id`) VALUES ".implode(", ", $details["query_values"]);
+				$query_str = "INSERT INTO `".$this->db."`.`$ref_table` (`$ref_field`, `$ref_id`) VALUES ".implode(", ", $details["query_values"]);
 				$query = db()->query($query_str);
 			}
 		}
@@ -570,7 +572,7 @@ elseif (OBJECT_CACHE && ($object=object_cache_retrieve("dataobject_".$this->id."
 	$this->objects[$id] = $object;
 	return true;
 }
-elseif (db()->query("SELECT 1 FROM `".$this->name."` WHERE `id`='".db()->string_escape($id)."'")->num_rows())
+elseif (db()->query("SELECT 1 FROM `".$this->db."`.`".$this->name."` WHERE `id`='".db()->string_escape($id)."'")->num_rows())
 	return true;
 else
 	return false;
@@ -620,7 +622,7 @@ foreach ($list as $fields)
 	$delete_list_id[] = $fields["id"];
 }
 
-db()->query("DELETE FROM `".$this->name."` WHERE `id` IN (".implode(", ", $delete_list_id).")");
+db()->query("DELETE FROM `".$this->db."`.`".$this->name."` WHERE `id` IN (".implode(", ", $delete_list_id).")");
 
 foreach($this->fields as $name=>$field)
 {
@@ -628,13 +630,13 @@ foreach($this->fields as $name=>$field)
 		$delete_lang = true;
 	elseif ($field->type == "dataobject_list" || $field->type == "list")
 	{
-		db()->query("DELETE FROM `".$field->opt["ref_table"]."` WHERE `".$field->opt["ref_id"]."` IN (".implode(", ", $delete_list_id).")");
+		db()->query("DELETE FROM `".$this->db."`.`".$field->opt["ref_table"]."` WHERE `".$field->opt["ref_id"]."` IN (".implode(", ", $delete_list_id).")");
 	}
 }
 
 if ($delete_lang)
 {
-	db()->query("DELETE FROM `".$this->name."_lang` WHERE `id` IN (".implode(", ", $delete_list_id).")");
+	db()->query("DELETE FROM `".$this->db."`.`".$this->name."_lang` WHERE `id` IN (".implode(", ", $delete_list_id).")");
 }
 
 return $return;
@@ -651,7 +653,7 @@ public function db_update($params=array(), $fields=array(), $sort=array(), $limi
 
 $query_ok = true;
 
-$query_base = array("update"=>array(), "having"=>array(), "where"=>array(), "from"=>array("`$this->name` as t0"), "sort"=>array());
+$query_base = array("update"=>array(), "having"=>array(), "where"=>array(), "from"=>array("`".$this->db."`.`$this->name` as t0"), "sort"=>array());
 // Timestamp field
 if ($this->dynamic)
 {
@@ -688,6 +690,7 @@ foreach ($fields as $name=>$field)
 		}
 		else
 		{
+
 			$query_base["update"][$fieldname=$this->fields[$name]->opt["db_databank_field"]] = "t0.`$fieldname` = NULL";
 			$query_base["update"][$fieldname=$this->fields[$name]->opt["db_field"]] = "t0.`$fieldname` = NULL";
 		}
@@ -779,9 +782,9 @@ foreach($query_list as $name=>$insert_list)
 	if (($this->fields[$name]->type == "dataobject_list" || $this->fields[$name]->type == "list") && ($ref_field=$this->fields[$name]->opt("db_ref_field")) && ($ref_table=$this->fields[$name]->opt("db_ref_table")) && ($ref_id=$this->fields[$name]->opt("db_ref_id")))
 	{
 		if ($query_where)
-			$query_string = "DELETE `$ref_table` FROM ".implode(", ", array_merge(array("`$ref_table`"), $query_base["from"]))." $query_where AND `$ref_table`.`$ref_id`=t0.`id` $query_having $query_sort $query_limit";
+			$query_string = "DELETE `".$this->db."`.`$ref_table` FROM ".implode(", ", array_merge(array("`$ref_table`"), $query_base["from"]))." $query_where AND `$ref_table`.`$ref_id`=t0.`id` $query_having $query_sort $query_limit";
 		else
-			$query_string = "DELETE `$ref_table` FROM ".implode(", ", array_merge(array("`$ref_table`"), $query_base["from"]))." WHERE `$ref_table`.`$ref_id`=t0.`id` $query_having $query_sort $query_limit";
+			$query_string = "DELETE `".$this->db."`.`$ref_table` FROM ".implode(", ", array_merge(array("`$ref_table`"), $query_base["from"]))." WHERE `$ref_table`.`$ref_id`=t0.`id` $query_having $query_sort $query_limit";
 		//echo "<p>$query_string</p>\n";
 		db()->query($query_string);
 		//echo mysql_error();
@@ -789,7 +792,7 @@ foreach($query_list as $name=>$insert_list)
 		{
 			foreach($fields[$name]->value as $id)
 			{
-				$query_string = "INSERT INTO `$ref_table` (`$ref_id`, `$ref_field`) SELECT t0.`id`, '".db()->string_escape($id)."' FROM ".implode(", ", $query_base["from"])." $query_where $query_having $query_sort $query_limit";
+				$query_string = "INSERT INTO `".$this->db."`.`$ref_table` (`$ref_id`, `$ref_field`) SELECT t0.`id`, '".db()->string_escape($id)."' FROM ".implode(", ", $query_base["from"])." $query_where $query_having $query_sort $query_limit";
 				//echo "<p>$query_string</p>\n";
 				db()->query($query_string);
 				//echo mysql_error();
@@ -806,12 +809,12 @@ foreach($query_list as $name=>$insert_list)
 		{
 			list($id) = $query->fetch_row();
 			// TODO : Update object cache
-			$query_string = "UPDATE `".$datamodel->name()."` SET `$ref_id`=NULL WHERE `$ref_id`='$id'";
+			$query_string = "UPDATE `".$datamodel->db_table()."`.`".$datamodel->name()."` SET `$ref_id`=NULL WHERE `$ref_id`='$id'";
 			//echo "<p>$query_string</p>\n";
 			db()->query($query_string);
 			if ($fields[$name]->nonempty())
 			{
-				$query_string = "UPDATE `".$datamodel->name()."` SET `$ref_id`='$id' WHERE `id` IN ('".implode("', '", $fields[$name]->value)."')";
+				$query_string = "UPDATE `".$datamodel->db_table()."`.`".$datamodel->name()."` SET `$ref_id`='$id' WHERE `id` IN ('".implode("', '", $fields[$name]->value)."')";
 				//echo "<p>$query_string</p>\n";
 				db()->query($query_string);
 				//echo mysql_error();
@@ -1014,7 +1017,7 @@ elseif (!is_array($params))
 }
 
 // Requete sur la table principale
-$query_base = array("fields"=>array("t0.`id`"), "having"=>array(), "where"=>array(), "join"=>array(), "groupby"=>array(), "from"=>array("`$this->name` as t0"), "sort"=>array(), "table_nb"=>1, "lang"=>array());
+$query_base = array("fields"=>array("t0.`id`"), "having"=>array(), "where"=>array(), "join"=>array(), "groupby"=>array(), "from"=>array("`".$this->db."`.`$this->name` as t0"), "sort"=>array(), "table_nb"=>1, "lang"=>array());
 if ($this->dynamic)
 	$query_base["fields"][] = "t0.`_update`";
 
@@ -1032,28 +1035,26 @@ foreach($this->fields as $name=>$field)
 		{
 			$fieldname_1 = $field->opt["db_databank_field"];
 			$fieldname_2 = $field->opt["db_field"];
-			$query_base["fields"][] = "CONCAT(t0.`$fieldname_1`,',',t0.`$fieldname_2`) as $name";
+			$query_base["fields"][] = "CONCAT(t0.`$fieldname_1`,',',t0.`$fieldname_2`) as `$name`";
 		}
 		elseif (($field->type == "dataobject_list" || $field->type == "list") && ($ref_field=$field->opt["db_ref_field"]) && ($ref_id=$field->opt["db_ref_id"]) && ($ref_table=$field->opt["db_ref_table"]))
 		{
 			$query_base["table_nb"]++;
 			$tablename = "t".$query_base["table_nb"];
-			$query_base["join"][] = "`$ref_table` as $tablename ON t0.`id` = $tablename.`$ref_id`";
+			$query_base["join"][] = "`".$this->db."`.`$ref_table` as $tablename ON t0.`id` = $tablename.`$ref_id`";
 			if (!count($query_base["groupby"]))
 				$query_base["groupby"][] = "t0.`id`";
-			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE($tablename.`$ref_field`) SEPARATOR ',') as CHAR) as $name";
+			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE($tablename.`$ref_field`) SEPARATOR ',') as CHAR) as `$name`";
 			$fields_explode[] = $name;
 		}
 		elseif ($this->fields[$name]->type == "dataobject_list" && ($ref_id=$this->fields[$name]->opt("db_ref_id")) && ($datamodel=datamodel($this->fields[$name]->opt("datamodel"))))
 		{
-			$ref_field = "id";
-			$ref_table = $datamodel->name();
 			$query_base["table_nb"]++;
 			$tablename = "t".$query_base["table_nb"];
-			$query_base["join"][] = "`$ref_table` as $tablename ON t0.`id` = $tablename.`$ref_id`";
+			$query_base["join"][] = "`".$datamodel->db()."`.`".$datamodel->name()."` as $tablename ON t0.`id` = $tablename.`$ref_id`";
 			if (!count($query_base["groupby"]))
 				$query_base["groupby"][] = "t0.`id`";
-			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE($tablename.`$ref_field`) SEPARATOR ',') as CHAR) as $name";
+			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE($tablename.`id`) SEPARATOR ',') as CHAR) as $name";
 			$fields_explode[] = $name;
 			
 		}
@@ -1185,7 +1186,7 @@ if (!is_array($params))
 }
 
 // Requete sur la table principale
-$query_base = array ("where"=>array(), "from"=>array("`".$this->name."` as t0"), "having"=>array(), "lang"=>array());
+$query_base = array ("where"=>array(), "from"=>array("`".$this->db."`.`".$this->name."` as t0"), "having"=>array(), "lang"=>array());
 // Autres requetes
 $query_list = array();
 // Result
@@ -1285,7 +1286,7 @@ foreach($params as $param_nb=>$param)
 		{
 			$query_base["table_nb"]++; // incrementation for the main table
 			$tablename = "t".$query_base["table_nb"];
-			$query_base["from"][] = "`".datamodel($field->opt["datamodel"])->name()."` as $tablename";
+			$query_base["from"][] = "`".datamodel($field->opt["datamodel"])->db()."`.`".datamodel($field->opt["datamodel"])->name()."` as $tablename";
 			$query_base["table_nb"]++; // incrementation for the eventual 'lang' table
 			$list = array();
 			datamodel($field->opt["datamodel"])->query_params($param["value"], $query_base, $list, ($query_base["table_nb"]-1));
@@ -1304,11 +1305,11 @@ foreach($params as $param_nb=>$param)
 			{
 				$query_base["table_nb"]++; // incrementation for the join table
 				$tablename_ref = "t".$query_base["table_nb"];
-				$query_base["from"][] = "`$ref_table` as $tablename_ref";
+				$query_base["from"][] = "`".$this->db."`.`$ref_table` as $tablename_ref";
 			}
 			$query_base["table_nb"]++; // incrementation for the main table
 			$tablename = "t".$query_base["table_nb"];
-			$query_base["from"][] = "`".datamodel($field->opt["datamodel"])->name()."` as $tablename";
+			$query_base["from"][] = "`".datamodel($field->opt["datamodel"])->db()."`.`".datamodel($field->opt["datamodel"])->name()."` as $tablename";
 			$list = array();
 			datamodel($field->opt["datamodel"])->query_params($param["value"], $query_base, $list, ($query_base["table_nb"]-1));
 			if ($ref_table && $ref_field)
@@ -1335,7 +1336,7 @@ foreach($params as $param_nb=>$param)
 				$ref_field = "id";
 			$query_base["table_nb"]++;
 			$tablename = "t".$query_base["table_nb"];
-			$query_base["from"][] = "`$ref_table` as $tablename";
+			$query_base["from"][] = "`".$this->db."`.`$ref_table` as $tablename";
 			$where_list[] = "t$t0nb.`id` = $tablename.`".$field->opt["db_ref_id"]."`";
 			if (is_array($param["value"])) // TODO : string_escape !
 				$where_list[] = "$tablename.`$ref_field` IN ('".implode("', '",$param["value"])."')";
@@ -1382,7 +1383,7 @@ foreach($params as $param_nb=>$param)
 // Lang
 if ($query_base["lang"][$t0nb] == true && !$query_base["lang_ok"][$t0nb])
 {
-	$query_base["from"][] = "`".$this->name."_lang` as t".($t0nb+1);
+	$query_base["from"][] = "`".$this->db."`.`".$this->name."_lang` as t".($t0nb+1);
 	$where_list[] = "t$t0nb.`id` = t".($t0nb+1).".`id`";
 	$where_list[] = "t".($t0nb+1).".`lang_id` = '".SITE_LANG_ID."'";
 	$query_base["lang_ok"][$t0nb] = true;
@@ -1531,6 +1532,8 @@ if (!isset($GLOBALS["datamodel_gestion"]))
 			$_SESSION["datamodel_gestion"] = new datamodel_gestion();
 		$GLOBALS["datamodel_gestion"] = $_SESSION["datamodel_gestion"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve datamodel()");
 }
 
 if ($datamodel_id === null)

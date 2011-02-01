@@ -9,6 +9,10 @@
   * 
   */
 
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
+
 class page_gestion extends _page_gestion
 {
 
@@ -118,5 +122,9 @@ return true;
 }
 
 }
+
+
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [end]");
 
 ?>

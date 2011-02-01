@@ -2816,6 +2816,8 @@ if (!isset($GLOBALS["data_gestion"]))
 			$_SESSION["data_gestion"] = new data_gestion();
 		$GLOBALS["data_gestion"] = $_SESSION["data_gestion"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve data()");
 }
 
 if (is_numeric($id))

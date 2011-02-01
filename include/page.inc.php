@@ -28,7 +28,6 @@ protected $page_id = 0;
 protected $info_list = array("name", "type", "template_id", "redirect_url", "alias_page_id", "perm");
 protected $info_lang_list = array("label", "description", "url", "shortlabel");
 
-protected $retrieve_objects = true;
 protected $retrieve_details = false;
 
 protected $info_detail = array
@@ -90,6 +89,7 @@ else
 			$i = substr($i,0,$j);
 		}
 	}
+	// Test existance
 	if (!$this->exists($i))
 	{
 		define("PAGE_ID", 2);
@@ -103,6 +103,9 @@ else
 		define("PAGE_ID", $i);
 	}
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("PAGE_SET [1]");
 
 $this->page_id = PAGE_ID;
 $this->get(PAGE_ID)->set($url_params);
@@ -270,9 +273,12 @@ public function perm_login()
 
 $return = false;
 
-foreach(login()->perm_list() as $perm_id)
-	if (in_array($perm_id, $this->perm_list))
+reset($this->perm_list);
+while(!$return && (list($nb, $perm_id)=each($this->perm_list)))
+{
+	if (login()->perm($perm_id))
 		$return = true;
+}
 
 return $return;
 
@@ -353,7 +359,7 @@ return $this->params_list;
 public function __isset($name)
 {
 
-return isset($this->params[$name]);
+return array_key_exists($name, $this->params);
 
 }
 /**
@@ -365,13 +371,8 @@ return isset($this->params[$name]);
 public function __get($name)
 {
 
-if (isset($this->params[$name]))
+if (array_key_exists($name, $this->params))
 	return $this->params[$name];
-else
-{
-	//trigger_error("PARAM $name not defined");
-	return null;
-}
 
 }
 /**
@@ -381,12 +382,8 @@ else
 public function __set($name, $value)
 {
 
-if (isset($this->params[$name]))
+if (array_key_exists($name, $this->params))
 	$this->params[$name] = $value;
-else
-{
-	//trigger_error("PARAM $name not defined");
-}
 
 }
 
@@ -419,19 +416,7 @@ foreach($_GET as $name=>$value)
 	}
 }
 
-// Retrieved from $_POST
 // TODO : I think $_POST may only be used in script, not in template... Needs some work !
-/*
-foreach($_POST as $name=>$value)
-{
-	if (in_array($name, $this->params_url))
-	{
-		if (DEBUG_TEMPLATE)
-			echo "<p>page(ID#$this->id)::params_update_url() : POST $name => $value</p>";
-		$this->params[$name] = $value;
-	}
-}
-*/
 
 }
 
@@ -473,8 +458,6 @@ if (false)
 
 if ($this->template_id)
 	return template($this->template_id);
-else
-	return false;
 
 }
 
@@ -562,7 +545,7 @@ else
 /*
  * Specific classes for admin
  */
-if (defined("ADMIN_LOAD"))
+if (ADMIN_LOAD == true)
 {
 	include PATH_INCLUDE."/admin/page.inc.php";
 }
@@ -594,6 +577,8 @@ if (!isset($GLOBALS["page_gestion"]))
 			$_SESSION["page_gestion"] = new page_gestion();
 		$GLOBALS["page_gestion"] = $_SESSION["page_gestion"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve page()");
 }
 
 if (is_numeric($id))

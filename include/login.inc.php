@@ -515,6 +515,8 @@ if (!isset($GLOBALS["login"]))
 			$_SESSION["login"] = new login();
 		$GLOBALS["login"] = $_SESSION["login"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve login()");
 }
 
 return $GLOBALS["login"];

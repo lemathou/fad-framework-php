@@ -12,6 +12,8 @@
 if (!defined("ADMIN_OK"))
 	die("ACCES NON AUTORISE");
 
+datamodel()->retrieve_objects();
+
 if (isset($_GET["datamodel_id"]) && datamodel()->exists($_GET["datamodel_id"]) && isset($_GET["add"]) && count($_POST))
 {
 
@@ -36,12 +38,12 @@ $object->db_update();
 <select id="datamodel_id" name="datamodel_id" onchange="$('#object_id').val('');this.form.submit()">
 	<option value=""></option>
 <?php
-foreach (datamodel()->list_detail_get() as $id=>$info)
+foreach (datamodel()->list_get() as $id=>$object)
 {
 	if (isset($_GET["datamodel_id"]) && ($id==$_GET["datamodel_id"]))
-		echo "	<option value=\"$id\" selected>[$id] $info[label]</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] ".$object->label()."</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] $info[label]</option>\n";
+		echo "	<option value=\"$id\">[$id] ".$object->label()."</option>\n";
 }
 ?>
 </select>

@@ -31,7 +31,6 @@ protected $info_detail = array
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_LIBRARY, "filename"=>"{name}.inc.php")
 );
 
-protected $retrieve_objects = true;
 protected $retrieve_details = false;
 
 /**
@@ -157,6 +156,8 @@ if (!isset($GLOBALS["library_gestion"]))
 			$_SESSION["library_gestion"] = new library_gestion();
 		$GLOBALS["library_gestion"] = $_SESSION["library_gestion"];
 	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve library()");
 }
 
 if (is_numeric($id))
@@ -165,21 +166,6 @@ elseif (is_string($id))
 	return $GLOBALS["library_gestion"]->get_name($id);
 else
 	return $GLOBALS["library_gestion"];
-
-}
-
-/**
- * Auto loading of datamodel class definitions
- */
-function __autoload($class_name)
-{
-
-//echo "<p>$class_name</p>\n";
-
-if (substr($class_name, -7) == "agregat" && ($name=substr($class_name, 0, -8)) && datamodel()->exists_name($name))
-{
-	datamodel()->{$name};
-}
 
 }
 

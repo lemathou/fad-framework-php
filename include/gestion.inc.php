@@ -42,7 +42,7 @@ protected $info_detail = array // Keep at least name and label !
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true)
 );
 // Required info
-protected $info_required = array("name", "label");
+protected $info_required = array("name");
 
 // Retrieve all objects on first load
 protected $retrieve_objects = false;
@@ -88,11 +88,23 @@ foreach($this->list_detail as $id=>$info)
 
 }
 
-function __construct()
+/**
+ * Construct the object
+ * @param boolean query : Retrieve from DB otherwise file
+ */
+function __construct($query=true)
 {
 
-$this->query_info();
-$this->construct_more();
+if ($query)
+{
+	$this->query_info();
+	$this->construct_more();
+}
+else
+{
+	include PATH_ROOT."/include/$this->type.inc.php";
+	$this->__wakeup();
+}
 
 }
 protected function construct_more()
@@ -451,7 +463,7 @@ if (isset($this->{$name}))
 /*
  * Specific classes for admin
  */
-if (defined("ADMIN_LOAD"))
+if (ADMIN_LOAD == true)
 {
 	include PATH_INCLUDE."/admin/gestion.inc.php";
 }

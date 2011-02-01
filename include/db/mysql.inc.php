@@ -19,9 +19,6 @@ class db implements db_i
 
 protected $id = null;
 
-protected $infos=array();
-protected $options=array();
-
 protected $errno = null;
 protected $error = null;
 
@@ -332,6 +329,7 @@ class db_query implements db_query_i
 {
 
 // server connection ID
+
 protected $db_id; 
 // server request ID
 protected $id;
@@ -582,31 +580,6 @@ $this->query_string = "SELECT ".implode(" , ",$select_list)." FROM ".implode(" ,
 
 $this->execute();
 
-}
-
-}
-
-
-/**
- * Database access function
- */
-function db($query=null)
-{
-
-if (!isset($GLOBALS["db"]))
-{
-	if (!isset($_SESSION["db"]))
-		$_SESSION["db"] = new db();
-	$GLOBALS["db"] = $_SESSION["db"];
-}
-
-if (is_string($query))
-{
-	return $GLOBALS["db"]->query($query);
-}
-else
-{
-	return $GLOBALS["db"];
 }
 
 }

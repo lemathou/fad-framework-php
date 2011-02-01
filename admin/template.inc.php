@@ -40,12 +40,12 @@ $_type()->retrieve_objects();
 <select name="id" onchange="this.form.submit()">
 	<option value=""></option>
 <?php
-foreach ($_type()->list_get() as $id=>$template)
+foreach ($_type()->list_get() as $id=>$object)
 {
 	if (isset($_GET["id"]) && ($id==$_GET["id"]))
-		echo "	<option value=\"$id\" selected>[$id] ".$template->info("type")." : ".$template->label()."</option>\n";
+		echo "	<option value=\"$id\" selected>[$id] ".$object->info("type")." : ".$object->label()."</option>\n";
 	else
-		echo "	<option value=\"$id\">[$id] ".$template->info("type")." : ".$template->label()."</option>\n";
+		echo "	<option value=\"$id\">[$id] ".$object->info("type")." : ".$object->label()."</option>\n";
 }
 ?></select>
 <a href="?add">Ajouter</a>

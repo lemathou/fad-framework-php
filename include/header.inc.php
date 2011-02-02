@@ -16,15 +16,8 @@ if (DEBUG_GENTIME == true)
 	include PATH_INCLUDE."/gentime.inc.php";
 
 
-// Common classes
+// Common classes inclusion
 include PATH_INCLUDE."/classes.inc.php";
-// Forms
-//include "include/forms.inc.php";
-// text
-//include "include/text.inc.php";
-// email
-//include "include/email.inc.php";
-// ...
 
 // Database
 include PATH_INCLUDE."/db.inc.php";
@@ -36,7 +29,7 @@ if (HEADER_LOAD == "full")
 include PATH_INCLUDE."/cache.inc.php";
 
 // Object gestion classes
-include PATH_INCLUDE."/gestion.inc.php";
+//include PATH_INCLUDE."/gestion.inc.php";
 
 // Global variables
 include PATH_INCLUDE."/globals.inc.php";
@@ -47,8 +40,6 @@ include PATH_INCLUDE."/library.inc.php";
 // Data types, data models, data banks
 include PATH_INCLUDE."/data.inc.php";
 include PATH_INCLUDE."/datamodel.inc.php";
-include PATH_INCLUDE."/dataobject.inc.php";
-include PATH_INCLUDE."/data_display.inc.php";
 
 // Permissions
 include PATH_INCLUDE."/permission.inc.php";

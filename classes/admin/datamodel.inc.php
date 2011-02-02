@@ -91,9 +91,9 @@ if ($field["pos"] < $pos_max)
 
 $this->query_fields();
 
-if (OBJECT_CACHE)
+if (CACHE)
 {
-	object_cache_store("datamodel_$this->id", $this, OBJECT_CACHE_GESTION_TTL);
+	cache::store("datamodel_$this->id", $this, CACHE_GESTION_TTL);
 }
 
 // Insertion du champ dans la tables associée
@@ -133,9 +133,9 @@ db()->query("UPDATE `_datamodel_fields` SET `pos`=pos-1 WHERE `pos`>'$pos' AND `
 
 $this->query_fields();
 
-if (OBJECT_CACHE)
+if (CACHE)
 {
-	object_cache_store("datamodel_$this->id", $this, OBJECT_CACHE_GESTION_TTL);
+	cache::store("datamodel_$this->id", $this, CACHE_GESTION_TTL);
 }
 
 }
@@ -227,9 +227,9 @@ elseif ($pos < $field["pos"])
 
 $this->query_fields();
 
-if (OBJECT_CACHE)
+if (CACHE)
 {
-	object_cache_store("datamodel_$this->id", $this, OBJECT_CACHE_GESTION_TTL);
+	cache::store("datamodel_$this->id", $this, CACHE_GESTION_TTL);
 }
 
 // Mise à jour du champ dans la table associée

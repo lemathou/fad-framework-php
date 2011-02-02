@@ -1,5 +1,5 @@
 <h1 style="margin-top: 0;">PHP FAD Framework</h1>
-<p>Copyright &copy; 2008-2010 Mathiieu Moulin  lemathou@free.fr</p>
+<p>Copyright &copy; 2008-2011 <a href="mailto:lemathou@free.fr">Mathieu Moulin &lt;lemathou@free.fr&gt;</a></p>
 <p><a href="http://sourceforge.net/projects/phpfadframework/">Project page on SourceForge</a>. Get the latest version !</p>
 <pre>
   * PHP FAD FRAMEWORK is free software; you can redistribute it and/or modify

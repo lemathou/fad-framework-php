@@ -178,11 +178,11 @@ if ($retrieve_objects || $this->retrieve_objects)
 	$this->retrieve_objects();
 }
 // generate objects in cache in some cases to optimise website
-if (!$this->retrieve_objects && !$rd && OBJECT_CACHE)
+if (!$this->retrieve_objects && !$rd && CACHE)
 {
 	foreach($this->list_detail as $id=>$info)
 	{
-		object_cache_store($this->type."_$id", $this->construct_object($id), OBJECT_CACHE_GESTION_TTL);
+		cache::store($this->type."_$id", $this->construct_object($id), CACHE_GESTION_TTL);
 	}
 }
 if (!$rd)
@@ -196,8 +196,8 @@ if (!$rd)
 	}
 }
 
-if (OBJECT_CACHE)
-	object_cache_store($this->type."_gestion", $this, OBJECT_CACHE_GESTION_TTL);
+if (CACHE)
+	cache::store($this->type."_gestion", $this, CACHE_GESTION_TTL);
 
 }
 protected function query_info_more()
@@ -253,15 +253,15 @@ if (isset($this->list[$id]))
 {
 	return $this->list[$id];
 }
-elseif (!$this->retrieve_objects && OBJECT_CACHE && ($object=object_cache_retrieve($this->type."_$id")))
+elseif (!$this->retrieve_objects && CACHE && ($object=cache::retrieve($this->type."_$id")))
 {
 	return $this->list[$id] = $object;
 }
 elseif (!$this->retrieve_objects && isset($this->list_detail[$id]))
 {
 	$object = $this->construct_object($id);
-	if (OBJECT_CACHE)
-		object_cache_store($this->type."_$id", $object, OBJECT_CACHE_GESTION_TTL);
+	if (CACHE)
+		cache::store($this->type."_$id", $object, CACHE_GESTION_TTL);
 	return $this->list[$id] = $object;
 }
 else
@@ -415,8 +415,8 @@ while($infos = $query->fetch_assoc())
 
 $this->query_info_more();
 
-if (OBJECT_CACHE)
-	object_cache_store($this->_type."_$this->id", $this, OBJECT_CACHE_GESTION_TTL);
+if (CACHE)
+	cache::store($this->_type."_$this->id", $this, CACHE_GESTION_TTL);
 
 }
 protected function query_info_more()
@@ -465,7 +465,7 @@ if (isset($this->{$name}))
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_INCLUDE."/admin/gestion.inc.php";
+	include PATH_FRAMEWORK."/classes/admin/gestion.inc.php";
 }
 else
 {

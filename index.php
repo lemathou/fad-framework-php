@@ -45,9 +45,11 @@ include PATH_INCLUDE."/page_choose.inc.php";
 
 // Affichage du template
 header("Content-type: text/html; charset=".SITE_CHARSET);
+if (DEBUG_GENTIME == true)
+	gentime("TEMPLATE_DISP [begin]");
 page_current()->tpl()->disp();
 if (DEBUG_GENTIME == true)
-	gentime("TEMPLATE_DISP");
+	gentime("TEMPLATE_DISP [end]");
 
 // Gestion message login
 login()->message_show();

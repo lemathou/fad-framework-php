@@ -6,8 +6,8 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 
 <head>
 
-<meta http-equiv="Content-Type" content="text/html; charset=<?=SITE_CHARSET?>" />
-<meta http-equiv="content-Language" content="<?=SITE_LANG?>" />
+<meta http-equiv="Content-Type" content="text/html; charset=<?php echo SITE_CHARSET; ?>" />
+<meta http-equiv="content-Language" content="<?php echo SITE_LANG; ?>" />
 
 <meta name="robots" content="noindex,nofollow" />
 
@@ -26,13 +26,25 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 <body>
 <form method="post" onsubmit="login_connect(this)">
 <input name="_login[password_crypt]" type="hidden" />
-<table cellspacing="0" cellpadding="0"><tr>
-	<td width="170"><input name="_login[username]" class="username_field" value="" style="width:100%;" /></td>
-	<td width="80"><input name="_login[password]" class="password_field" type="password" value="" /></td>
-	<td class="tinytext">Mémoriser</td>
-	<td><input name="_login[permanent]" type="checkbox" /></td>
-	<td><input align="absmiddle" src="/img/bouton/valider.gif" alt="Connexion" type="image" onclick="this.form.submit();" title="Connexion" /></td>
-</tr></table>
+<table width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
+<h1>Administration</h1>
+<h2><?php echo SITE_DOMAIN; ?></h2>
+<table cellspacing="0" cellpadding="2">
+<tr>
+	<td class="label"><label for="_login[username]">Username</label></td>
+	<td width="170"><input id="_login[username]" name="_login[username]" class="username_field" value="" style="width:100%;" /></td>
+</tr>
+<tr>
+	<td class="label"><label for="_login[password]">Password</label></td>
+	<td><input id="_login[password]" name="_login[password]" class="password_field" type="password" value="" /></td>
+	<td><input type="submit" value="Connexion" /> <input align="absmiddle" src="/img/bouton/valider.gif" alt="Connexion" type="image" onclick="this.form.submit();" title="Connexion" /></td>
+</tr>
+<tr>
+	<td class="tinytext"><label for="_login[permanent]">Mémoriser</label></td>
+	<td><input id="_login[permanent]" name="_login[permanent]" type="checkbox" /></td>
+</tr>
+</table>
+</td></tr></table>
 </form>
 </body>
 

@@ -3,9 +3,11 @@
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - iProspective - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   * location : /include : global include folder
   * 
@@ -87,6 +89,7 @@ if (isset($_POST["_update"]) && is_array($_POST["_update"]) && isset($_POST["_up
 {
 	data_update($_POST["_update"]["databank"], $_POST["_update"]["dataobject"], $_POST["_update"]["fields"]);
 }
+
 
 if (DEBUG_GENTIME ==  true)
         gentime(__FILE__." [end]");

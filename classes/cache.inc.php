@@ -15,6 +15,9 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
+interface cache_i
+{
+
 /**
  * Retrieve objects
  * 
@@ -22,18 +25,7 @@ if (DEBUG_GENTIME == true)
  * @return mixed (string or array)
  * @author mathieu
  */
-function object_cache_retrieve($name)
-{
-
-if (false)
-	echo "<p>Retrieve $name from cache</p>";
-
-if (OBJECT_CACHE_TYPE == "apc")
-{
-	return apc_fetch($name);
-}
-
-}
+static function retrieve($name);
 
 /**
  * Store objects
@@ -44,18 +36,7 @@ if (OBJECT_CACHE_TYPE == "apc")
  * @return boolean
  * @author mathieu
  */
-function object_cache_store($name, $object, $ttl=OBJECT_CACHE_GESTION_TTL)
-{
-
-if (false)
-	echo "<p>Store $name in cache</p>";
-
-if (OBJECT_CACHE_TYPE == "apc")
-{
-	return apc_store($name, $object, $ttl);
-}
-
-}
+static function store($name, $object, $ttl=CACHE_GESTION_TTL);
 
 /**
  * Remove objects
@@ -64,19 +45,11 @@ if (OBJECT_CACHE_TYPE == "apc")
  * @return boolean
  * @author mathieu
  */
-function object_cache_delete($name)
-{
-
-if (false)
-	echo "<p>Delete $name in cache</p>";
-
-if (OBJECT_CACHE_TYPE == "apc")
-{
-	return apc_delete($name);
-}
+static function delete($name);
 
 }
 
+include PATH_FRAMEWORK."/classes/cache/".CACHE_TYPE.".inc.php";
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

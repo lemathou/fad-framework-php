@@ -1,9 +1,9 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
+  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of FTNGroupWare.
   * 
@@ -33,6 +33,8 @@ $this->timestamp = microtime(true);
  */
 public function add($name="")
 {
+
+//echo "<p>$name</p>\n";
 
 $this->list[] = array ("$name", microtime(true));
 
@@ -71,14 +73,14 @@ foreach ($this->list as $time)
 echo "<table style=\"font-size:8pt;\" width=\"100%\">\n";
 echo "<p>Time MAX : $time_max</p>\n";
 $t = 0;
+$sep = 0;
 foreach ($aff as $i)
 {
 	$t += $i["time"];
-	if ($i["time"] < 1)
+	if ($i["time"] < 0.5)
 		$time = ($i["time"]*1000)." us";
 	else
 		$time = ($i["time"])." ms";
-	//$color = ($i["time"] >= GENTIME_S) ? ($i["time"] >= GENTIME_M) ? ($i["time"] >= GENTIME_L) ? "red" : "blue" : "green" : "black";
 	if ($i["time"] >= GENTIME_L)
 	{
 		$colornum = round(255-255*($i["time"])/($time_max), -1);
@@ -100,11 +102,37 @@ foreach ($aff as $i)
 		$color = "rgb($colornum,$colornum,$colornum)";
 	}
 	$width = round(log($i["time"]*1000)*50)-round(log($time_min*1000)*50);
+	if (substr($i["name"], -5) == "[end]")
+	{
+		$sep--;
+	}
+	if ($sep > 3)
+	{
+		$txtcolor = " style=\"color: red;\"";
+	}
+	elseif ($sep > 2)
+	{
+		$txtcolor = " style=\"color: orange;\"";
+	}
+	elseif ($sep > 1)
+	{
+		$txtcolor = " style=\"color: blue;\"";
+	}
+	elseif ($sep > 0)
+	{
+		$txtcolor = " style=\"color: green;\"";
+	}
+	else
+	{
+		$txtcolor = "";
+	}
 	echo "<tr>";
-	echo "<td align=\"right\">$i[name]</td>";
-	echo "<td><div style=\"float:left;background-color:$color;width:${width}px;margin-right:10px;\">&nbsp;</div><div style=\"color:black;\"> $time</div></td>";
+	echo "<td align=\"right\"$txtcolor>$i[name]".str_repeat("&nbsp; &nbsp; &nbsp; ", $sep)."</td>";
+	echo "<td><div style=\"float:left;background-color:${color};width:${width}px;margin-right:10px;\">&nbsp;</div><div style=\"color:black;\"> ${time}</div></td>";
 	echo "<td align=\"right\">".round($t, 4)." ms</td>";
 	echo "</tr>\n";
+	if (substr($i["name"], -7) == "[begin]")
+		$sep++;
 }
 echo "</table\n>";
 
@@ -117,16 +145,17 @@ echo "</table\n>";
  * 
  * @param $name
  */
-function gentime($name="")
+function gentime($name=null)
 {
 
 if (!isset($GLOBALS["gentime"]))
 	$GLOBALS["gentime"] = new gentime();
 
-if ($name)
+if (is_string($name))
 	$GLOBALS["gentime"]->add($name);
 else
 	return $GLOBALS["gentime"];
+
 }
 
 // Instancié de suite pour être le plus précis possible !

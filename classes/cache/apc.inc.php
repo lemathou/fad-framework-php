@@ -18,56 +18,43 @@ if (DEBUG_GENTIME == true)
 class cache implements cache_i
 {
 
-/**
- * Retrieve objects
- * 
- * @param name mixed (string or array)
- * @return mixed (string or array)
- * @author mathieu
- */
 public static function retrieve($name)
 {
 
-if (false)
+if (DEBUG_CACHE)
 	echo "<p>Retrieve $name from cache</p>";
 
 return apc_fetch($name);
 
 }
 
-/**
- * Store objects
- * 
- * @param name string
- * @param object mixed
- * @param ttl integer
- * @return boolean
- * @author mathieu
- */
 public static function store($name, $object, $ttl=CACHE_GESTION_TTL)
 {
 
-if (false)
+if (DEBUG_CACHE)
 	echo "<p>Store $name in cache</p>";
 
 return apc_store($name, $object, $ttl);
 
 }
 
-/**
- * Remove objects
- * 
- * @param name mixed (string or array)
- * @return boolean
- * @author mathieu
- */
 public static function delete($name)
 {
 
-if (false)
+if (DEBUG_CACHE)
 	echo "<p>Delete $name in cache</p>";
 
 return apc_delete($name);
+
+}
+
+public static function delete_all()
+{
+
+if (DEBUG_CACHE)
+	echo "<p>Delete user cache</p>";
+
+return apc_clear_cache("user");
 
 }
 
@@ -75,6 +62,6 @@ return apc_delete($name);
 
 
 if (DEBUG_GENTIME == true)
-	gentime(__FILE__." [begin]");
+	gentime(__FILE__." [end]");
 
-?>	
+?>

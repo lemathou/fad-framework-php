@@ -29,6 +29,8 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 <table width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
 <h1>Administration</h1>
 <h2><?php echo SITE_DOMAIN; ?></h2>
+<fieldset style="width: 300px;background: #eef;">
+<legend>Connexion</legend>
 <table cellspacing="0" cellpadding="2">
 <tr>
 	<td class="label"><label for="_login[username]">Username</label></td>
@@ -37,13 +39,17 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 <tr>
 	<td class="label"><label for="_login[password]">Password</label></td>
 	<td><input id="_login[password]" name="_login[password]" class="password_field" type="password" value="" /></td>
-	<td><input type="submit" value="Connexion" /> <input align="absmiddle" src="/img/bouton/valider.gif" alt="Connexion" type="image" onclick="this.form.submit();" title="Connexion" /></td>
 </tr>
 <tr>
 	<td class="tinytext"><label for="_login[permanent]">Mémoriser</label></td>
 	<td><input id="_login[permanent]" name="_login[permanent]" type="checkbox" /></td>
 </tr>
+<tr>
+	<td>&nbsp;</td>
+	<td><input type="submit" value="Connexion" /></td>
+</tr>
 </table>
+</fieldset>
 </td></tr></table>
 </form>
 </body>

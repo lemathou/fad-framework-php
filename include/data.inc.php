@@ -38,7 +38,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-include PATH_FRAMEWORK."/classes/data.inc.php";
+include PATH_CLASSES."/data.inc.php";
 
 
 /**
@@ -53,9 +53,9 @@ if (!isset($GLOBALS["data_gestion"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve data() [begin]");
-	if (OBJECT_CACHE)
+	if (CACHE)
 	{
-		if (!($GLOBALS["data_gestion"]=object_cache_retrieve("datatype_gestion")))
+		if (!($GLOBALS["data_gestion"]=cache::retrieve("datatype_gestion")))
 			$GLOBALS["data_gestion"] = new data_gestion();
 	}
 	// Session

@@ -27,7 +27,9 @@ foreach ($e as $file)
 		$exists = false;
 }
 if ($exists)
+{
 
+}
 
 }
 

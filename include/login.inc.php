@@ -25,6 +25,12 @@ if (!isset($GLOBALS["login"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve login() [begin]");
+	// Session start
+	if (DEBUG_GENTIME == true)
+		gentime("Session_start [begin]");
+	session_start();
+	if (DEBUG_GENTIME == true)
+		gentime("Session_start [end]");
 	// Session
 	{
 		if (!isset($_SESSION["login"]))

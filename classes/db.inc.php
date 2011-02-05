@@ -111,7 +111,7 @@ function free();
 }
 
 
-include PATH_INCLUDE."/db/".DB_TYPE.".inc.php";
+include PATH_CLASSES."/db/".DB_TYPE.".inc.php";
 
 
 if (DEBUG_GENTIME == true)

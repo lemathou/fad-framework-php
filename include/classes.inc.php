@@ -29,14 +29,18 @@ $s = substr($class_name, -8);
 if ($s == "_agregat" && ($name=substr($class_name, 0, -8)) && datamodel()->exists_name($name))
 {
 	datamodel()->{$name};
+	if (!class_exists($class_name))
+	{
+		eval("class $class_name extends dataobject {};");
+	}
 }
 // Gestion
-elseif ($s == "_gestion" && file_exists($library=PATH_FRAMEWORK."/classes/".substr($class_name, 0, -8).".inc.php"))
+elseif ($s == "_gestion" && file_exists($library=PATH_CLASSES."/".substr($class_name, 0, -8).".inc.php"))
 {
 	include $library;
 }
 // Framework native classes
-elseif (file_exists($library=PATH_FRAMEWORK."/classes/$class_name.inc.php"))
+elseif (file_exists($library=PATH_CLASSES."/$class_name.inc.php"))
 {
 	include $library;
 }
@@ -44,6 +48,11 @@ elseif (file_exists($library=PATH_FRAMEWORK."/classes/$class_name.inc.php"))
 elseif (file_exists($library=PATH_ROOT."/library/$class_name.inc.php"))
 {
 	include $library;
+}
+
+if (!class_exists($class_name))
+{
+	die("Class $class_name could not be loaded...");
 }
 
 }

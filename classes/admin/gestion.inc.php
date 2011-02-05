@@ -3,11 +3,10 @@
 /**
   * $Id: gestion.inc.php 27 2011-01-13 20:58:56Z lemathoufou $
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * http://sourceforge.net/projects/phpfadframework/
-  * 
   * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
@@ -180,15 +179,15 @@ foreach ($this->info_detail as $name=>$info)
 		else
 			echo "<option value=\"$i\">$j</option>";
 	?></select></td>
-<?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; ?>
-	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
-	foreach($object_type()->list_get() as $i=>$object)
-		echo "<option value=\"$i\">".$object->label()."</option>";
+<?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; $object_type()->retrieve_objects(); ?>
+	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" title="<?php echo $info["label"]; ?>" size="10" multiple class="data_fromlist"><?
+	foreach($object_type()->list_get() as $object_id=>$object)
+		echo "<option value=\"$object_id\">".$object->label()."</option>";
 	?></select></td>
-<?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
-	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" size="10" multiple class="data_fromlist"><?
-	foreach($object_type()->list_get() as $i=>$object)
-		echo "<option value=\"$i\">".$object->label()."</option>";
+<?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; $object_type()->retrieve_objects(); ?>
+	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
+	foreach($object_type()->list_get() as $object_id=>$object)
+		echo "<option value=\"$object_id\">".$object->label()."</option>";
 	?></select></td>
 <?php } elseif ($info["type"] == "script") { ?>
 	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php if (isset($info["default"])) echo $info["default"]; ?></textarea></td>
@@ -360,8 +359,10 @@ foreach ($query_objects as $name)
 {
 	$field_info = $info_detail[$name];
 	$object_type = $field_info["object_type"];
+	//echo "DELETE FROM `$field_info[db_table]` WHERE `$field_info[db_id]`='$this->id'";
 	db()->query("DELETE FROM `$field_info[db_table]` WHERE `$field_info[db_id]`='$this->id'");
 	$query_object_list = array();
+	//var_dump($infos[$name]);
 	if (is_array($infos[$name])) foreach($infos[$name] as $object_id) if ($object_type()->exists($object_id))
 		$query_object_list[] = "('$object_id', '$this->id')";
 	if (count($query_object_list)>0)
@@ -420,21 +421,21 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 		else
 			echo "<option value=\"$i\">$j</option>";
 	?></select></td>
-<?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; ?>
+<?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; $object_type()->retrieve_objects(); ?>
 	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" title="<?php echo $info["label"]; ?>" size="10" multiple class="data_fromlist"><?
-	foreach($object_type()->list_get() as $i=>$object)
-		if (in_array($i, $this->{$name}))
-			echo "<option value=\"$i\" selected>".$object->label()."</option>";
+	foreach($object_type()->list_get() as $object_id=>$object)
+		if (in_array($object_id, $this->{$name}))
+			echo "<option value=\"$object_id\" selected>".$object->label()."</option>";
 		else
-			echo "<option value=\"$i\">".$object->label()."</option>";
+			echo "<option value=\"$object_id\">".$object->label()."</option>";
 	?></select></td>
-<?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; ?>
+<?php } elseif ($info["type"] == "object") { $object_type = $info["object_type"]; $object_type()->retrieve_objects(); ?>
 	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
-	foreach($object_type()->list_get() as $i=>$object)
-		if ($i == $this->{$name})
-			echo "<option value=\"$i\" selected>".$object->label()."</option>";
+	foreach($object_type()->list_get() as $object_id=>$object)
+		if ($object_id == $this->{$name})
+			echo "<option value=\"$object_id\" selected>".$object->label()."</option>";
 		else
-			echo "<option value=\"$i\">".$object->label()."</option>";
+			echo "<option value=\"$object_id\">".$object->label()."</option>";
 	?></select></td>
 <?php } elseif ($info["type"] == "script") { ?>
 	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php

@@ -1,11 +1,13 @@
-<?
+<?php
 
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -85,6 +87,7 @@ $page->update_form();
 // Update a param
 if (isset($_POST["param"]) && is_array($_POST["param"])) foreach ($_POST["param"] as $name=>$param)
 {
+	//var_dump($param);
 	$page->param_update($name, $param);
 }
 
@@ -117,7 +120,7 @@ if (is_numeric($page->info("template_id")))
 	$subtemplates[] = array("id"=>$template->id(), "params"=>true, "type"=>"main");
 	foreach(template::subtemplates($tpl_file=fread(fopen($tpl_filename, "r"), filesize($tpl_filename))) as $tpl)
 		$subtemplates[] = array("id"=>$tpl["id"], "params"=>(isset($tpl["params"])?$tpl["params"]:null), "type"=>"sub");
-	$tpl_page = "[[TEMPLATE:page/<?=page_current()->name()?>,true]]";
+	$tpl_page = "<!--INCLUDE:page/<?=page_current()->name()?>,true-->";
 	if (strpos($tpl_file, $tpl_page) !== false && template()->exists_name("page/".$page->name()))
 		$subtemplates[] = array("id"=>(int)template()->get_name("page/".$page->name())->id(), "params"=>true, "type"=>"sub");
 	foreach($subtemplates as $tpl)
@@ -128,11 +131,16 @@ if (is_numeric($page->info("template_id")))
 		<tr class="tpl_name"> <td colspan="5"><?php echo $template->info("type")." : <a href=\"template?id=".$template->id()."\">".$template->label()."</a>"; ?> (<?php if ($tpl["type"]=="sub") echo "Sub-"; elseif ($tpl["type"] == "main") echo "Main "; ?>template ID#<?=$template->id()?>)</td> </tr>
 		<tr class="separator"> <td>&nbsp;</td> </tr>
 		<tr class="title">
-			<td>Name (in template)</td>
+			<td colspan="3">Template</td>
+			<td colspan="3">Page</td>
+		</tr>
+		<tr class="title">
+			<td>Name</td>
 			<td>Datatype</td>
 			<td>Default value (JSON)</td>
-			<td>Name (in page)</td>
-			<td>Page Surcharged value (JSON)</td>
+			<td>Name</td>
+			<td>Datatype</td>
+			<td>Surcharged value (JSON)</td>
 		</tr>
 		<?php
 		foreach ($template->param_list_detail() as $nb=>$param)
@@ -141,7 +149,7 @@ if (is_numeric($page->info("template_id")))
 		?>
 		<tr>
 			<td class="label"><?=$name?></td>
-			<td><?php echo data()->get_name($param["datatype"])->label; ?></td>
+			<td style="white-space: nowrap;"><?php echo data()->get_name($param["datatype"])->label; ?></td>
 			<td><?php echo json_encode($param["value"]); ?></td>
 			<?php
 			if (isset($tpl["params"]) && ($tpl["params"] === true || (isset($tpl["params"][$name]))))
@@ -155,6 +163,21 @@ if (is_numeric($page->info("template_id")))
 			{
 				$params_ok[] = $name;
 			?>
+			<td><select id="param[<?=$name?>][datatype]"><option value="">-- Choisir --</option><?php
+			foreach (data()->list_detail_get() as $info)
+				if ($info["name"] == $page_param_list[$name]["datatype"])
+					echo "<option value=\"$info[name]\" selected>$info[label]</option>";
+				else
+					echo "<option value=\"$info[name]\">$info[label]</option>";
+			?></select>
+			<p>Options :</p>
+			<div id="param_opt_list_<?=$name?>"><input type="hidden" id="param[<?=$name?>][opt]" /><?php
+			foreach($page_param_list[$name]["opt"] as $i=>$j)
+			{
+				echo "<p>$i : <textarea id=\"param[$name][opt][$i]\">".json_encode($j)."</textarea> <input type=\"button\" value=\"-\" onclick=\"this.parentNode.parentNode.removeChild(this.parentNode)\" /></p>\n";
+			}
+			?></div>
+			<p><input size="8" /> : <input size="16" /> <input type="button" value="+" onclick="page_param_opt_add('<?=$name?>', this.parentNode.childNodes[0].value, this.parentNode.childNodes[2].value)" /></p></td>
 			<td><textarea id="param[<?=$name?>][value]" cols="40" rows="4"><?php echo json_encode($page->{$name}); ?></textarea></td>
 			<td>
 				<p>Position : <select id="param[<?=$name?>][update_pos]"><option value="">Aucune</option><?php
@@ -174,13 +197,29 @@ if (is_numeric($page->info("template_id")))
 			else
 			{
 			?>
+			<td><select id="param[<?=$name?>][datatype]"><option value="">-- Choisir --</option><?php
+			foreach (data()->list_detail_get() as $info)
+				if ($info["name"] == $param["datatype"])
+					echo "<option value=\"$info[name]\" selected>$info[label]</option>";
+				else
+					echo "<option value=\"$info[name]\">$info[label]</option>";
+
+			?></select>
+			<p>Options :</p>
+			<div id="param_opt_list_<?=$name?>"><input type="hidden" id="param[<?=$name?>][opt]" /><?php
+			if (isset($page_param_list[$name]["opt"])) foreach($page_param_list[$name]["opt"] as $i=>$j)
+			{
+				echo "<p>$i : <textarea id=\"param[$name][opt][$i]\">".json_encode($j)."</textarea> <input type=\"button\" value=\"-\" onclick=\"this.parentNode.parentNode.removeChild(this.parentNode)\" /></p>\n";
+			}
+			?></div>
+			<p><input size="8" /> : size="16" /> <input type="button" value="+" onclick="page_param_opt_add('<?=$name?>', this.parentNode.childNodes[0].value, this.parentNode.childNodes[2].value)" /></p></td>
 			<td><textarea id="param[<?=$name?>][value]" cols="40" rows="4"></textarea></td>
 			<td>
 				<p>Position : <select id="param[<?=$name?>][update_pos]"><option value="">Aucune</option><?php
 				for ($i=0;$i<=$posmax;$i++)
 					echo "<option value=\"$i\">$i</option>";
 				?></select></p>
-				<p><input type="hidden" id="param[<?php echo $name; ?>][name]" value="<?php echo $name; ?>" /><input type="submit" value="ADD" onclick="page_param_add('<?=$name?>')" /></p>
+				<p><input type="hidden" id="param[<?php echo $name; ?>][name]" value="<?php echo $name; ?>" /><input type="submit" value="ADD" onclick="return page_param_add('<?=$name?>')" /></p>
 			<?
 			}
 			}
@@ -202,6 +241,7 @@ if (is_numeric($page->info("template_id")))
 	<tr class="title">
 		<td colspan="3">&nbsp;</td>
 		<td>Name</td>
+		<td>Datatype</td>
 		<td>Value (JSON)</td>
 	</tr>
 	<?
@@ -213,13 +253,29 @@ if (is_numeric($page->info("template_id")))
 		<tr>
 			<td colspan="3">&nbsp;</td>
 			<td class="label"><?php echo $name; ?></td>
+			<td><select id="param[<?=$name?>][datatype]"><option value="">-- Choisir --</option><?php
+			foreach (data()->list_detail_get() as $info)
+				if ($info["name"] == $param["datatype"])
+					echo "<option value=\"$info[name]\" selected>$info[label]</option>";
+				else
+					echo "<option value=\"$info[name]\">$info[label]</option>";
+
+			?></select>
+			<p>Options :</p>
+			<div id="param_opt_list_<?=$name?>"><input type="hidden" id="param[<?=$name?>][opt]" /><?php
+			if (isset($page_param_list[$name]["opt"])) foreach($page_param_list[$name]["opt"] as $i=>$j)
+			{
+				echo "<p>$i : <textarea id=\"param[$name][opt][$i]\">".json_encode($j)."</textarea> <input type=\"button\" value=\"-\" onclick=\"this.parentNode.parentNode.removeChild(this.parentNode)\" /></p>\n";
+			}
+			?></div>
+			<p><input size="8" /> : <input size="16" /> <input type="button" value="+" onclick="page_param_opt_add('<?=$name?>', this.parentNode.childNodes[0].value, this.parentNode.childNodes[2].value)" /></p></td>
 			<td><textarea id="param[<?php echo $name; ?>][value]" cols="40" rows="4"><?php echo json_encode($param["value"]); ?></textarea></td>
 			<td>
 				<p>Position : <select id="param_add[update_pos]"><option value="">Aucune</option><?php
 				for ($i=0;$i<=$posmax;$i++)
 					echo "<option value=\"$i\">$i</option>";
 				?></select></p></p>
-				<p><input type="submit" value="Update" onclick="page_param_update('<?php echo $name; ?>')" /> <input type="submit" value="DEL" style="color:red;" onclick="this.name='param_del';this.value='<?php echo $name; ?>';" /></p>
+				<p><input type="submit" value="Update" onclick="return page_param_update('<?php echo $name; ?>')" /> <input type="submit" value="DEL" style="color:red;" onclick="this.name='param_del';this.value='<?php echo $name; ?>';" /></p>
 			</td>
 		</tr>
 		<?
@@ -227,15 +283,19 @@ if (is_numeric($page->info("template_id")))
 	}
 	?>
 	<tr class="param_add">
-		<td colspan="3"><b>Ajouter un paramètre défini dans aucun template<br />mais dans le script de page :</b></td>
+		<td colspan="3"><b>Ajouter un paramètre défini dans aucun template mais dans le script de page :</b></td>
 		<td class="label"><input id="param_add[name]" value="" style="width:100%;" /></td>
+		<td><select id="param_add[datatype]"><option value="">-- Choisir --</option><?php
+		foreach (data()->list_detail_get() as $info)
+			echo "<option value=\"$info[name]\">$info[label]</option>";
+		?></select></td>
 		<td><textarea id="param_add[value]" cols="40" rows="4"></textarea></td>
 		<td>
 			<p>Position : <select id="param_add[update_pos]"><option value="">Aucune</option><?php
 			for ($i=0;$i<=$posmax;$i++)
 				echo "<option value=\"$i\">$i</option>";
 			?></select></p>
-			<p><input type="submit" value="ADD" onclick="page_param_add()" /> <input type="submit" value="Cancel" style="color:red;" onclick="page_param_add_cancel();" /></p>
+			<p><input type="submit" value="ADD" onclick="return page_param_add()" /> <input type="submit" value="Cancel" style="color:red;" onclick="page_param_add_cancel();" /></p>
 		</td>
 	</tr>
 	</table>
@@ -276,3 +336,4 @@ page()->table_list();
 }
 
 ?>
+

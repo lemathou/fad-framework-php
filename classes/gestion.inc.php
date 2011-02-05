@@ -7,7 +7,6 @@
   * 
   * This file is part of PHP FAD Framework.
   * http://sourceforge.net/projects/phpfadframework/
-  * 
   * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
@@ -100,7 +99,7 @@ if ($query)
 	$this->query_info();
 	$this->construct_more();
 }
-else
+elseif (false) // TODO : Restore $this->list_detail FROM a file. Mau be faster than object cache
 {
 	include PATH_ROOT."/include/$this->type.inc.php";
 	$this->__wakeup();
@@ -161,6 +160,8 @@ foreach ($query_objects as $name)
 			$this->list_detail[$id][$name][] = $object_id;
 	}
 }
+
+//var_dump($this->list_detail);
 
 $this->query_info_more();
 
@@ -246,8 +247,8 @@ function get($id)
 
 if (!is_numeric($id))
 	return null;
-
-//echo $id;
+else
+	$id = (int)$id;
 
 if (isset($this->list[$id]))
 {
@@ -302,7 +303,7 @@ return $this->__get($name);
 function exists($id)
 {
 
-return isset($this->list_detail[$id]);
+return array_key_exists($id, $this->list_detail);
 
 }
 /**
@@ -313,7 +314,7 @@ return isset($this->list_detail[$id]);
 function __isset($name)
 {
 
-return isset($this->list_name[$name]);
+return array_key_exists($name, $this->list_name);
 
 }
 function exists_name($name)
@@ -396,14 +397,24 @@ function query_info()
 {
 
 $type = $this->_type;
-$info_list = $type()->info_list();
-$info_lang_list = $type()->info_lang_list();
+$info_detail = $type()->info_detail_list();
 
 $query_fields = array("`t1`.`id`");
-foreach($info_list as $field)
-	$query_fields[] = "`t1`.`$field`";
-foreach($info_lang_list as $field)
-	$query_fields[] = "`t2`.`$field`";
+$query_objects = array();
+foreach ($info_detail as $name=>$field)
+{
+	if (isset($field["lang"]))
+	{
+		if ($field["lang"])
+			$query_fields[] = "`t2`.`$name`";
+		else
+			$query_fields[] = "`t1`.`$name`";
+	}
+	elseif ($field["type"] == "object_list")
+	{
+		$query_objects[] = $name;
+	}
+}
 
 $query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$type` as t1 LEFT JOIN `_".$type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."' WHERE t1.id='$this->id'";
 $query = db()->query($query_string);
@@ -411,6 +422,17 @@ while($infos = $query->fetch_assoc())
 {
 	foreach($infos as $name=>$value)
 		$this->{$name} = $value;
+}
+
+foreach ($query_objects as $name)
+{
+	$field = $info_detail[$name];
+	$query = db()->query("SELECT `$field[db_field]` FROM `$field[db_table]` WHERE `$field[db_id]`='$this->id'");
+	while (list($object_id)=$query->fetch_row())
+	{
+		//var_dump($object_id);
+		$this->{$name}[] = (int)$object_id;
+	}
 }
 
 $this->query_info_more();

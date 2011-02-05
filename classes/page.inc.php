@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: db.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
+  * $Id: page.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
@@ -38,7 +38,7 @@ protected $info_detail = array
 	"url"=>array("label"=>"URL", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
 	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"template", "select_list"=> array("static_html"=>"Page HTML statique", "template"=>"Utilisation d'un template (valeur par défaut)", "redirect"=>"Redirection vers une page extérieure", "alias"=>"Alias d'une autre page du site", "static_html"=>"Page HTML statique", "php"=>"Script PHP")),
-	"template_id"=>array("label"=>"Template", "lang"=>false, "type"=>"object", "object_type"=>"template"),
+	"template_id"=>array("label"=>"Template", "type"=>"object", "object_type"=>"template", "lang"=>false),
 	"perm_list"=>array("label"=>"Permissions", "type"=>"object_list", "object_type"=>"permission", "db_table"=>"_page_perm_ref", "db_id"=>"page_id", "db_field"=>"perm_id"),
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGE, "filename"=>"{name}.inc.php")
 );
@@ -47,11 +47,21 @@ protected function query_info_more()
 {
 
 // Params
-$this->params_list = array();
-$query = db()->query("SELECT `page_id`, `name`, `value`, `update_pos` FROM `_page_params`");
+$query = db()->query("SELECT `page_id`, `name`, `datatype`, `value`, `update_pos` FROM `_page_params`");
 while ($param = $query->fetch_assoc())
 {
-	$this->list_detail[$param["page_id"]]["params_list"][$param["name"]] = array("value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
+	$this->list_detail[$param["page_id"]]["param_list"][$param["name"]] = array
+	(
+		"value"=>json_decode($param["value"], true),
+		"datatype"=>$param["datatype"],
+		"update_pos"=>$param["update_pos"],
+		"opt"=>array()
+	);
+}
+$query_opt = db()->query("SELECT `page_id`, `name`, `optname`, `optvalue` FROM `_page_params_opt`");
+while ($opt = $query_opt->fetch_row())
+{
+	$this->list_detail[$opt[0]]["param_list"][$opt[1]]["opt"][$opt[2]] = json_decode($opt[3], true);
 }
 
 }
@@ -174,11 +184,11 @@ protected $shortlabel = "";
 
 // Template and params
 protected $template_id = 0;
-protected $params_list = array();
+protected $param_list = array();
 protected $params_url = array();
 protected $params_get = array();
 // Effective parameters
-protected $params = array();
+protected $param = array();
  
 // Permissions
 protected $perm_list = array();
@@ -192,7 +202,7 @@ protected $alias_page_id = null;
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "perm", "type", "url", "shortlabel", "template_id", "params_list", "perm_list", "redirect_url", "alias_page_id");
+return array("id", "name", "label", "description", "perm", "type", "url", "shortlabel", "template_id", "param_list", "perm_list", "redirect_url", "alias_page_id");
 
 }
 function __wakeup()
@@ -291,15 +301,26 @@ public function query_params()
 {
 
 // Params
-$this->params = array();
+$this->param_list = array();
+$this->param = array();
 $this->params_url = array();
-$this->params_list = array();
-$query = db()->query("SELECT `name` , `value` , `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
+$query = db()->query("SELECT `name`, `datatype`, `value`, `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
 while ($param = $query->fetch_assoc())
 {
 	// Update position may be null !
 	// Value is the default value, which is fixed if the parameter is not designed to be overloaded
-	$this->params_list[$param["name"]] = array("value"=>json_decode($param["value"], true), "update_pos"=>$param["update_pos"]);
+	$this->param_list[$param["name"]] = array
+	(
+		"value"=>json_decode($param["value"], true),
+		"datatype"=>$param["datatype"],
+		"update_pos"=>$param["update_pos"],
+		"opt"=>array()
+	);
+}
+$query_opt = db()->query("SELECT `name`, `optname`, `optvalue` FROM `_page_params_opt` WHERE `page_id`='".$this->id."'");
+while ($opt = $query_opt->fetch_row())
+{
+	$this->param_list[$opt[0]]["opt"][$opt[1]] = json_decode($opt[2], true);
 }
 
 }
@@ -309,11 +330,17 @@ while ($param = $query->fetch_assoc())
 public function construct_params()
 {
 
-$this->params = array();
+$this->param = array();
 $this->params_url = array();
-foreach($this->params_list as $name=>$param)
+foreach($this->param_list as $name=>$param)
 {
-	$this->params[$name] = $param["value"];
+	if ($param["datatype"])
+		$datatype = "data_".$param["datatype"];
+	else
+		$datatype = "data";
+	$this->param[$name] = new $datatype($name, $param["value"], $name);
+	if (isset($param["opt"]) && is_array($param["opt"])) foreach ($param["opt"] as $i=>$j)
+		$this->param[$name]->opt_set($i, $j);
 	if (is_numeric($param["update_pos"]))
 		$this->params_url[$param["update_pos"]] = $name;
 }
@@ -327,19 +354,19 @@ foreach($this->params_list as $name=>$param)
 public function param_exists($name)
 {
 
-if (!is_string($name) || !isset($this->params_list[$name]))
-	return false;
-else
+if (is_string($name) && array_key_exists($name, $this->param_list))
 	return true;
+else
+	return false;
 
 }
 /**
  * Returns list of actual params
  */
-public function params_list()
+public function param_list()
 {
 
-return $this->params;
+return $this->param;
 
 }
 /**
@@ -348,7 +375,7 @@ return $this->params;
 public function param_list_detail()
 {
 
-return $this->params_list;
+return $this->param_list;
 
 }
 
@@ -359,7 +386,7 @@ return $this->params_list;
 public function __isset($name)
 {
 
-return array_key_exists($name, $this->params);
+return array_key_exists($name, $this->param);
 
 }
 /**
@@ -371,8 +398,8 @@ return array_key_exists($name, $this->params);
 public function __get($name)
 {
 
-if (array_key_exists($name, $this->params))
-	return $this->params[$name];
+if (array_key_exists($name, $this->param))
+	return $this->param[$name];
 
 }
 /**
@@ -382,8 +409,8 @@ if (array_key_exists($name, $this->params))
 public function __set($name, $value)
 {
 
-if (array_key_exists($name, $this->params))
-	$this->params[$name] = $value;
+if (array_key_exists($name, $this->param))
+	$this->param[$name]->value = $value;
 
 }
 
@@ -401,7 +428,7 @@ foreach($params as $pos=>$value)
 	{
 		if (DEBUG_TEMPLATE)
 			echo "<p>page(ID#$this->id)::params_update_url() : URL $name => $value</p>";
-		$this->params[$name] = $value;
+		$this->param[$name]->value_from_form($value);
 	}
 }
 
@@ -412,7 +439,7 @@ foreach($_GET as $name=>$value)
 	{
 		if (DEBUG_TEMPLATE)
 			echo "<p>page(ID#$this->id)::params_update_url() : GET $name => $value</p>";
-		$this->params[$name] = $value;
+		$this->param[$name]->value_from_form($value);
 	}
 }
 
@@ -431,6 +458,16 @@ $this->params_update_url($params);
 
 }
 
+function params_reset()
+{
+
+foreach ($this->param_list as $name=>$param)
+{
+	$this->param[$name]->value = $param["value"];
+}
+
+}
+
 /**
  * Apply page parameters to the associated template
  */
@@ -438,11 +475,12 @@ protected function params_apply()
 {
 
 // Sends params to the template
-foreach ($this->params as $name=>$value)
+if ($template=$this->template()) foreach ($this->param as $name=>$param)
 {
 	if (DEBUG_TEMPLATE)
-		echo "<p>page(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $value</p>\n";
-	$this->template()->__set($name, $value);
+		echo "<p>page(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $param->value</p>\n";
+	//var_dump($template);
+	$template->{$name} = $param->value;
 }
 
 }
@@ -456,8 +494,8 @@ function template()
 if (false)
 	echo "<p>page(ID#$this->id) : Accessing to template ID#$this->template_id</p>\n";
 
-if ($this->template_id)
-	return template($this->template_id);
+if ($this->template_id && ($template=template($this->template_id)))
+	return $template;
 
 }
 
@@ -467,10 +505,28 @@ if ($this->template_id)
 function tpl()
 {
 
-$this->template()->params_reset();
-$this->params_apply();
+if ($template=$this->template())
+{
+	$template->params_reset();
+	$this->params_apply();
+	return $template;
+}
 
-return $this->template();
+}
+
+/**
+ * Display the associated template
+ */
+function tpl_disp()
+{
+
+if ($template=$this->template())
+{
+	$template->params_reset();
+	foreach ($this->param as $name=>$param)
+		$template->{$name} = $param->value;
+	$template->disp();
+}
 
 }
 
@@ -480,9 +536,10 @@ return $this->template();
 public function action()
 {
 
+// TODO : use attribute script
 if (file_exists("page/$this->name.inc.php"))
 {
-	extract($this->params, EXTR_REFS);
+	extract($this->param, EXTR_REFS);
 	include "page/$this->name.inc.php";
 }
 
@@ -547,7 +604,7 @@ else
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_FRAMEWORK."/classes/admin/page.inc.php";
+	include PATH_CLASSES."/admin/page.inc.php";
 }
 else
 {

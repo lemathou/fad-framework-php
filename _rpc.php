@@ -40,7 +40,7 @@ if (isset($_POST["q"]))
 		$_POST["params"][] = array("value"=>$_POST["q"]);
 	}
 }
-foreach($_POST["params"] as &$param)
+foreach($_POST["params"] as $param)
 {
 	if (isset($param["type"]) && $param["type"]=="fulltext")
 	{
@@ -51,6 +51,8 @@ foreach($_POST["params"] as &$param)
 
 if (!isset($_POST["fields"]))
 	$_POST["fields"] = array();
+
+//var_dump($_POST["params"]);
 
 echo $datamodel->json_query($_POST["params"], $_POST["fields"], $_POST["order"], 10);
 

@@ -1,4 +1,4 @@
-<?
+<?php
 
 if (DEBUG_GENTIME ==  true)
 	gentime(__FILE__." [begin]");

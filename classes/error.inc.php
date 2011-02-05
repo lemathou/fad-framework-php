@@ -1,4 +1,4 @@
-<?
+<?php
 
 /**
   * $Id: error.inc.php 28 2011-01-17 07:50:38Z lemathoufou $

@@ -15,6 +15,9 @@
 if (DEBUG_GENTIME == true)
 	include PATH_INCLUDE."/gentime.inc.php";
 
+if (DEBUG_GENTIME == true)
+	gentime(__FILE__." [begin]");
+
 
 // Common classes inclusion
 include PATH_INCLUDE."/classes.inc.php";
@@ -22,14 +25,15 @@ include PATH_INCLUDE."/classes.inc.php";
 // Database
 include PATH_INCLUDE."/db.inc.php";
 
+// Errors, exceptions, feedbacks, etc.
+//include "include/error.inc.php";
+//include "include/exceptions.inc.php";
+
+// Security : IP ban, logs, etc.
+//include "include/security.inc.php";
+
 if (HEADER_LOAD == "full")
 {
-
-// Object cache
-include PATH_INCLUDE."/cache.inc.php";
-
-// Object gestion classes
-//include PATH_INCLUDE."/gestion.inc.php";
 
 // Global variables
 include PATH_INCLUDE."/globals.inc.php";
@@ -58,35 +62,15 @@ include PATH_INCLUDE."/menu.inc.php";
 include PATH_INCLUDE."/lang.inc.php";
 
 // Mise en place des fonctions associées aucx banques de donnée !!
-if (DEBUG_GENTIME == true)
-	gentime("Datamodel init [begin]");
 datamodel();
-if (DEBUG_GENTIME == true)
-	gentime("Datamodel init [end]");
 
 }
-
-// Errors, exceptions, feedbacks, etc.
-//include "include/error.inc.php";
-//include "include/exceptions.inc.php";
-
-// Security : IP ban, logs, etc.
-//include "include/security.inc.php";
-
-// URL rewriting : actually depreacated, but...
-//include "include/rewriting.inc.php";
 
 if (SESSION_START)
 {
 
-if (DEBUG_GENTIME == true)
-	gentime("Session refresh [begin]");
-// Session start
-session_start();
 // Login refresh
 login()->refresh();
-if (DEBUG_GENTIME == true)
-	gentime("Session refresh [end]");
 
 }
 

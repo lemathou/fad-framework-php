@@ -130,11 +130,13 @@ function password_create()
 {
 
 $liste = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
+
 $password= "";
-while (strlen($password) < 8)
+for ($i=1;$i<8;$i++)
 {
 	$password .= $liste[rand(0,34)];
 }
+
 return $password;
 	
 }
@@ -142,7 +144,7 @@ return $password;
 function exists($email)
 {
 
-return (db()->query("SELECT `id` FROM `_account` WHERE `email` LIKE '".db()->string_escape($email)."'")->num_rows()) ? true : false;
+return (db()->query("SELECT '1' FROM `_account` WHERE `email` LIKE '".db()->string_escape($email)."'")->num_rows()) ? true : false;
 
 }
 
@@ -172,6 +174,8 @@ protected $login_message = "";
 // Browsing parameters
 protected $sid="";
 protected $os="???";
+
+// TODO : Add stats (Database, navigation, etc.) here
 
 public function __construct()
 {
@@ -378,7 +382,6 @@ if (isset($_COOKIE["sid"]))
 $this->id = 0;
 
 $this->type = "";
-$this->contact_id = 0;
 $this->lang_id = 0;
 $this->email = "";
 

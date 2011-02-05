@@ -98,7 +98,7 @@ if (isset($_POST["param_edit"]))
 	{
 		db()->query("UPDATE `_template_params` SET name='$param[name]' , datatype='$param[datatype]' , defaultvalue='$param[defaultvalue]' WHERE template_id='$id' AND name='$name'");
 		db()->query("UPDATE `_template_params_lang` SET description='".addslashes($param["description"])."' WHERE template_id='$id' AND name='$name' AND lang_id='".SITE_LANG_ID."'");
-		if (isset($param["option_add"]["optname"]) && ($opt_add=$param["option_add"]) && $opt_add["opttype"])
+		if (isset($param["option_add"]["optname"]) && ($opt_add=$param["option_add"]))
 		{
 			db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, optvalue) VALUES ('$id', '$name', '$opt_add[optname]', '".json_encode($opt_add["optvalue"])."')");
 		}

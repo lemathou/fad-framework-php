@@ -40,14 +40,22 @@ if (REDIRECT_LANG)
 	die("Redirection en cours...");
 }
 
-// Choix de la page
-include PATH_INCLUDE."/page_choose.inc.php";
+// Choix de la page à partir de l'url
+page()->set();
+if (DEBUG_GENTIME == true)
+	gentime("PAGE_SET");
+
+// Actions sur la page
+page_current()->action();
+if (DEBUG_GENTIME == true)
+	gentime("PAGE_ACTION");
 
 // Affichage du template
+// TODO : intégrer le content_type dans le template container si il y a lieu d'afficher le template
 header("Content-type: text/html; charset=".SITE_CHARSET);
 if (DEBUG_GENTIME == true)
 	gentime("TEMPLATE_DISP [begin]");
-page_current()->tpl()->disp();
+page_current()->tpl_disp();
 if (DEBUG_GENTIME == true)
 	gentime("TEMPLATE_DISP [end]");
 

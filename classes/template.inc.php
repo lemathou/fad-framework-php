@@ -261,7 +261,7 @@ if (array_key_exists($name, $this->param))
 {
 	if (DEBUG_TEMPLATE)
 		echo "<p>DEBUG : template(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
-	$this->param[$name]->value_from_form($value);
+	$this->param[$name]->value = $value;
 }
 
 }

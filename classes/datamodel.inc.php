@@ -794,12 +794,12 @@ foreach($query_list as $name=>$insert_list)
 		{
 			list($id) = $query->fetch_row();
 			// TODO : Update object cache
-			$query_string = "UPDATE `".$datamodel->db_table()."`.`".$datamodel->name()."` SET `$ref_id`=NULL WHERE `$ref_id`='$id'";
+			$query_string = "UPDATE `".$datamodel->db()."`.`".$datamodel->name()."` SET `$ref_id`=NULL WHERE `$ref_id`='$id'";
 			//echo "<p>$query_string</p>\n";
 			db()->query($query_string);
 			if ($fields[$name]->nonempty())
 			{
-				$query_string = "UPDATE `".$datamodel->db_table()."`.`".$datamodel->name()."` SET `$ref_id`='$id' WHERE `id` IN ('".implode("', '", $fields[$name]->value)."')";
+				$query_string = "UPDATE `".$datamodel->db()."`.`".$datamodel->name()."` SET `$ref_id`='$id' WHERE `id` IN ('".implode("', '", $fields[$name]->value)."')";
 				//echo "<p>$query_string</p>\n";
 				db()->query($query_string);
 				//echo mysql_error();
@@ -1347,7 +1347,7 @@ foreach($params as $param_nb=>$param)
 	{
 		if (!isset($param["type"]) || $param["type"] == "like")
 		{
-			$l = array("type"=>"OR");
+			$l = array("_type"=>"OR");
 			foreach($this->fields_index as $i)
 				$l[] = "t$t0nb.`$i` LIKE '%".db()->string_escape($param["value"])."%'";
 			$where_list[] = $l;
@@ -1488,7 +1488,7 @@ foreach ($objects as $object)
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_FRAMEWORK."/classes/admin/datamodel.inc.php";
+	include PATH_CLASSES."/admin/datamodel.inc.php";
 }
 else
 {
@@ -1496,8 +1496,8 @@ else
 	class datamodel extends _datamodel {};
 }
 
-include PATH_FRAMEWORK."/classes/dataobject.inc.php";
-include PATH_FRAMEWORK."/classes/data_display.inc.php";
+include PATH_CLASSES."/dataobject.inc.php";
+include PATH_CLASSES."/data_display.inc.php";
 
 
 if (DEBUG_GENTIME == true)

@@ -47,9 +47,19 @@ static function store($name, $object, $ttl=CACHE_GESTION_TTL);
  */
 static function delete($name);
 
+/**
+ * Remove all objects
+ * 
+ * @param name mixed (string or array)
+ * @return boolean
+ * @author mathieu
+ */
+static function delete_all();
+
 }
 
-include PATH_FRAMEWORK."/classes/cache/".CACHE_TYPE.".inc.php";
+include PATH_CLASSES."/cache/".CACHE_TYPE.".inc.php";
+
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

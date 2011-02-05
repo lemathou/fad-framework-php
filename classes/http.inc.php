@@ -1,4 +1,4 @@
-<?
+<?php
 
 /**
   * $Id: http.inc.php 21 2010-12-17 15:48:39Z lemathoufou $

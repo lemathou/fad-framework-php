@@ -23,10 +23,12 @@ class data_gestion extends gestion
 
 protected $type = "datatype";
 
+protected $info_required = array("name", "label");
+
 public function get($id)
 {
 
-if ($this->exists($id))
+if (array_key_exists($id, $this->list_detail))
 {
 	$datatype = "data_".$this->list_detail[$id]["name"];
 	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);

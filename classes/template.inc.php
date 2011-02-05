@@ -81,14 +81,14 @@ protected function query_info_more()
 
 // Params
 $param_order = array(); // temp
-$query = db()->query("SELECT t1.`template_id`, t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
+$query = db()->query("SELECT t1.`template_id`, t1.`order`, t1.`name`, t1.`datatype`, t1.`value`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
 while ($param = $query->fetch_assoc())
 {
 	$this->list_detail[$param["template_id"]]["param_list_detail"][$param["order"]] = array
 	(
 		"name"=>$param["name"],
 		"datatype"=>$param["datatype"],
-		"value"=>json_decode($param["defaultvalue"], true),
+		"value"=>json_decode($param["value"], true),
 		"label"=>$param["description"],
 		"opt"=>array()
 	);
@@ -205,7 +205,7 @@ protected function query_params()
 // Params
 $this->param_list_detail = array();
 $param_order = array(); // temp
-$query = db()->query("SELECT t1.`order`, t1.`name`, t1.`datatype`, t1.`defaultvalue`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.`template_id`='".$this->id."' ORDER BY t1.`order` ASC");
+$query = db()->query("SELECT t1.`order`, t1.`name`, t1.`datatype`, t1.`value`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.`template_id`='".$this->id."' ORDER BY t1.`order` ASC");
 while ($param = $query->fetch_row())
 {
 	$this->param_list_detail[$param[0]] = array("name"=>$param[1], "datatype"=>$param[2], "value"=>json_decode($param[3], true), "label"=>$param[4], "opt"=>array());
@@ -379,7 +379,7 @@ public static function subtemplates($tpl)
 
 $return = array();
 
-if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]*)(,(.*)){0,1}--\>/", $tpl, $matches, PREG_SET_ORDER))
+if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]*)(,(.*))*--\>/", $tpl, $matches, PREG_SET_ORDER))
 {
 	$list_name = template()->list_name_get();
 	foreach($matches as $match)
@@ -409,7 +409,7 @@ return $return;
 protected function subtemplates_apply($tpl)
 {
 
-if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(.+)){0,1}--\>/", $tpl, $matches, PREG_SET_ORDER))
+if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(.*))*--\>/", $tpl, $matches, PREG_SET_ORDER))
 {
 	$replace_from = $replace_to = array();
 	foreach($matches as $match) if ($template=template($match[1]))
@@ -427,28 +427,28 @@ if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(.+)){0,1}--\>/", $tpl, $match
 					foreach($params as $name=>$value)
 						$template->__set($name, $value);
 			}
-			// TODO : Simplify and find something else than value_to_form()
 			elseif ($params === true) // On tente de passer tous les paramètres
 			{
 				foreach($template->param_list() as $nb=>$name)
 				{
+					if (DEBUG_TEMPLATE)
+						echo "<p>--> Param : $name</p>\n";
 					if (array_key_exists($name, $this->param))
 					{
-						if (DEBUG_TEMPLATE)
-							echo "<p>--> Param : $name</p>\n";
-						$template->__set($name, $this->param[$name]->value_to_form());
+						$template->__set($name, $this->param[$name]->value);
 					}
 				}
 			}
-			elseif (is_array($params)) foreach($params as $name=>$name_from)
+			elseif (is_array($params))
 			{
-				if (DEBUG_TEMPLATE)
-					echo "<p>--> $name_from : $name</p>\n";
-				if (array_key_exists($name_from, $this->param) && isset($template->{$name}))
+				foreach($params as $name=>$name_from)
 				{
 					if (DEBUG_TEMPLATE)
-						echo "<p>----> $name_from : $name = ".$this->param[$name_from]->value_to_form()."</p>\n";
-					$template->__set($name, $this->param[$name_from]->value_to_form());
+						echo "<p>--> $name_from : $name</p>\n";
+					if (array_key_exists($name_from, $this->param) && isset($template->{$name}))
+					{
+						$template->__set($name, $this->param[$name_from]->value);
+					}
 				}
 			}
 		}
@@ -678,7 +678,7 @@ else
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_FRAMEWORK."/classes/admin/template.inc.php";
+	include PATH_CLASSES."/admin/template.inc.php";
 }
 else
 {

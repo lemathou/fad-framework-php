@@ -522,9 +522,14 @@ function tpl_disp()
 
 if ($template=$this->template())
 {
+	//var_dump($template);
 	$template->params_reset();
+	//var_dump($this->param);
 	foreach ($this->param as $name=>$param)
-		$template->{$name} = $param->value;
+	{
+		//echo "<p>$name : $param->value</p>\n";
+		$template->__set($name, $param->value);
+	}
 	$template->disp();
 }
 

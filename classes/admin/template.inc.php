@@ -47,7 +47,7 @@ if (!isset($info["description"]) || !is_string($info["description"]))
 	$info["description"] = "";
 
 list($info["order"]) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$this->id'")->fetch_row();
-db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `defaultvalue`) VALUES ('$this->id', '".$info["order"]."', '".$info["datatype"]."', '".$name."', '".db()->string_escape($info["defaultvalue"])."' )");
+db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `value`) VALUES ('$this->id', '".$info["order"]."', '".$info["datatype"]."', '".$name."', '".db()->string_escape($info["defaultvalue"])."' )");
 db()->query("INSERT INTO `_template_params_lang` (`template_id`, `lang_id`, `name`, `description`) VALUES ('$this->id', '".SITE_LANG_ID."', '".db()->string_escape($name)."', '".db()->string_escape($info["description"])."' )");
 
 $this->query_info();
@@ -93,7 +93,7 @@ if (isset($info["defaultvalue"]))
 	if (!is_string($info["defaultvalue"]))
 		return false;
 	else
-		$update_list[] = "`defaultvalue`='".db()->string_escape($info["defaultvalue"])."'";
+		$update_list[] = "`value`='".db()->string_escape($info["defaultvalue"])."'";
 if (isset($info["description"]))
 	if (!is_string($info["description"]))
 		return false;

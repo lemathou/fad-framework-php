@@ -211,8 +211,9 @@ foreach ($this->info_detail as $name=>$info)
  * Display a list
  * @param array params : filtering parameters
  * @param array field_list : fields to display (automatically adds id and name)
+ * TODO : Create a query function with a sort parameter, that would be easier...
  */
-public function table_list($params=array(), $field_list=true)
+public function table_list($params=array(), $field_list=true, $sort=null)
 {
 
 if (!login()->perm(6))
@@ -231,57 +232,64 @@ foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || 
 ?>
 </tr>
 <?
-foreach ($this->list as $id=>$object) if (true || $params === true)
+foreach ($this->list as $id=>$object)
 {
-	echo "<tr>\n";
-			echo "<td><a href=\"?id=$id\">[$id] ".$object->name()."</a></td>\n";
-			echo "<td>".$object->label()."</td>\n";
-	foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $name != "label" && $field_info["type"] != "script")
+	$aff = true;
+	if (is_array($params) && count($params)) foreach($params as $i=>$j)
+		if ($object->info($i) !== $j)
+			$aff = false;
+	if ($aff)
 	{
-		if (in_array($field_info["type"], array("string", "text")))
+		echo "<tr>\n";
+				echo "<td><a href=\"?id=$id\">[$id] ".$object->name()."</a></td>\n";
+				echo "<td>".$object->label()."</td>\n";
+		foreach ($this->info_detail as $name=>$field_info) if (($field_list === true || in_array($name, $field_list)) && $name != "name" && $name != "label" && $field_info["type"] != "script")
 		{
-			echo "<td>".$object->info($name)."</td>\n";
-		}
-		elseif ($field_info["type"] == "integer")
-		{
-			echo "<td align=\"right\">".$object->info($name)."</td>\n";
-		}
-		elseif ($field_info["type"] == "boolean")
-		{
-			if ($object->info($name))
-				echo "<td>OUI</td>\n";
-			else
-				echo "<td>NON</td>\n";
-		}
-		elseif ($field_info["type"] == "select")
-		{
-			if ($object->info($name))
-				echo "<td>".$field_info["select_list"][$object->info($name)]."</td>\n";
-			else
-				echo "<td>".$info[$name]."</td>\n";
-		}
-		elseif ($field_info["type"] == "object")
-		{
-			$object_type = $field_info["object_type"];
-			if ($object_type()->exists($id=$object->info($name)))
-				echo "<td>".$object_type()->get($id)->label()."</td>";
-			else
-				echo "<td><i>undefined</i></td>\n";
-		}
-		elseif ($field_info["type"] == "object_list")
-		{
-			$object_type = $field_info["object_type"];
-			$object_list = array();
-			if (count($object->info($name))) foreach ($object->info($name) as $id) if ($object_type()->exists($id))
+			if (in_array($field_info["type"], array("string", "text")))
 			{
-				$object_list[] = $object_type()->get($id)->label();
+				echo "<td>".$object->info($name)."</td>\n";
 			}
-			echo "<td>".implode(", ", $object_list)."</td>\n";
+			elseif ($field_info["type"] == "integer")
+			{
+				echo "<td align=\"right\">".$object->info($name)."</td>\n";
+			}
+			elseif ($field_info["type"] == "boolean")
+			{
+				if ($object->info($name))
+					echo "<td>OUI</td>\n";
+				else
+					echo "<td>NON</td>\n";
+			}
+			elseif ($field_info["type"] == "select")
+			{
+				if ($object->info($name))
+					echo "<td>".$field_info["select_list"][$object->info($name)]."</td>\n";
+				else
+					echo "<td>".$info[$name]."</td>\n";
+			}
+			elseif ($field_info["type"] == "object")
+			{
+				$object_type = $field_info["object_type"];
+				if ($object_type()->exists($id=$object->info($name)))
+					echo "<td>".$object_type()->get($id)->label()."</td>";
+				else
+					echo "<td><i>undefined</i></td>\n";
+			}
+			elseif ($field_info["type"] == "object_list")
+			{
+				$object_type = $field_info["object_type"];
+				$object_list = array();
+				if (count($object->info($name))) foreach ($object->info($name) as $id) if ($object_type()->exists($id))
+				{
+					$object_list[] = $object_type()->get($id)->label();
+				}
+				echo "<td>".implode(", ", $object_list)."</td>\n";
+			}
+			else
+				echo "<td>".json_encode($object->info($name))."</td>\n";
 		}
-		else
-			echo "<td>".json_encode($object->info($name))."</td>\n";
+		echo "</tr>\n";
 	}
-	echo "</tr>\n";
 }
 ?>
 </table>

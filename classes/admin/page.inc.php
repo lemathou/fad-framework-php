@@ -45,7 +45,7 @@ elseif (!isset($infos["update_pos"]) || !is_string($infos["update_pos"]))
 elseif (!isset($infos["datatype"]) || !is_string($infos["datatype"]))
 	$infos["datatype"] = null;
 
-db()->query("INSERT INTO `_page_params` (`page_id`, `name`, `datatype`, `value`, `update_pos`) VALUES ('$this->id', '$name', '".db()->string_escape(json_encode(json_decode($infos["value"])))."', '".db()->string_escape($infos["datatype"])."', NULL)");
+db()->query("INSERT INTO `_page_params` (`page_id`, `name`, `datatype`, `value`, `update_pos`) VALUES ('$this->id', '$name', '".db()->string_escape($infos["datatype"])."', '".db()->string_escape(json_encode(json_decode($infos["value"])))."', NULL)");
 
 // Position
 if (is_numeric($pos=$infos["update_pos"]))
@@ -71,6 +71,8 @@ return true;
  */
 public function param_update($name, $infos)
 {
+
+//var_dump($infos);
 
 if (!is_string($name) || !isset($this->param_list[$name]))
 	return false;
@@ -106,7 +108,7 @@ if (is_numeric($n=$infos["update_pos"]))
 
 if (isset($infos["opt"]))
 {
-	db()->query("DELETE FROM `_page_params_opt` WHERE `page_id`='$this->id' `name` = '$name'");
+	db()->query("DELETE FROM `_page_params_opt` WHERE `page_id`='$this->id' AND `name` = '$name'");
 	if (is_array($infos["opt"])) foreach($infos["opt"] as $i=>$j)
 	{
 		db()->query("INSERT INTO `_page_params_opt` (`page_id`, `name`, `optname`, `optvalue`) VALUES ('$this->id', '$name', '$i', '".db()->string_escape($j)."')");
@@ -127,10 +129,16 @@ return true;
 public function param_del($name)
 {
 
-if (!is_string($name) || !isset($this->param_list[$name]))
+if (!is_string($name) || !array_key_exists($name, $this->param_list))
 	return false;
 
 db()->query("DELETE FROM `_page_params` WHERE `page_id`='$this->id' AND `name`='$name'");
+db()->query("DELETE FROM `_page_params_lang` WHERE `page_id`='$this->id' AND `name`='$name'");
+db()->query("DELETE FROM `_page_params_opt` WHERE `page_id`='$this->id' AND `name`='$name'");
+
+$this->query_params();
+$this->construct_params();
+page()->query_info();
 
 return true;
 

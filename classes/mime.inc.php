@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: template.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
+  * $Id: mime.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
@@ -15,31 +15,42 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class _template_gestion extends gestion
+class _mime_gestion extends gestion
 {
 
-protected $type = "template";
+protected $type = "mime";
 
-protected $info_list = array("name", "type", "cache_mintime", "cache_maxtime", "login_dependant");
+protected $info_list = array("name", "type");
 
 protected $info_detail = array
 (
-	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"page", "select_list"=> array('container'=>"Conteneur principal",'inc'=>"Inclusion fréquente",'page'=>"Contenu de page",'datamodel'=>"Vue de datamodel")),
-	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
-	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
-	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
-	"mime"=>array("label"=>"Type de contenu (MIME)", "type"=>"string", "size"=>128, "lang"=>false, "default"=>"text/html"),
-	"cache_mintime"=>array("label"=>"Durée minimum du cache", "lang"=>false, "default"=>TEMPLATE_CACHE_MIN_TIME, "type"=>"integer"),
-	"cache_maxtime"=>array("label"=>"Durée maximum du cache", "lang"=>false, "default"=>TEMPLATE_CACHE_MAX_TIME, "type"=>"integer"),
-	"login_dependant"=>array("label"=>"Dépendant du login", "lang"=>false, "default"=>"0", "type"=>"boolean"),
-	"library_list"=>array("label"=>"Librairies", "type"=>"object_list", "object_type"=>"library", "db_table"=>"_template_library_ref", "db_id"=>"template_id", "db_field"=>"library_id"),
-	"tplfile"=>array("label"=>"Template", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.tpl.php"),
-	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.inc.php")
+	"name"=>array("label"=>"Nom", "type"=>"string", "size"=>64, "lang"=>false),
+	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"page", "select_list"=> array('application'=>"application",'text'=>"text",'audio'=>"audio",'image'=>"image", "video"=>"video"))
 );
 
 protected $info_required = array("name", "type");
 
 protected $retrieve_details = false;
+
+public function __get($name)
+{
+
+if (array_key_exists($id, $this->list_detail))
+{
+	$datatype = "data_".$this->list_detail[$id]["name"];
+	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
+}
+else
+	return null;
+
+}
+
+protected function query_info_more()
+{
+
+// To be extended if needed !
+
+}
 
 protected function construct_object($id)
 {
@@ -69,14 +80,14 @@ protected function query_info_more()
 {
 
 // Params
-$query = db()->query("SELECT t1.`template_id`, t1.`name`, t1.`datatype`, t1.`value`, t2.`label` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
+$query = db()->query("SELECT t1.`template_id`, t1.`name`, t1.`datatype`, t1.`value`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
 while ($param = $query->fetch_assoc())
 {
 	$this->list_detail[$param["template_id"]]["param_list"][$param["name"]] = array
 	(
 		"datatype"=>$param["datatype"],
 		"value"=>json_decode($param["value"], true),
-		"label"=>$param["label"],
+		"label"=>$param["description"],
 		"opt"=>array()
 	);
 }
@@ -141,7 +152,7 @@ protected $cache_filename = "";
 function __sleep()
 {
 
-return array("id", "name", "label", "mime", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list");
+return array("id", "name", "label", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list");
 
 }
 function __wakeup()
@@ -189,15 +200,15 @@ protected function query_params()
 
 // Params
 $this->param_list = array();
-$query = db()->query("SELECT t1.`name`, t1.`datatype`, t1.`value`, t2.`label` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.`template_id`='".$this->id."' ORDER BY t1.`order` ASC");
+$query = db()->query("SELECT t1.`name`, t1.`datatype`, t1.`value`, t2.`description` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.`template_id`='".$this->id."' ORDER BY t1.`order` ASC");
 while ($param = $query->fetch_assoc())
 {
-	$this->param_list[$param["name"]] = array("datatype"=>$param["datatype"], "value"=>json_decode($param["value"], true), "label"=>$param["label"], "opt"=>array());
+	$this->param_list[$param["name"]] = array("datatype"=>$param["datatype"], "value"=>json_decode($param["value"], true), "label"=>$param["description"], "opt"=>array());
 }
 $query_opt = db()->query("SELECT `name`, `optname`, `optvalue` FROM `_template_params_opt` WHERE `template_id`='".$this->id."'");
-while ($opt = $query_opt->fetch_assoc())
+while ($opt = $query_opt->fetch_row())
 {
-	$this->param_list[$opt["name"]]["opt"][$opt["optname"]] = json_decode($opt["optvalue"], true);
+	$this->param_list[$opt["0"]]["opt"][$opt[1]] = json_decode($opt[2], true);
 }
 $this->construct_params();
 
@@ -274,12 +285,11 @@ public function disp()
  * TODO : Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
  * Nécessite une refonte de la génération des templates
  */
+//requires $tpl
 //header('Status: 304 Not Modified', false, 304);
-header("Content-type: $this->mime; charset=".SITE_CHARSET);
 //header('Last-Modified: '.gmdate('D, d M Y H:i:s',$tpl["regentime"]).' GMT');
 //header('Expires: '.gmdate('D, d M Y H:i:s',$tpl["regentime"]+TEMPLATE_CACHE_MINTIME).' GMT');
 //header('Content-Length: '.strlen($tpl["html"]));
-
 
 echo $this->__tostring();
 
@@ -608,9 +618,9 @@ else // (TEMPLATE_CACHE_TYPE == "file")
 		{
 			if ($param["datatype"] == "dataobject" && ($datamodel=datamodel($param["opt"]["datamodel"])))
 			{
-				if ($datamodel->info("dynamic") && ($object=$datamodel->get($this->param[$name]->value)))
+				if ($datamodel->info("dynamic"))
 				{
-					if ($object->_update > $cache_datetime)
+					if ($datamodel->get($this->param[$name]->value)->_update > $cache_datetime)
 						$return=false;
 				}
 			}

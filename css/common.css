@@ -1,9 +1,11 @@
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -19,7 +21,7 @@ body
 }
 
 /* General font-family */
-body, h1, h2, h3, h4, p, li, td, input, textarea
+body, h1, h2, h3, h4, p, li, td, label, input, textarea, option
 {
 	font-family: Verdana, Arial, Helvetica, sans-serif;
 }
@@ -50,7 +52,7 @@ a
 	text-decoration: none;
 	color: #47a5ff;
 }
-a:hover
+a:hover, a.selected
 {
 	color: orange;
 }
@@ -178,11 +180,10 @@ td.label
 }
 .datamodel_form > table td.label
 {
-	width: 250px;;
+	width: 250px;
 }
 
 /* DATATYPES */
-
 .data_text, .data_richtext, .data_script
 {
 	width: 100%;
@@ -201,3 +202,21 @@ input.autosize
 	border: 1px gray solid;
 	font-family: monospace;
 }
+
+/* PAGE_LISTING */
+.page_listing_submit
+{
+	visibility: hidden;
+	position: absolute;
+	display: inline;
+	border: 1px gray solid;
+	background-color: white;
+	padding: 1px;
+	color: #47a5ff;
+	font-weight: bold;
+}
+.page_listing_submit:hover
+{
+	cursor: pointer;
+}
+

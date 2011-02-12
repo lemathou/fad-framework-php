@@ -1,6 +1,7 @@
 <h1 style="margin-top: 0;">PHP FAD Framework</h1>
 <p>Copyright &copy; 2008-2011 <a href="mailto:lemathou@free.fr">Mathieu Moulin &lt;lemathou@free.fr&gt;</a></p>
 <p><a href="http://sourceforge.net/projects/phpfadframework/">Project page on SourceForge</a>. Get the latest version !</p>
+<p><a href="/documentation/gpl-2.0-standalone.html">GPL Licence v2</a></p>
 <pre>
   * PHP FAD FRAMEWORK is free software; you can redistribute it and/or modify
   * it under the terms of the GNU General Public License as published by

@@ -16,27 +16,19 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Object
+ * 
  */
-class data_gestion extends gestion
+class data_object extends data
 {
 
-protected $type = "datatype";
-
-protected $info_required = array("name", "label");
-
-public function get($id)
-{
-
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
-
-}
+protected $opt = array
+(
+	"object_type" => "objecttype",
+	"db_table" => "",
+	"db_fieldname" => "",
+	"db_format" => ""
+);
 
 }
 

@@ -74,6 +74,7 @@ $template->update_form();
 <div id="param_list" class="subcontents"<?php if (empty($_GET["param_edit"])) echo " style=\"display:none;\""; ?>>
 <h2>Gestion des paramètres</h2>
 <?php
+//var_dump($_POST);
 // Ajout
 if (isset($_POST["param_add"]) && is_array($_POST["param_add"]) && isset($_POST["param_add"]["name"]))
 {
@@ -86,133 +87,18 @@ if (isset($_GET["param_delete"]))
 	if ($template->param_del($_GET["param_delete"]))
 		echo "<p>Le paramètre ".$_GET["param_delete"]." a bien été supprimé.</p>\n";
 }
-// Mise à jour
-if (isset($_GET["param_edit"]) && isset($_GET["option_del"]))
+if (isset($_POST["param"]))
 {
-	//echo "DELETE FROM `_template_params_opt` WHERE template_id='$id' AND name='".$_GET["param_edit"]."' AND optname='".$_GET["option_del"]."'";
-	db()->query("DELETE FROM `_template_params_opt` WHERE template_id='$id' AND name='".$_GET["param_edit"]."' AND optname='".$_GET["option_del"]."'");
-}
-if (isset($_POST["param_edit"]))
-{
-	foreach ($_POST["param_edit"] as $name=>$param)
+	foreach ($_POST["param"] as $name=>$param)
 	{
-		db()->query("UPDATE `_template_params` SET name='$param[name]' , datatype='$param[datatype]' , defaultvalue='$param[defaultvalue]' WHERE template_id='$id' AND name='$name'");
-		db()->query("UPDATE `_template_params_lang` SET description='".addslashes($param["description"])."' WHERE template_id='$id' AND name='$name' AND lang_id='".SITE_LANG_ID."'");
-		if (isset($param["option_add"]["optname"]) && ($opt_add=$param["option_add"]))
-		{
-			db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, optvalue) VALUES ('$id', '$name', '$opt_add[optname]', '".json_encode($opt_add["optvalue"])."')");
-		}
-		echo "<p>Le paramètre $name a bien été mis à jour.</p>\n";
+		if ($template->param_update($name, $param))
+			echo "<p>Le paramètre $name a bien été mis à jour.</p>\n";
 	}
 }
-
-// Edition
-if (isset($_GET["param_edit"]) && ($param_edit=$_GET["param_edit"]) && ($query_str="SELECT t1.name, t1.datatype, t1.defaultvalue, t2.description FROM _template_params as t1 LEFT JOIN _template_params_lang as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' WHERE t1.template_id = '$id' AND t1.name='$param_edit'") && ($query_params = db()->query($query_str)) && ($param = $query_params->fetch_assoc()))
-{
-
-$optlist = array();
-$query = db()->query("SELECT optname , optvalue FROM _template_params_opt WHERE template_id='$id' AND name='$param_edit'");
-if ($query->num_rows())
-{
-	while ($opt=$query->fetch_assoc())
-	{
-		$optlist[$opt["optname"]] = $opt["optvalue"];
-	}
-}
-
-?>
-<form action="?id=<?=$id?>&param_edit=<?=$param_edit?>" method="POST">
-<table width="100%" cellspacing="1" border="1" cellpadding="1">
-<tr>
-	<td>Name :</td>
-	<td><input name="param_edit[<?=$param["name"]?>][name]" value="<?=$param["name"]?>" /></td>
-</tr>
-<tr>
-	<td>Description :</td>
-	<td><textarea name="param_edit[<?=$param["name"]?>][description]" style="width:100%;"><?=$param["description"]?></textarea></td>
-</tr>
-<tr>
-	<td>Datatype</td>
-	<td><select name="param_edit[<?=$param["name"]?>][datatype]"><?php
-	foreach (data()->list_detail_get() as $datatype)
-	{
-		if ($param["datatype"] == $datatype["name"])
-			echo "<option value=\"$datatype[name]\" selected>$datatype[label]</option>\n";
-		else
-			echo "<option value=\"$datatype[name]\">$datatype[label]</option>\n";
-	}
-	?></select></td>
-</tr>
-<tr>
-	<td>Valeur par défaut :<br />(JSON)</td>
-	<td><?php
-	if ($param["datatype"]=="dataobject" && isset($optlist["datamodel"]) && ($datamodel=datamodel($optlist["datamodel"])))
-	{
-		echo "<select name=\"param_edit[$param[name]][defaultvalue]\">";
-			echo "<option value=\"0\">-- Choisir si besoin --</option>";
-		foreach($datamodel->query() as $object)
-		{
-			if (isset($object->title))
-				$aff = "ID#$object->id : $object->title";
-			elseif (isset($object->name))
-				$aff = "ID#$object->id : $object->name";
-			elseif (isset($object->ref))
-				$aff = "ID#$object->id : $object->ref";
-			else
-				$aff = "ID#$object->id";
-			if ($param["defaultvalue"] == $object->id)
-				echo "<option value=\"$object->id\" selected>$aff</option>";
-			else
-				echo "<option value=\"$object->id\">$aff</option>";
-		}
-		echo "</select>\n";
-	}
-	else
-	{
-	?>
-	<textarea name="param_edit[<?=$param["name"]?>][defaultvalue]" style="width:100%;"><?=$param["defaultvalue"]?></textarea>
-	<?php
-	}
-	?></td>
-</tr>
-<tr>
-	<td>Options :</td>
-	<td><?php
-	$query = db()->query("SELECT optname , optvalue FROM _template_params_opt WHERE template_id='$id' AND name='$param_edit'");
-	if ($query->num_rows())
-	{
-		while ($opt=$query->fetch_assoc())
-		{
-			echo "<p><a href=\"?id=$id&param_edit=$param_edit&option_del=$opt[optname]\" style=\"color:red;\">X</a>$opt[optname] : $opt[optvalue]<br /></p>";
-		}
-	}
-	?></td>
-<tr>
-	<td>Ajouter une option :</td>
-	<td><table cellspacing="0" cellpadding="0">
-	<tr>
-		<td>Name : </td>
-		<td><input name="param_edit[<?=$param["name"]?>][option_add][optname]" /></td>
-	</tr>
-	<tr>
-		<td>Value (JSON) : </td>
-		<td><input name="param_edit[<?=$param["name"]?>][option_add][optvalue]" /></td>
-	</tr>
-	</table></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" value="Mettre à jour" /></td>
-</tr>
-</table>
-</form>
-<?php
-}
-
 ?>
 
 <form action="?id=<?=$id?>" method="post">
-<table width="100%" cellspacing="0" border="0" cellpadding="0">
+<table width="100%" cellspacing="0" border="0" cellpadding="0" class="tpl_params">
 <tr class="label">
 	<td colspan="2">&nbsp;</td>
 	<td>Name</td>
@@ -224,58 +110,62 @@ if ($query->num_rows())
 
 $ordermax = count($template->param_list_detail());
 
-if (isset($_POST["order_change"]) && is_array($_POST["order_change"]))
+$order=0;
+foreach ($template->param_list_detail() as $name=>$param)
 {
-	foreach ($_POST["order_change"] as $name=>$order)
-	{
-		if (list($oldorder) = db()->query("SELECT `order` FROM `_template_params` WHERE `template_id`='$id' AND `name`='".db()->string_escape($name)."'")->fetch_row())
-		{
-			db()->query("UPDATE `_template_params` SET `order`=`order`-1 WHERE `template_id`='$id' AND `order`>'$oldorder'");
-			db()->query("UPDATE `_template_params` SET `order`='".db()->string_escape($order)."' WHERE `template_id`='$id' AND `name`='".db()->string_escape($name)."'");
-			db()->query("UPDATE `_template_params` SET `order`=`order`+1 WHERE `template_id`='$id' AND `order`>='".db()->string_escape($order)."' AND  `name`!='".db()->string_escape($name)."'");
-		}
-	}
-}
-
-foreach ($template->param_list_detail() as $nb=>$param)
-{
+	$order++;
 ?>
-<tr<?php if ($nb%2 == 0) echo " class=\"alt\""; ?>>
-	<td><a href="?id=<?php echo $id; ?>&param_delete=<?=$param["name"]?>" onclick="return(confirm('Êtes-vous sûr de vouloir effacer ?'))" style="color:red;border:1px red dotted;">X</a></td>
-	<td><select id="order_change[<?=$param["name"]?>]" onchange="this.name=this.id;this.form.submit();"><?php
-	for ($i=0;$i<$ordermax;$i++)
+<tr>
+	<td><a href="?id=<?php echo $id; ?>&param_delete=<?=$name?>" onclick="return(confirm('Êtes-vous sûr de vouloir effacer ?'))" style="color:red;">X</a></td>
+	<td><select id="param[<?php echo $name; ?>][order]" onchange="this.name=this.id;this.form.submit();"><?php
+	for ($i=1;$i<=$ordermax;$i++)
 	{
-		if ($nb == $i)
+		if ($order == $i)
 			echo "<option value=\"$i\" selected>$i</option>\n";
 		else
 			echo "<option value=\"$i\">$i</option>\n";
 	}
 	?></select></td>
-	<td><a href="?id=<?php echo $id; ?>&param_edit=<?=$param["name"]?>"><?=$param["name"]?></a></td>
-	<td><?=$param["label"]?></td>
-	<td><?=data()->get_name($param["datatype"])->label?></td>
-	<td><?=json_encode($param["value"])?></td>
+	<td><input id="param[<?php echo $name; ?>][name]" value="<?=$name?>" style="width:100%" /></td>
+	<td><input id="param[<?php echo $name; ?>][label]" value="<?=$param["label"]?>" style="width:100%" /></td>
+	<td><p><select id="param[<?=$name?>][datatype]"><option value="">-- Choisir --</option><?php
+		foreach (data()->list_detail_get() as $info)
+			if ($info["name"] == $param["datatype"])
+				echo "<option value=\"$info[name]\" selected>$info[label]</option>";
+			else
+				echo "<option value=\"$info[name]\">$info[label]</option>";
+	?></select></p>
+	<p>Options</p>
+	<div id="param_opt_list_<?=$name?>"><input type="hidden" id="param[<?=$name?>][opt]" /><?php
+	if (isset($param["opt"])) foreach($param["opt"] as $i=>$j)
+	{
+		echo "<p>$i : <textarea id=\"param[$name][opt][$i]\">".json_encode($j)."</textarea> <input type=\"button\" value=\"-\" onclick=\"this.parentNode.parentNode.removeChild(this.parentNode)\" /></p>\n";
+	}
+	?></div>
+	<p><input size="8" /> : <input size="16" /> <input type="button" value="+" onclick="template_param_opt_add('<?=$name?>', this.parentNode.childNodes[0].value, this.parentNode.childNodes[2].value)" /></p></td>
+	<td><textarea id="param[<?php echo $name; ?>][value]" rows="4" style="width:100%"><?=json_encode($param["value"])?></textarea></td>
+	<td><input type="submit" value="UPDATE" onclick="template_param_update('<?=$name?>');" /></td>
 </tr>
 <?php
 }
 ?>
-</table>
-</form>
-
-<h3>Ajouter un paramètre :</h3>
-<form action="?id=<?=$id?>" method="post">
-<table>
 <tr>
-	<td>Name :</td>
-	<td><input name="param_add[name]" /></td>
+	<td colspan="6"><h3>Ajouter un paramètre :</h3></td>
 </tr>
 <tr>
-	<td>Label :</td>
-	<td><input name="param_add[label]" /></td>
-</tr>
-<tr>
-	<td>Type de donnée :</td>
-	<td><select name="param_add[datatype]">
+	<td>&nbsp;</td>
+	<td><select id="param_add[order]"><?php
+	for ($i=1;$i<=$ordermax+1;$i++)
+	{
+		if ($i > $ordermax)
+			echo "<option value=\"$i\" selected>$i</option>\n";
+		else
+			echo "<option value=\"$i\">$i</option>\n";
+	}
+	?></select></td>
+	<td><input id="param_add[name]" style="width:100%" /></td>
+	<td><input id="param_add[label]" style="width:100%" /></td>
+	<td><select id="param_add[datatype]">
 		<option value="">-- Sélectionner --</option>
 	<?php
 	foreach(data()->list_detail_get() as $datatype)
@@ -284,17 +174,12 @@ foreach ($template->param_list_detail() as $nb=>$param)
 	}
 	?>
 	</select></td>
-</tr>
-<tr>
-	<td>Valeur par défaut :</td>
-	<td><textarea name="param_add[value]" style="width:100%;" rows="10"></textarea></td>
-</tr>
-<tr>
-	<td>&nbsp;</td>
-	<td><input type="submit" value="Ajouter" /></td>
+	<td><textarea id="param_add[value]" style="width:100%;" rows="4"></textarea></td>
+	<td><input type="submit" value="ADD" onclick="template_param_add();" /></td>
 </tr>
 </table>
 </form>
+
 </div>
 
 <?php
@@ -323,17 +208,19 @@ else
 $tpl_type_list = array
 (
 	""=>"Tous les templates",
-	"root"=>"Principaux",
+	"container"=>"Principaux",
 	"datamodel"=>"Datamodels",
 	"inc"=>"Include",
 	"page"=>"Pages",
 );
+if (!isset($_GET["filter"]) || !array_key_exists($_GET["filter"], $tpl_type_list))
+	$_GET["filter"] = "";
 ?>
 <p>Filtrer l'affchage : <select name="filter" onchange="this.form.submit()">
 <?php
 foreach($tpl_type_list as $i=>$j)
 {
-	if (isset($_GET["filter"]) && $_GET["filter"]==$i)
+	if ($_GET["filter"]==$i)
 		echo "<option value=\"$i\" selected>$j</option>";
 	else
 		echo "<option value=\"$i\">$j</option>";
@@ -343,7 +230,10 @@ foreach($tpl_type_list as $i=>$j)
 </form>
 <?php
 
-$_type()->table_list();
+if ($_GET["filter"])
+	$_type()->table_list(array("type"=>$_GET["filter"]));
+else
+	$_type()->table_list();
 
 }
 ?>

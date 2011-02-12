@@ -16,27 +16,25 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Password
+ * 
+ * Can handle different encryption types
+ * Associated to a input/password form
+ *
  */
-class data_gestion extends gestion
+class data_password extends data_string
 {
 
-protected $type = "datatype";
+protected $opt = array
+(
+	"size" => 64,
+	"enctype" => "md5"
+);
 
-protected $info_required = array("name", "label");
-
-public function get($id)
-{
-
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
-
-}
+/* TODO : penser à la conversion en md5=>voir comment modifier par la suite
+ * le mieux est peut-être de stocker directement à l'insertion en md5
+ * pour pouvoir plus aisément comparer... a voir !!
+ */
 
 }
 

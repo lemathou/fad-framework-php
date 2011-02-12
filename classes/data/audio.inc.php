@@ -16,25 +16,21 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Audio
+ *
  */
-class data_gestion extends gestion
+class data_audio extends data_file
 {
 
-protected $type = "datatype";
+static protected $format_list = array("mp3"=>"audio/mpeg-1", "wav"=>"audio/wave", "wma"=>"audio/wma", "ogg"=>"audio/ogg", "ogg"=>"image_gif");
 
-protected $info_required = array("name", "label");
+protected $opt = array("fileformat"=>"mp3");
 
-public function get($id)
+function format_convert($format)
 {
 
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
+if (isset(self::$format_list[$format]))
+	$this->format = $format;
 
 }
 

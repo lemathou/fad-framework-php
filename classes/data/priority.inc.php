@@ -16,25 +16,24 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Priority
+ * 
+ * Integer unsigned
+ * 
  */
-class data_gestion extends gestion
+class data_priority extends data_integer
 {
 
-protected $type = "datatype";
+protected $opt = array
+(
+	"numeric_signed"=>false,
+	"size"=>1,
+);
 
-protected $info_required = array("name", "label");
-
-public function get($id)
+function __construct($name, $value, $label="Priority", $options=array())
 {
 
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
+data_integer::__construct($name, $value, $label, $options);
 
 }
 

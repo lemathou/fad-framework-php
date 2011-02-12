@@ -16,25 +16,28 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Amount of money
+ * 
+ * Float unsigned
+ * 
  */
-class data_gestion extends gestion
+class data_money extends data_measure
 {
 
-protected $type = "datatype";
+protected $opt = array
+(
+	"numeric_signed"=>true,
+	"size"=>8,
+	"numeric_precision"=>2,
+	"numeric_type"=>"&euro;"
+);
 
-protected $info_required = array("name", "label");
+protected $empty_value = null;
 
-public function get($id)
+function __construct($name, $value, $label="Amount", $options=array())
 {
 
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
+data_float::__construct($name, $value, $label, $options);
 
 }
 

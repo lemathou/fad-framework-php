@@ -47,13 +47,30 @@ function admin_data_id_update_toggle(element)
 		element.form.id.removeAttribute('readonly');
 }
 
+/* TEMPLATES */
+function template_param_add()
+{
+	$("[id^='param_add']").each(function(){
+		$(this).attr("name", this.id);
+	});
+}
+function template_param_update(name)
+{
+	$("[id^='param["+name+"]']").each(function(){
+		$(this).attr("name", this.id);
+	});
+}
+function template_param_opt_add(name, optname, optvalue)
+{
+	$("#param_opt_list_"+name).append('<p>'+optname+' : <textarea id=\"param['+name+'][opt]['+optname+']\">'+optvalue+'</textarea> <input type=\"button\" value=\"-\" onclick=\"this.parentNode.parentNode.removeChild(this.parentNode)\" /></p>\n');
+}
+
 /* PAGES */
 function page_param_update(name)
 {
-	var element = document.getElementById('param['+name+'][value]');
-	element.name = element.id;
-	element = document.getElementById('param['+name+'][update_pos]');
-	element.name = element.id;
+	$("[id^='param["+name+"]']").each(function(){
+		$(this).attr("name", this.id);
+	});
 }
 function page_param_add_cancel()
 {
@@ -63,14 +80,8 @@ function page_param_add(name)
 {
 	if (name)
 	{
-		$("input[id='param["+name+"][value]']").each(function(){
-			$(this).attr("name", "param_add[value]");
-		});
-		$("select[id='param["+name+"][update_pos]']").each(function(){
-			$(this).attr("name", "param_add[update_pos]");
-		});
-		$("input[id='param["+name+"][name]']").each(function(){
-			$(this).attr("name", "param_add[name]");
+		$("[id^='param["+name+"]']").each(function(){
+			$(this).attr("name", this.id);
 		});
 	}
 	else
@@ -79,4 +90,8 @@ function page_param_add(name)
 			$(this).attr("name", this.id);
 		});
 	}
+}
+function page_param_opt_add(name, optname, optvalue)
+{
+	$("#param_opt_list_"+name).append('<p>'+optname+' : <textarea id=\"param['+name+'][opt]['+optname+']\">'+optvalue+'</textarea> <input type=\"button\" value=\"-\" onclick=\"this.parentNode.parentNode.removeChild(this.parentNode)\" /></p>\n');
 }

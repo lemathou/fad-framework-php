@@ -201,7 +201,7 @@ foreach ($page_list as $i)
 		$link_list[] = "...";
 	elseif ($this->page == $i)
 		if (in_array("", $page_list))
-			$link_list[] = "<input class=\"autosize\" value=\"$i\" onfocus=\"this.select()\" onchange=\"document.location.href='".$url."page='+this.value\" onkeyup=\"if (this.value.length) this.style.width=(this.value.length*0.75+0.75)+'em'; else this.style.width='1.5em';\" style=\"width:".(strlen($i)*0.75+0.75)."em;\" />";
+			$link_list[] = "<div style=\"display: inline;\"><input class=\"autosize\" value=\"$i\" onfocus=\"this.select();this.parentNode.childNodes[1].style.visibility='visible';\" onblur=\"this.parentNode.childNodes[1].style.visibility='hidden';\" onchange=\"document.location.href='".$url."page='+this.value\" onkeyup=\"if (this.value.length) this.style.width=(this.value.length*0.75+0.75)+'em'; else this.style.width='1.5em';\" style=\"width:".(strlen($i)*0.75+0.75)."em;\" /><div class=\"page_listing_submit\">OK</div></div>";
 		else
 		$link_list[] = "<span class=\"selected\">$i</span>";
 	else

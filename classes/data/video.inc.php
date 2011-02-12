@@ -16,25 +16,21 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Video
+ *
  */
-class data_gestion extends gestion
+class data_video extends data_file
 {
 
-protected $type = "datatype";
+static protected $format_list = array("wmv"=>"video/wmv", "avi"=>"video/avi", "ogg"=>"video/ogg", "flv"=>"video/flv", "mp4"=>"video/mpeg-4", "mov"=>"video/quicktime");
 
-protected $info_required = array("name", "label");
+protected $opt = array("fileformat"=>"flv");
 
-public function get($id)
+function format_convert($format)
 {
 
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
+if (isset(self::$format_list[$format]))
+	$this->format = $format;
 
 }
 

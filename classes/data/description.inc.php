@@ -16,25 +16,23 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Description (text) field
+ *
+ * Maxlength fixed to 256
+ *
  */
-class data_gestion extends gestion
+class data_description extends data_text
 {
 
-protected $type = "datatype";
-
-protected $info_required = array("name", "label");
-
-public function get($id)
+protected $opt = array
+(
+	"size"=>256
+);
+	
+function __construct($name, $value, $label="Description", $options=array())
 {
 
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
+data_text::__construct($name, $value, $label, $options);
 
 }
 

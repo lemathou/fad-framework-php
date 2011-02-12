@@ -1,11 +1,13 @@
 <?php
 
 /**
-  * $Id: template.inc.php 27 2011-01-13 20:58:56Z lemathoufou $
+  * $Id: template.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -39,16 +41,23 @@ public function param_add($name, $info)
 
 if (!login()->perm(6))
 	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
-if (!is_string($name) || !preg_match("/^([a-zA-Z_-]*)$/", $name) || isset($this->param[$name]) || !is_array($info) || !isset($info["datatype"]) || !data()->exists_name($info["datatype"]))
+if (!is_string($name) || !preg_match("/^([a-zA-Z_-]*)$/", $name) || isset($this->param[$name]) || !is_array($info))
 	return false;
-if (!isset($info["defaultvalue"]) || !is_string($info["defaultvalue"]))
-	$info["defaultvalue"] = "null";
-if (!isset($info["description"]) || !is_string($info["description"]))
-	$info["description"] = "";
+if (!isset($info["datatype"]) || !data()->exists_name($info["datatype"]))
+	$info["datatype"] = "";
+if (!isset($info["value"]) || !is_string($info["value"]))
+	$info["value"] = "null";
+if (!isset($info["label"]) || !is_string($info["label"]))
+	$info["label"] = "";
 
-list($info["order"]) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$this->id'")->fetch_row();
-db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `value`) VALUES ('$this->id', '".$info["order"]."', '".$info["datatype"]."', '".$name."', '".db()->string_escape($info["defaultvalue"])."' )");
-db()->query("INSERT INTO `_template_params_lang` (`template_id`, `lang_id`, `name`, `description`) VALUES ('$this->id', '".SITE_LANG_ID."', '".db()->string_escape($name)."', '".db()->string_escape($info["description"])."' )");
+db()->query("INSERT INTO `_template_params` (`template_id`, `order`, `datatype`, `name`, `value`) VALUES ('$this->id', '".count($this->param)."', '".$info["datatype"]."', '".$name."', '".db()->string_escape($info["value"])."' )");
+db()->query("INSERT INTO `_template_params_lang` (`template_id`, `lang_id`, `name`, `label`) VALUES ('$this->id', '".SITE_LANG_ID."', '".$name."', '".db()->string_escape($info["label"])."' )");
+
+if (isset($info["opt"]) && is_array($info["opt"]))
+{
+	foreach ($info["opt"] as $i=>$j) if (is_string($i) && is_string($j))
+		db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, optvalue) VALUES ('$this->id', '$name', '".db()->string_escape($i)."', '".db()->string_escape(json_encode(json_decode($j)))."')");
+}
 
 $this->query_info();
 template()->query_info();
@@ -61,7 +70,7 @@ public function param_del($name)
 
 if (!login()->perm(6))
 	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
-if (!is_string($name) || !isset($this->param[$name]))
+if (!is_string($name) || !array_key_exists($name, $this->param))
 	return false;
 
 db()->query("DELETE FROM `_template_params` WHERE template_id='$this->id' AND name='$name'");
@@ -77,9 +86,11 @@ return true;
 public function param_update($name, $info)
 {
 
+//var_dump($info);
+
 if (!login()->perm(6))
 	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
-if (!is_string($name) || isset($this->param[$name]) || !is_array($info))
+if (!is_string($name) || !array_key_exists($name, $this->param) || !is_array($info))
 	return false;
 
 $update_list = array();
@@ -89,28 +100,46 @@ if (isset($info["datatype"]))
 		return false;
 	else
 		$update_list[] = "`datatype`='".$info["datatype"]."'";
-if (isset($info["defaultvalue"]))
-	if (!is_string($info["defaultvalue"]))
+if (isset($info["value"]))
+	if (!is_string($info["value"]))
 		return false;
 	else
-		$update_list[] = "`value`='".db()->string_escape($info["defaultvalue"])."'";
-if (isset($info["description"]))
-	if (!is_string($info["description"]))
+		$update_list[] = "`value`='".db()->string_escape($info["value"])."'";
+if (isset($info["label"]))
+	if (!is_string($info["label"]))
 		return false;
 	else
-		$update_lang_list[] = "`description`='".db()->string_escape($info["description"])."'";
-list($posmax) = db()->query("SELECT COUNT(*) FROM `_template_params` WHERE `template_id`='$this->id'")->fetch_row();
+		$update_lang_list[] = "`label`='".db()->string_escape($info["label"])."'";
+if (isset($info["name"]))
+	if (!is_string($info["name"]) || ($name != $info["name"] && array_key_exists($info["name"], $this->param)))
+		return false;
+	elseif ($name != $info["name"])
+	{
+		$update_list[] = "`name`='".db()->string_escape($info["name"])."'";
+		$update_lang_list[] = "`name`='".db()->string_escape($info["name"])."'";
+	}
 if (isset($info["order"]))
-	if (!is_numeric($info["order"]) || $info["order"] < 0 || $info["order"] > $pos_max)
+	if (!is_numeric($info["order"]) || $info["order"] < 0 || $info["order"] > count($this->param))
 		return false;
 
 if (count($update_list))
 {
-	db()->query("UPDATE `_template_params` SET ".implode($update_list)." WHERE `template_id`='$this->id' AND `name`='".$name."'");
+	$query_string = "UPDATE `_template_params` SET ".implode(", ", $update_list)." WHERE `template_id`='$this->id' AND `name`='".$name."'";
+	db()->query($query_string);
+	//echo "<p>DEBUG : $query_string</p>\n";
 }
 if (count($update_lang_list))
 {
-	db()->query("UPDATE `_template_params_lang` SET ".implode($update_lang_list)." WHERE `template_id`='$this->id' AND `lang_id`='".SITE_LANG_ID."' AND `name`='".$name."'");
+	db()->query("UPDATE `_template_params_lang` SET ".implode(", ", $update_lang_list)." WHERE `template_id`='$this->id' AND `lang_id`='".SITE_LANG_ID."' AND `name`='".$name."'");
+}
+
+if (isset($info["opt"]))
+{
+	db()->query("DELETE FROM `_template_params_opt` WHERE `template_id`='$this->id' AND `name`='$name'");
+	if (isset($info["name"]))
+		$name = $info["name"];
+	if (is_array($info["opt"])) foreach ($info["opt"] as $i=>$j) if (is_string($i) && is_string($j))
+		db()->query("INSERT INTO `_template_params_opt` (template_id, name, optname, optvalue) VALUES ('$this->id', '$name', '".db()->string_escape($i)."', '".db()->string_escape(json_encode(json_decode($j)))."')");
 }
 
 $this->query_info();

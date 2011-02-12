@@ -42,22 +42,10 @@ if (REDIRECT_LANG)
 
 // Choix de la page à partir de l'url
 page()->set();
-if (DEBUG_GENTIME == true)
-	gentime("PAGE_SET");
-
 // Actions sur la page
 page_current()->action();
-if (DEBUG_GENTIME == true)
-	gentime("PAGE_ACTION");
-
 // Affichage du template
-// TODO : intégrer le content_type dans le template container si il y a lieu d'afficher le template
-header("Content-type: text/html; charset=".SITE_CHARSET);
-if (DEBUG_GENTIME == true)
-	gentime("TEMPLATE_DISP [begin]");
-page_current()->tpl_disp();
-if (DEBUG_GENTIME == true)
-	gentime("TEMPLATE_DISP [end]");
+page_current()->template_disp();
 
 // Gestion message login
 login()->message_show();
@@ -70,7 +58,7 @@ if (DEBUG_GENTIME == true)
 
 ?>
 
-<?php if (DEBUG_GENTIME == true && login()->perm(2)) { // SuperAdmin ?>
+<?php if (false && DEBUG_GENTIME == true && login()->perm(2)) { // SuperAdmin ?>
 
 <div style="width:980px;margin:5px;padding:5px;background-color:white;">
 <h1>DEBUG Gentime</h1>

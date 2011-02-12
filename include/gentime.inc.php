@@ -3,9 +3,11 @@
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
-  * This file is part of FTNGroupWare.
+  * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -77,29 +79,29 @@ $sep = 0;
 foreach ($aff as $i)
 {
 	$t += $i["time"];
-	if ($i["time"] < 0.5)
-		$time = ($i["time"]*1000)." us";
-	else
-		$time = ($i["time"])." ms";
 	if ($i["time"] >= GENTIME_L)
 	{
 		$colornum = round(255-255*($i["time"])/($time_max), -1);
 		$color = "rgb(255,$colornum,$colornum)";
+		$time = ($i["time"])." ms";
 	}
 	elseif ($i["time"] >= GENTIME_M)
 	{
 		$colornum = round(255-255*($i["time"])/GENTIME_L, -1);
 		$color = "rgb($colornum,$colornum,255)";
+		$time = ($i["time"])." ms";
 	}
 	elseif ($i["time"] >= GENTIME_S)
 	{
 		$colornum = round(255-255*($i["time"])/GENTIME_M, -1);
 		$color = "rgb($colornum,255,$colornum)";
+		$time = ($i["time"])." ms";
 	}
 	else
 	{
 		$colornum = round(255-255*($i["time"])/GENTIME_S, -1);
 		$color = "rgb($colornum,$colornum,$colornum)";
+		$time = ($i["time"]*1000)." us";
 	}
 	$width = round(log($i["time"]*1000)*50)-round(log($time_min*1000)*50);
 	if (substr($i["name"], -5) == "[end]")

@@ -16,25 +16,26 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Data types global container class
+ * Image/Picture
+ *
  */
-class data_gestion extends gestion
+class data_image extends data_file
 {
 
-protected $type = "datatype";
+static protected $format_list = array("jpg"=>"image/jpeg", "png"=>"image/png", "gif"=>"image/gif");
 
-protected $info_required = array("name", "label");
+protected $opt = array("fileformat"=>"jpg", "imgquality"=>90);
 
-public function get($id)
+/*
+ * A TRAVAILLER... PAS EVIDENT
+ * On doit pouvoir forcer un format en entr�e, convertir en un format donn� au besoin.
+ */
+
+function format_convert($format)
 {
 
-if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
-else
-	return null;
+if (isset(self::$format_list[$format]))
+	$this->format = $format;
 
 }
 

@@ -191,6 +191,9 @@ $this->perm_list = array( 1, 3 );
 public function refresh()
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("login::refresh() [begin]");
+
 $this->disconnect_reason = 0;
 $this->login_message = "";
 
@@ -232,6 +235,9 @@ elseif (!$this->id && isset($_COOKIE["sid"]) && is_string($_COOKIE["sid"]) && st
 	//echo $_COOKIE["sid"];
 	$this->connect_sid($_COOKIE["sid"]);
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("login::refresh() [end]");
 
 }
 

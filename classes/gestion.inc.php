@@ -232,6 +232,7 @@ public function retrieve_objects()
 $type = $this->type;
 foreach ($this->list_detail as $id=>$info)
 {
+	//var_dump($info);
 	if (!isset($this->list[$id]))
 		$this->list[$id] = $this->construct_object($id);
 }
@@ -279,7 +280,7 @@ else
 function __get($name)
 {
 
-if (isset($this->list_name[$name]))
+if (array_key_exists($name, $this->list_name))
 {
 	return $this->get($this->list_name[$name]);
 }
@@ -374,9 +375,16 @@ $type = $this->_type;
 $this->id = $id;
 
 foreach ($infos as $name=>$value)
+{
+	//echo "<p>$id : $name</p>\n";
 	if (isset($this->{$name}))
+	{
+		//var_dump($value);
 		$this->{$name} = $value;
+	}
+}
 
+//var_dump($this->param_list);
 $this->construct_more($infos);
 
 if ($query)

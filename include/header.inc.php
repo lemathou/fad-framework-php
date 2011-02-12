@@ -15,10 +15,6 @@
 if (DEBUG_GENTIME == true)
 	include PATH_INCLUDE."/gentime.inc.php";
 
-if (DEBUG_GENTIME == true)
-	gentime(__FILE__." [begin]");
-
-
 // Common classes inclusion
 include PATH_INCLUDE."/classes.inc.php";
 
@@ -48,9 +44,6 @@ include PATH_INCLUDE."/datamodel.inc.php";
 // Permissions
 include PATH_INCLUDE."/permission.inc.php";
 
-// Login
-include PATH_INCLUDE."/login.inc.php";
-
 // Templates
 include PATH_INCLUDE."/template.inc.php";
 
@@ -69,13 +62,12 @@ datamodel();
 if (SESSION_START)
 {
 
+// Login
+include PATH_INCLUDE."/login.inc.php";
+
 // Login refresh
 login()->refresh();
 
 }
-
-
-if (DEBUG_GENTIME == true)
-	gentime(__FILE__." [end]");
 
 ?>

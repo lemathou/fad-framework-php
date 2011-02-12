@@ -24,16 +24,16 @@ class _datamodel_gestion extends gestion
 
 protected $type = "datamodel";
 
-protected $info_list = array("name", "library_id", "perm", "dynamic", "shared");
+protected $info_list = array("name", "perm", "dynamic", "shared");
 
 protected $info_detail = array
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
-	"library_id"=>array("label"=>"Librairies", "type"=>"object", "object_type"=>"library", "lang"=>false),
 	"dynamic"=>array("label"=>"Dynamique", "type"=>"boolean", "lang"=>false),
-	"shared"=>array("label"=>"Shared database", "type"=>"boolean", "lang"=>false) // TODO : or use a 'shared' keyword ..?
+	"shared"=>array("label"=>"Shared database", "type"=>"boolean", "lang"=>false), // TODO : or use a 'shared' keyword ..?
+	"script"=>array("label"=>"Class", "type"=>"script", "folder"=>PATH_DATAMODEL, "filename"=>"{name}.inc.php")
 );
 
 protected $retrieve_details = false;
@@ -85,7 +85,7 @@ protected $_type = "datamodel";
  *
  * @var integer
  */
-protected $library_id = 0;
+protected $library_id = 0; // TODO : depreacated
 
 /**
  * If objects are often updated, uses a specific _update field !
@@ -93,8 +93,9 @@ protected $library_id = 0;
 protected $dynamic = 0;
 
 /**
- * Shared datamodel & library, in the shared database TODO defined in config.inc.php
+ * Shared datamodel & library, in the shared database defined in config.inc.php
  * Be carefull that the mysql user must have select/insert/update/etc. right correctly defined !
+ * TODO : Put the good rights if there is only a select permission on database
  */
 protected $shared = false;
 protected $db = null;
@@ -145,6 +146,7 @@ protected $fields = array();
 protected $fields_required = array();
 protected $fields_calculated = array();
 protected $fields_index = array();
+protected $fields_ref = array();
 
 /*
  * Public actions / Kind of controller part of a MVC-like design
@@ -159,7 +161,7 @@ protected $objects = array();
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "dynamic", "shared", "perm", "library_id", "fields", "fields_required", "fields_calculated", "fields_index");
+return array("id", "name", "label", "description", "dynamic", "shared", "perm", "fields", "fields_required", "fields_calculated", "fields_index", "fields_ref", "action_list");
 
 }
 function __wakeup()
@@ -212,7 +214,7 @@ $this->fields_required = array();
 $this->fields_calculated = array();
 $this->fields_index = array();
 // Création des champs du datamodel
-$query = db()->query("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t1.`query` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
+$query = db("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t1.`query` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
 	$datatype = "data_$field[type]";
@@ -225,7 +227,7 @@ while ($field=$query->fetch_assoc())
 	if ($field["lang"])
 		$this->fields[$field["name"]]->opt_set("lang",true);
 }
-$query = db()->query("SELECT `fieldname`, `opt_name`, `opt_value` FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
+$query = db("SELECT `fieldname`, `opt_name`, `opt_value` FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
 while ($opt=$query->fetch_assoc())
 {
 	//echo "<p>$this->id : $opt[fieldname] : $opt[opt_name]</p>\n";
@@ -233,7 +235,15 @@ while ($opt=$query->fetch_assoc())
 	$this->fields[$opt["fieldname"]]->opt_set($opt["opt_name"], json_decode($opt["opt_value"], true));
 }
 
-// TODO : Transform datamodel from string to id if possible !
+$this->fields_ref = array();
+// References
+$query_string = "SELECT t1.`datamodel_id` as id, t1.`name` as name, t1.`type` as datatype, t3.`opt_value` as ref_id FROM `_datamodel_fields` as t1, `_datamodel_fields_opt` as t2 LEFT JOIN `_datamodel_fields_opt` as t3 ON t2.datamodel_id=t3.datamodel_id AND t2.fieldname=t3.fieldname AND t3.opt_name='db_ref_id' WHERE t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname AND t2.`opt_name`='datamodel' AND t2.`opt_value` IN ('$this->id', '\"$this->name\"')";
+$query = db($query_string);
+//echo "<p>$query_string</p>\n";
+while($ref=$query->fetch_assoc())
+{
+	$this->fields_ref[] = $ref;
+}
 
 $this->library_load();
 
@@ -252,18 +262,15 @@ return $this->label;
 public function library()
 {
 
-if ($this->library_id)
-	return library($this->library_id);
-else
-	return null;
+return library()->get($this->library_id);
 
 }
 function library_load()
 {
 
-if ($this->library_id)
+if ($library=$this->library())
 {
-	library($this->library_id)->load();
+	$library->load();
 }
 
 }
@@ -286,7 +293,7 @@ return $this->db;
 public function __get($name)
 {
 
-if (isset($this->fields[$name]))
+if (array_key_exists($name, $this->fields))
 	return $this->fields[$name];
 
 }
@@ -298,7 +305,7 @@ if (isset($this->fields[$name]))
 public function __isset($name)
 {
 
-return isset($this->fields[$name]);
+return array_key_exists($name, $this->fields);
 
 }
 
@@ -327,6 +334,12 @@ public function fields_index()
 {
 
 return $this->fields_index;
+
+}
+public function fields_ref()
+{
+
+return $this->fields_ref;
 
 }
 
@@ -373,7 +386,7 @@ else
 public function create($fields_all_init=false)
 {
 
-$classname = $this->name."_agregat";
+$classname = $this->name;
 $object = new $classname();
 if ($fields_all_init) foreach($this->fields as $name=>$field)
 	$object->{$name} = null;
@@ -386,15 +399,10 @@ return $object;
  * A better way is to create a new object and display the form using an object method 
  * @param $name
  */
-function insert_form($name="")
+function insert_form()
 {
 
-if ($name)
-	$datamodel_display = "$name";
-else
-	$datamodel_display = "datamodel_insert_form";
-
-return new $datamodel_display($this, $this->fields);
+return new datamodel_insert_form($this, $this->fields);
 
 }
 /**
@@ -436,7 +444,7 @@ else
 public function db_insert($object)
 {
 
-$fields = &$object->field_list();
+$fields = $object->field_list();
 
 // Verify required fields
 //foreach ($this->fields_required as $name) if (!$fields[$name]->nonempty())
@@ -538,6 +546,8 @@ if (count($query_list)>0)
 $object->id = $id;
 if ($this->dynamic)
 	$object->_update = $datetime;
+
+return $id;
 
 }
 
@@ -968,7 +978,7 @@ if (is_array($result = $this->db_select($params, $fields, $sort, $limit, $start)
 	foreach($result as $list)
 	{
 		$elm = array();
-		foreach($list as $name=>$value)
+		foreach($list as $name=>$value) if ($name != "id" && $name != "_update")
 		{
 			$elm[$name] = clone $this->fields[$name];
 			$elm[$name]->value_from_db($value);

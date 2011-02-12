@@ -9,7 +9,7 @@
   * http://sourceforge.net/projects/phpfadframework/
   * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
-  * Data Objects (agregat)
+  * Data Objects
   * 
   * Object corresponding to a given Datamodel specification.
   * Contains the data fields of the datamodel.
@@ -33,8 +33,7 @@ class dataobject
 
 /**
  * Datamodel specifications
- * NEEDS to be overloaded !!
- * 
+ *
  * @var integer
  */
 protected $datamodel_id=0;
@@ -60,7 +59,6 @@ protected $options = array();
 public function __sleep()
 {
 
-// TODO : Find a solution if the update had not to be saved !
 foreach ($this->fields as $name=>$field)
 	if ($field->value !== $this->field_values[$name])
 		$this->field_values[$name] = $field->value;
@@ -73,12 +71,6 @@ public function __wakeup()
 
 $this->datamodel_find();
 
-foreach ($this->field_values as $name=>$value)
-{
-	$this->fields[$name] = clone datamodel($this->datamodel_id)->{$name};
-	$this->fields[$name]->value = $value;
-}
-
 }
 
 /**
@@ -90,13 +82,7 @@ function __construct($id=null, $fields=array())
 {
 
 $this->datamodel_find();
-$this->datamodel_set();
-if (is_numeric($id) && $id>0)
-{
-	//$this->id = $id;
-	// $this->fields = $fields;
-	//$this->db_retrieve_all();
-}
+//$this->init();
 
 }
 
@@ -121,29 +107,21 @@ foreach ($this->fields as $name=>$field)
 protected function datamodel_find()
 {
 
-$datamodel_name = substr(get_called_class(),0,-8);
-if ($datamodel=datamodel($datamodel_name))
+if ($datamodel=datamodel(get_called_class()))
 {
 	$this->datamodel_id = $datamodel->id();
 }
 
 }
+
 /**
- * Sets required fields of the object from the datamodel informations
+ * Returns the datamodel
  */
-public function datamodel_set()
-{
-
-$this->fields = array();
-$this->field_values = array();
-$this->id = 0;
-$this->_update = time();
-
-}
 public function datamodel()
 {
 
-return datamodel($this->datamodel_id);
+if ($this->datamodel_id)
+	return datamodel($this->datamodel_id);
 
 }
 
@@ -164,10 +142,12 @@ if (array_key_exists($name, $this->fields))
 {
 	$this->fields[$name]->value = null;
 }
-elseif (array_key_exists($name, $this->field_values))
+else
 {
-	$this->fields_values[$name] = null;
+	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name]->value = null;
 }
+
 
 }
 
@@ -248,6 +228,16 @@ return $this->datamodel()->label()." ID#$this->id";
 public function field_list()
 {
 
+foreach ($this->datamodel()->fields() as $name=>$field)
+{
+	if (!array_key_exists($name, $this->fields))
+		$this->fields[$name] = clone $field;
+	if (array_key_exists($name, $this->field_values))
+		$this->fields[$name]->value = $this->field_values[$name];
+	else
+		$this->field_values[$name] = $this->fields[$name]->value;
+}
+
 return $this->fields;
 
 }
@@ -259,13 +249,10 @@ return $this->fields;
 public function init()
 {
 
-$this->id = 0;
+//$this->id = 0;
 $this->_update = time();
-foreach ($this->datamodel()->fields() as $name=>$field)
-{
-	$this->fields[$name] = clone $field;
-	$this->field_values[$name] = $field->value;
-}
+foreach($this->fields as $name=>$field)
+	$field->value = $this->datamodel()->{$name}->value;
 
 }
 /**
@@ -283,17 +270,21 @@ if (!$this->id)
 
 $params[] = array("name"=>"id", "type"=>"=", "value"=>$this->id);
 
-$params = array();
-if (!is_array($fields))
-	if (is_string($fields))
-		$fields = array($fields);
-	else
-		$fields = array();
+if (is_string($fields))
+	$fields = array($fields);
+elseif (!is_array($fields))
+	$fields = true;
 
 // Delete the fields we already have if we don't want all fields
-if (!$force) foreach ($fields as $i=>$name)
-	if (isset($this->fields[$name]))
-		unset($fields[$i]);
+if (!$force)
+{
+	if (is_array($fields)) foreach ($fields as $name)
+		if (array_key_exists($name, $this->fields) || array_key_exists($name, $this->field_list))
+			unset($fields[$i]);
+	else foreach ($this->datamodel()->fields() as $name=>$field)
+		if (array_key_exists($name, $this->fields) || array_key_exists($name, $this->field_list))
+			unset($fields[$i]);
+}
 
 // Effective Query
 if (count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
@@ -302,12 +293,15 @@ if (count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
 	{
 		foreach($list[0] as $name=>$field)
 		{
-			if (!isset($this->fields[$name]) && !isset($this->field_values[$name]))
+			if (!array_key_exists($name, $this->fields) && !array_key_exists($name, $this->field_values))
 			{
 				$this->fields[$name] = $field;
 				$this->field_values[$name] = $field->value;
 			}
 		}
+		$this->_update = time();
+		if (CACHE)
+			cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
 		return true;
 	}
 	else
@@ -429,7 +423,15 @@ return $view;
 public function db_insert($options=array())
 {
 
-return $this->datamodel()->db_insert($this);
+if ($this->datamodel()->db_insert($this))
+{
+	foreach ($this->fields as $name=>$field)
+		$this->field_values[$name] = $field->value;
+	$this->_update = time();
+	return true;
+}
+else
+	return false;
 
 }
 
@@ -547,8 +549,10 @@ if (false)
 $fields = array();
 foreach ($this->fields as $name=>$field)
 {
-	if ($this->field_values[$name] !== $field->value)
+	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
+	{
 		$fields[$name] = $field;
+	}
 }
 
 if (!count($fields))
@@ -557,9 +561,31 @@ if (!count($fields))
 if ($this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id)), $fields))
 {
 	foreach ($fields as $name=>$field)
+	{
+		// Update linked objects
+		if (get_class($field) == "data_dataobject_list" && ($datamodel=datamodel($field->opt("datamodel"))))
+		{
+			if (is_array($field->value)) foreach($field->value as $id)
+			{
+				if (!array_key_exists($name, $this->field_values) || (is_array($this->field_values[$name]) && !in_array($id, $this->field_values[$name])))
+				{
+					if ($object=$datamodel->get($id))
+						$object->db_retrieve(true, true);
+				}
+			}
+			if (isset($this->field_values[$name]) && is_array($this->field_values[$name])) foreach($this->field_values as $id)
+			{
+				if (is_array($field->value) && !in_array($id, $field->value))
+				{
+					if ($object=$datamodel->get($id))
+						$object->db_retrieve(true, true);
+				}
+			}
+		}
 		$this->field_values[$name] = $field->value;
+	}
 	$this->_update = time();
-	db()->query("INSERT INTO `_datamodel_update` (`datamodel_id`, `dataobject_id`, `account_id`, `action`, `datetime`) VALUES ('".$this->datamodel()->id()."', '".$this->id."', '".login()->id()."', 'u', NOW())");
+	//db()->query("INSERT INTO `_datamodel_update` (`datamodel_id`, `dataobject_id`, `account_id`, `action`, `datetime`) VALUES ('".$this->datamodel()->id()."', '".$this->id."', '".login()->id()."', 'u', NOW())");
 	if (CACHE)
 		cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
 	return true;
@@ -604,24 +630,111 @@ if (isset($action_list[$method]) && $action=$action_list[$method]["method"])
  * The most simple action...
  * Create an (almost) empty linked object
  * @param string $datamodel_name
+ * @param array $data_fields
+ * @param string $ref_id
+ * @param string $ref_field
+ * @param string $trigger_function
  * @return dataobject
  */
-public function ref_create($datamodel_name)
+public function ref_create($datamodel_name, $ref_id=null, $ref_field=null, $trigger_function=null, $data_fields=array(), $data_update_method="")
 {
 
-$name = $this->datamodel()->name();
-
-if ($datamodel=datamodel($datamodel_name) && isset($datamodel->{$name}))
+if ($datamodel=datamodel($datamodel_name))
 {
+	// Create object
 	$object = $datamodel->create();
-	$object->{$name} = $this->id;
-	return $object;
+	// Update fields
+	if (is_array($data_fields)) foreach($data_fields as $name=>$field)
+	{
+		if (is_a($field, "data"))
+			$object->__set($name, $field->value);
+		else
+			$object->__set($name, $field);
+	}
+	// Set ID
+	if (($ref_id && $datamodel->__isset($ref_id)) || $datamodel->__isset($ref_id=$this->datamodel()->name()))
+		$object->__set($ref_id, $this->id);
+	// Trigger function
+	if (is_string($trigger_function))
+		if (method_exists($this, "action_$trigger_function"))
+			$ok = call_user_func(array($this, "action_$trigger_function"), $object);
+		else
+			$ok = false;
+	else
+		$ok = true;
+	// Insert in Database and returns object
+	if  ($ok && $object->db_insert())
+	{
+		if ((($ref_field && ($field=$this->__get($ref_field))) || ($field=$this->__get($ref_field=$datamodel_name))) && $field->opt("datamodel") == $datamodel_name)
+		{
+			if (is_a($field, "data_dataobject_list"))
+				$field->value_add($object->id);
+			elseif (is_a($field, "data_dataobject"))
+				$field->value = $object->id;
+		}
+		return $object;
+	}
 }
 
 }
 
+public function ref_delete($datamodel_name, $id)
+{
+
+// TODO
+
 }
 
+public function ref_link($datamodel_name, $ref_id=null, $ref_field=null, $trigger_function=null, $id)
+{
+
+// Verify Datamodel & retrieve object
+if (($datamodel=datamodel($datamodel_name)) && ($object=$datamodel->get($id)))
+{
+	// Set ID
+	if (($ref_id && $datamodel->__isset($ref_id)) || $datamodel->__isset($ref_id=$this->datamodel()->name()))
+		$object->__set($ref_id, $this->id);
+	// Trigger function
+	if (is_string($trigger_function))
+		if (method_exists($this, "action_$trigger_function"))
+			$ok = call_user_func(array($this, "action_$trigger_function"), $object);
+		else
+			$ok = false;
+	else
+		$ok = true;
+	// Insert in Database and returns object
+	if  ($ok && ($object->db_update()))
+	{
+		if ($ref_field && ($field=$this->__get($ref_field)) && $field->opt("datamodel") == $datamodel_name)
+		{
+			if (is_a($field, "data_dataobject_list"))
+				$field->value_add($object->id);
+			elseif (is_a($field, "data_dataobject"))
+				$field->value = $object->id;
+		}
+		return $object;
+	}
+}
+
+}
+
+public function ref_unlink($datamodel_name, $id)
+{
+
+// TODO
+
+
+}
+
+public function ref_change($datamodel_name, $blahblah)
+{
+
+// TODO
+
+
+}
+
+}
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

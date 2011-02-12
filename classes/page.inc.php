@@ -68,6 +68,7 @@ while ($opt = $query_opt->fetch_row())
 
 /**
  * Set the default page
+ * This is like a dispatcher
  * 
  * ID#1 : home :  Homepage
  * ID#2 : notfound : Page does not exists (HTTP 404)
@@ -77,6 +78,9 @@ while ($opt = $query_opt->fetch_row())
  */
 public function set()
 {
+
+if (DEBUG_GENTIME == true)
+	gentime("page_gestion::set() [begin]");
 
 $i = array_pop($GLOBALS["url_e"]);
 
@@ -100,7 +104,8 @@ else
 		}
 	}
 	// Test existance
-	if (!$this->exists($i))
+	// TODO : define PAGE_ID only id exists and have permission, otherwise do something else elsewhere but not in this class !
+	if (!array_key_exists($i, $this->list_detail))
 	{
 		define("PAGE_ID", 2);
 	}
@@ -114,11 +119,11 @@ else
 	}
 }
 
-if (DEBUG_GENTIME == true)
-	gentime("PAGE_SET [1]");
-
 $this->page_id = PAGE_ID;
 $this->get(PAGE_ID)->set($url_params);
+
+if (DEBUG_GENTIME == true)
+	gentime("page_gestion::set() [end]");
 
 }
 
@@ -133,35 +138,6 @@ if ($this->page_id)
 	return $this->get($this->page_id);
 else
 	return null;
-
-}
-
-/**
- * Affichage d'un set de pages
- * 
- * @param unknown_type $options
- */
-public function disp($options=array())
-{
-
-$return = array();
-
-if (in_array("table",$options))
-{
-	foreach ($this->list as $page)
-	{
-		$return[] = $page->url();
-	}
-	print "<table class=\"menu\"><tr>\n<td>".implode("</td>\n<td>",$return)."</td>\n</tr></table>";
-}
-else
-{
-	foreach ($this->list as $page)
-	{
-		$return[] = $page->url();
-	}
-	print "<ul class=\"menu\">\n<li>".implode("</li>\n<li>",$return)."</li>\n</ul>";
-}
 
 }
 
@@ -186,7 +162,6 @@ protected $shortlabel = "";
 protected $template_id = 0;
 protected $param_list = array();
 protected $params_url = array();
-protected $params_get = array();
 // Effective parameters
 protected $param = array();
  
@@ -334,6 +309,7 @@ $this->param = array();
 $this->params_url = array();
 foreach($this->param_list as $name=>$param)
 {
+	//echo "<p>DEBUG page::construct_param : $name</p>\n";
 	if ($param["datatype"])
 		$datatype = "data_".$param["datatype"];
 	else
@@ -344,20 +320,6 @@ foreach($this->param_list as $name=>$param)
 	if (is_numeric($param["update_pos"]))
 		$this->params_url[$param["update_pos"]] = $name;
 }
-
-}
-
-/**
- * Returns if a param exists
- * @param $name
- */
-public function param_exists($name)
-{
-
-if (is_string($name) && array_key_exists($name, $this->param_list))
-	return true;
-else
-	return false;
 
 }
 /**
@@ -378,7 +340,16 @@ public function param_list_detail()
 return $this->param_list;
 
 }
+/**
+ * Returns if a param exists
+ * @param $name
+ */
+public function param_exists($name)
+{
 
+return (is_string($name) && array_key_exists($name, $this->param_list));
+
+}
 /**
  * Param exists ?
  * @param unknown_type $name
@@ -424,7 +395,7 @@ public function params_update_url($params=array())
 // Retrieved from the URL
 foreach($params as $pos=>$value)
 {
-	if (isset($this->params_url[$pos]) && ($name=$this->params_url[$pos]))
+	if (array_key_exists($pos, $this->params_url) && ($name=$this->params_url[$pos]))
 	{
 		if (DEBUG_TEMPLATE)
 			echo "<p>page(ID#$this->id)::params_update_url() : URL $name => $value</p>";
@@ -454,7 +425,13 @@ foreach($_GET as $name=>$value)
 public function set($params)
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("page::set() [begin]");
+
 $this->params_update_url($params);
+
+if (DEBUG_GENTIME == true)
+	gentime("page::set() [end]");
 
 }
 
@@ -480,7 +457,7 @@ if ($template=$this->template()) foreach ($this->param as $name=>$param)
 	if (DEBUG_TEMPLATE)
 		echo "<p>page(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $param->value</p>\n";
 	//var_dump($template);
-	$template->{$name} = $param->value;
+	$template->__set($name, $param->value);
 }
 
 }
@@ -499,39 +476,28 @@ if ($this->template_id && ($template=template($this->template_id)))
 
 }
 
-/**
- * Returns the associated template
- */
-function tpl()
-{
-
-if ($template=$this->template())
-{
-	$template->params_reset();
-	$this->params_apply();
-	return $template;
-}
-
-}
 
 /**
  * Display the associated template
  */
-function tpl_disp()
+function template_disp()
 {
+
+if (DEBUG_GENTIME == true)
+	gentime("page::tpl_disp() [begin]");
 
 if ($template=$this->template())
 {
-	//var_dump($template);
 	$template->params_reset();
-	//var_dump($this->param);
 	foreach ($this->param as $name=>$param)
 	{
-		//echo "<p>$name : $param->value</p>\n";
 		$template->__set($name, $param->value);
 	}
 	$template->disp();
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("page::tpl_disp() [end]");
 
 }
 
@@ -541,12 +507,18 @@ if ($template=$this->template())
 public function action()
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("page::action() [begin]");
+
 // TODO : use attribute script
 if (file_exists("page/$this->name.inc.php"))
 {
 	extract($this->param, EXTR_REFS);
 	include "page/$this->name.inc.php";
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("page::action() [end]");
 
 }
 

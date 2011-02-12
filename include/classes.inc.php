@@ -21,23 +21,35 @@ if (DEBUG_GENTIME == true)
 function __autoload($class_name)
 {
 
-//echo "<p>$class_name</p>\n";
-
 $s = substr($class_name, -8);
 
-// Datamodel
-if ($s == "_agregat" && ($name=substr($class_name, 0, -8)) && datamodel()->exists_name($name))
+// Gestion
+if ($s == "_gestion")
 {
-	datamodel()->{$name};
-	if (!class_exists($class_name))
+	if (file_exists($library=PATH_CLASSES."/".substr($class_name, 0, -8).".inc.php"))
+		include $library;
+}
+// Data
+elseif ($class_name == "data")
+{
+	include PATH_CLASSES."/data/_data.inc.php";
+}
+elseif (substr($class_name, 0, 5) == "data_")
+{
+	if ($name=substr($class_name, 5))
 	{
-		eval("class $class_name extends dataobject {};");
+		if (file_exists($library=PATH_CLASSES."/data/$name.inc.php"))
+			include $library;
+		elseif (file_exists($library=PATH_ROOT."/classes/data/$name.inc.php"))
+			include $library;
+		if (!class_exists($class_name, false))
+			eval("class $class_name extends data {};");
 	}
 }
-// Gestion
-elseif ($s == "_gestion" && file_exists($library=PATH_CLASSES."/".substr($class_name, 0, -8).".inc.php"))
+// Datamodel / Dataobject
+elseif ($class_name == "dataobject")
 {
-	include $library;
+	include PATH_CLASSES."/dataobject.inc.php";
 }
 // Framework native classes
 elseif (file_exists($library=PATH_CLASSES."/$class_name.inc.php"))
@@ -45,15 +57,28 @@ elseif (file_exists($library=PATH_CLASSES."/$class_name.inc.php"))
 	include $library;
 }
 // Project library
-elseif (file_exists($library=PATH_ROOT."/library/$class_name.inc.php"))
+elseif (file_exists($library=PATH_LIBRARY."/$class_name.inc.php"))
 {
 	include $library;
 }
+elseif (datamodel()->exists_name($class_name))
+{
+	if (file_exists($library=PATH_DATAMODEL."/$class_name.inc.php"))
+	{
+		include $library;
+	}
+	if (!class_exists($class_name, false))
+	{
+		eval("class $class_name extends dataobject {};");
+	}
+}
 
-if (!class_exists($class_name))
+/*
+if (!class_exists($class_name, false))
 {
 	die("Class $class_name could not be loaded...");
 }
+*/
 
 }
 

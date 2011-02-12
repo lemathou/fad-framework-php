@@ -38,9 +38,6 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-include PATH_CLASSES."/data.inc.php";
-
-
 /**
  * Data types access function
  * @param mime ref

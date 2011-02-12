@@ -1,9 +1,11 @@
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -66,7 +68,6 @@ table td
 tr.header td
 {
 	font-size: 1em;
-	padding: 10px;
 }
 td.label
 {
@@ -94,25 +95,21 @@ tr.label
 }
 
 /* Page specifics */
-table.tpl_params td
+table.tpl_params p
 {
-	padding: 0 1px;
-	border: 1px #ccc solid;
-}
-table.tpl_params tr.separator td
-{
-	border: 0;
-}
+	margin: 0;
+} 
 table.tpl_params tr.tpl_name td
 {
 	font-weight: bold;
-	border: 0;
 	font-size: 1em;
+	background-color: #ccf;
 } 
 table.tpl_params tr.title td
 {
 	font-weight: bold;
 	background-color: #ffa;
+	white-space: nowrap;
 }
 
 #databank_select_form

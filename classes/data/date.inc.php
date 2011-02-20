@@ -23,16 +23,16 @@ if (DEBUG_GENTIME == true)
  * Associated to a jquery datepickerUI form and a date DB field
  * 
  */
-class data_date extends data_string
+class data_date extends data_datetime
 {
 
-protected $empty_value = "00/00/0000";
+protected $empty_value = "0000-00-00"; // stored as Y-m-d
 
 protected $opt = array
 (
-	"ereg" => '/^(0?[1-9]|[12][0-9]|3[01])[\/](0?[1-9]|1[0-2])[\/](19|20)\d{2}$/',
-	"date_format" => "%A %d %B %G", // Defined for strftime()
-	"size" => 10,
+	"disp_format" => "%A %d %B %G", // Defined for strftime()
+	"form_format" => "d/m/Y", // Defined for date()
+	"db_format" => "Y-m-d", // Defined for date()
 );
 
 public function db_field_create()
@@ -42,105 +42,47 @@ return array("type" => "date");
 
 }
 
-/* Convert */
-function value_to_db()
+public function verify(&$value, $convert=false, $options=array())
 {
 
-if ($this->value === null)
-	return null;
+if (!preg_match("/([0-2][0-9]{3})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])/", $value))
+{
+	if ($convert)
+		$this->convert($value, $options);
+	return false;
+}
 else
-	return implode("-",array_reverse(explode("/",$this->value)));
+	return true;
 
 }
 function value_to_form()
 {
 
-if ($this->value === null)
-	return "";
-else
-	return $this->value;
-	
-}
-function value_from_db($value)
-{
-
-if ($value !== null)
-	$this->value = implode("/",array_reverse(explode("-",$value)));
-else
-	$this->value = null;
-
-}
-
-function view($style="")
-{
-
-if (!$style)
-	$style = $this->opt["date_format"];
-
 if ($this->nonempty())
-	return strftime($style, $this->timestamp());
-else
-	return "";
-
-}
-public function __tostring()
 {
-
-if ($this->nonempty())
-	return strftime($this->opt["date_format"], $this->timestamp());
+	return str_replace(array("Y", "m", "d"), explode("-", $this->value), $this->opt["form_format"]);
+}
 else
 	return "";
 
 }
 
-/**
- * Returns the timestamp calculated from the stored value
- */
-public function timestamp()
+function value_to_db()
 {
 
 if ($this->nonempty())
 {
-	$date_e = explode("/", $this->value);
-	return mktime(0, 0, 0, $date_e[1], $date_e[0], $date_e[2]);
+	return str_replace(array("Y", "m", "d"), explode("-", $this->value), $this->opt["db_format"]);
 }
 else
-	return null;
-
-}
-/**
- * Compare date timestamps and returns if the stored value is larger, smaller or equal to the passed value
- * @param timestamp $value
- */
-public function compare($value)
-{
-
-if ($this->value !== null)
-{
-	$time_1 = $this->timestamp();
-	$time_2 = $value;
-	if ($time_1 < $time_2)
-	{
-		return "<";
-	}
-	elseif ($time_1 == $time_2)
-	{
-		return "=";
-	}
-	else
-	{
-		return ">";
-	}
-}
-else
-	return false;
+	return "";
 
 }
 
-function now()
+public function form_field_disp($options=array())
 {
 
-$this->value = date("d/m/Y");
+return "<input type=\"text\" name=\"".$this->name."\" value=\"".$this->value_to_form()."\" size=\"10\" maxlength=\"10\" class=\"".get_called_class()."\" />";
 
 }
 

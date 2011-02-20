@@ -128,7 +128,7 @@ if ($this->type == "password")
 else
 	$type = "text";
 
-$return = "<input type=\"$type\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
+$return = "<input type=\"$type\" name=\"$this->name\" value=\"".$this->value_to_form()."\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
 
 if ($print)
 	print $return;

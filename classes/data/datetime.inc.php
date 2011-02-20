@@ -24,10 +24,12 @@ if (DEBUG_GENTIME == true)
 class data_datetime extends data_string
 {
 
-protected $empty_value = 0;
+protected $empty_value = "0000-00-00 00:00:00"; // stored as Y-m-d H:i:s
 protected $opt = array
 (
-	"datetime_format" => "%A %d %B %G à %H:%M:%S"
+	"disp_format" => "%A %d %B %G à %H:%M:%S", // Defined for strftime()
+	"form_format" => "d/m/Y H:i:s", // Defined for date()
+	"db_format" => "Y-m-d H:i:s", // Defined for date()
 );
 
 public function db_field_create()
@@ -41,65 +43,69 @@ return array("type"=>"datetime");
 public function verify(&$value, $convert=false, $options=array())
 {
 
-if (!is_string($value) || !$value)
+if (!ereg("/([0-2][0-9]{3})-(0[0-9]|1[0-2])-([0-2][0-9]|3[0-1]) ([0-1][0-9]|2[0-4]):([0-5][0-9]):([0-5][0-9])/", $value))
 {
 	if ($convert)
-		$value = null;
+		$this->convert($value, $options);
 	return false;
 }
-
-$return = true;
-
-$e = explode(" ", $value);
-if (!data_date::verify($e[0], true))
-	$return = false;
-
-if (!count($e) == 2)
-{
-	$e = array($e[0], "00:00:00");
-	$return = false;
-}
-elseif (!data_time::verify($e[1], true))
-	$return = false;
-
-if ($convert)
-	$value = implode(" ", $e);
-
-return $return;
+else
+	return true;
 
 }
-public function convert(&$value)
+function convert_from_form(&$value)
 {
 
-if (!is_string($value) || count($e=explode(" ", $value)) != 2 || (count($d=explode("/", $e[0])) != 3 && count($d=explode("-", $e[0])) != 3) || count($t=explode(":", $e[1])) != 3)
-	$value = null;
+$this->convert_from_format($value, $this->opt["form_format"]);
 
 }
-public function convert_after(&$value)
+function convert_from_db(&$value)
 {
 
-if ($value !== null)
+$this->convert_from_format($value, $this->opt["db_format"]);
+
+}
+function convert_from_format(&$value, $format)
 {
-	$e = explode(" ", $value);
-	if (count($d=explode("/", $e[0])) == 1)
-		$d = array_reverse(explode("-", $e[0]));
+
+$params = array("Y", "m", "d", "H", "i", "s");
+$pos = array();
+foreach($params as $param) if (($p=strpos($format, $param)) !== false)
+	$pos[$p] = $param;
+ksort($pos);
+$nb = 0;
+$p = array();
+foreach($pos as $i=>$j)
+{
+	$nb++;
+	$p[$nb] = $j;
+}
+$ereg = str_replace(array_merge($params, array("/")), array("([0-2][0-9]{3})", "(0[1-9]|1[0-2])", "(0[1-9]|[1-2][0-9]|3[0-1])", "(0[0-9]|1[0-9]|2[0-4])", "([0-5][0-9])" ,"([0-5][0-9])", "\/"), $format);
+//echo "<p>$ereg</p>";
+if (preg_match("/$ereg/", $value, $match))
+{
+	$r = array("Y"=>"0000", "m"=>"00", "d"=>"00", "H"=>"00", "i"=>"00", "s"=>"00");
+	foreach($p as $i=>$j)
+		$r[$j] = $match[$i];
+	//var_dump($r);
+	$value = str_replace($params, $r, $format);
+}
+else
+	$value = $this->empty_value;
+
+}
+function value_to_form()
+{
+
+if ($this->nonempty())
+{
+	$e = explode(" ", $this->value);
+	$d = explode("-", $e[0]);
 	$t = explode(":", $e[1]);
-	$value = mktime($t[0], $t[1], $t[2], $d[1], $d[0], $d[2]);
+	return str_replace(array("Y", "m", "d", "H", "i", "s"), array_merge($d, $t), $this->opt["form_format"]);
 }
-
-}
-public function value_from_db($value)
-{
-
-$this->value = $value;
-$this->convert($this->value);
-$this->convert_after($this->value);
-
-}
-public function value_to_db()
-{
-
-return date("Y-m-d H:i:s", $this->value);
+else
+	return "";
 
 }
 
@@ -107,48 +113,90 @@ return date("Y-m-d H:i:s", $this->value);
 public function __tostring()
 {
 
-if ($this->nonempty())
-	return strftime($this->opt["datetime_format"], $this->value);
-else
-	return "";
+return $this->view();
 
 }
-public function form_field_disp($print=true, $options=array())
+public function view($format="")
 {
 
-if ($this->nonempty())
-	$value = date("d/m/Y H:i:s", $this->value);
-else
-	$value = "";
-
-$return = "<input type=\"text\" name=\"".$this->name."\" value=\"$value\" size=\"19\" maxlength=\"19\" class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
+return $this->strftime($format);
 
 }
-public function date($str="")
+public function strftime($format="")
 {
 
 if (!$this->value)
 	return "";
-elseif (!$str)
-	return date("d/m/Y H:i:s", $this->value);
+elseif (!$format)
+	return strftime($this->opt["disp_format"], $this->value);
 else
-	return date($str, $this->value);
+	return strftime($format, $this->value);
 
 }
-public function strftime($str="")
+public function date($format="")
 {
 
 if (!$this->value)
 	return "";
-elseif (!$str)
-	return strftime($this->opt["datetime_format"], $this->value);
+elseif (!$format)
+	return date($this->opt["form_format"], $this->value);
 else
-	return strftime($str, $this->value);
+	return date($format, $this->value);
+
+}
+
+public function form_field_disp($options=array())
+{
+
+return "<input type=\"text\" name=\"".$this->name."\" value=\"$this->value".$this->value_to_form()."\" size=\"19\" maxlength=\"19\" class=\"".get_called_class()."\" />";
+
+}
+
+/**
+ * Returns the timestamp calculated from the stored value
+ */
+public function timestamp()
+{
+
+if ($this->nonempty())
+	return $this->value;
+else
+	return null;
+
+}
+/**
+ * Compare date timestamps and returns if the stored value is larger, smaller or equal to the passed value
+ * @param timestamp $value
+ */
+public function compare($value)
+{
+
+if ($this->value !== null)
+{
+	$time_1 = $this->value;
+	$time_2 = $value;
+	if ($time_1 < $time_2)
+	{
+		return "<";
+	}
+	elseif ($time_1 == $time_2)
+	{
+		return "=";
+	}
+	else
+	{
+		return ">";
+	}
+}
+else
+	return false;
+
+}
+
+function now()
+{
+
+$this->value = date($this->opt["value_format"]);
 
 }
 

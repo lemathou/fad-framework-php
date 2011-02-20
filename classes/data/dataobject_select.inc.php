@@ -21,11 +21,11 @@ if (DEBUG_GENTIME == true)
 class data_dataobject_select extends data_object
 {
 
-protected $value_empty = array();
+protected $value_empty = array(0, 0);
 
 protected $opt = array
 (
-	"datamodel_list" => array(), // liste des databank concern�es
+	"datamodel" => array("datamodel_1","datamodel_2"), // datamodel list
 	"db_databank_field" => "",
 	"db_id_field" => ""
 );
@@ -34,16 +34,6 @@ function __construct($name, $value, $label="Object (from a list)", $options=arra
 {
 
 data::__construct($name, $value, $label, $options);
-
-}
-
-function nonempty()
-{
-
-if ($this->value[0])
-	return true;
-else
-	return false;
 
 }
 
@@ -60,36 +50,10 @@ else
 function object()
 {
 
-if ($this->nonempty())
-	return datamodel($this->value[0])->get($this->value[1]);
+if ($this->nonempty() && ($datamodel=datamodel($this->value[0])) && ($object=$datamodel->get($this->value[1])))
+	return $object;
 else
 	return null;
-
-}
-
-// We retrieve the list (datamodel_id, object_id)
-function value_from_db($value)
-{
-
-if (!is_string($value) || count($list=explode(",",$value)) != 2)
-{
-	trigger_error("Data field '$this->name' : Bad value type");
-	$this->value = array(0, 0);
-}
-elseif (!in_array(($databank=$list[0]),$this->opt["datamodel_list"]))
-{
-	trigger_error("Data field '$this->name' : Undefined databank '$databank' in value");
-	$this->value = array(0, 0);
-}
-elseif(!($object = datamodel($databank,$list[1])))
-{
-	trigger_error("Data field '$this->name' : Undefined object in value");
-	$this->value = array(0, 0);
-}
-else
-{
-	$this->value = $object;
-}
 
 }
 
@@ -107,23 +71,18 @@ else
 
 }
 
-function value_from_form($value)
+function verify(&$value)
 {
 
 //print_r($value);
-if (is_array($value) && isset($value[0]) && isset($value[1]) && in_array(($databank=$value[0]),$this->opt["datamodel_list"]) && ($object = datamodel($databank,$value[1])))
+if (!is_array($value) || !isset($value[0]) || !isset($value[1]) || !in_array(!$value[0],$this->opt["datamodel"]) || !datamodel($value[0],$value[1]))
 {
-	$this->value = $value;
-}
-else
-{
-	$this->value = array(0, 0);
+	$value = array(0, 0);
 }
 
 }
 
 }
-
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

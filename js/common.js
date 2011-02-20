@@ -703,10 +703,13 @@ function article_edit(id)
 /* MODIFICATIONS GÉNÉRIQUES */
 
 $(document).ready( function(){
-	$("select.data_dataobject_list").asmSelect({
-		sortable: true,
-		animate: true,
-		addItemTarget: 'bottom'
+	$("select.data_dataobject_list").each(function(){
+		$(this).asmSelect({
+			sortable: true,
+			animate: true,
+			addItemTarget: 'bottom'
+		});
+		$("select.asmSelect", this.parentNode).hide();
 	});
 	$("select.data_fromlist").asmSelect({
 		sortable: true,

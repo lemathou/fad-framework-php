@@ -157,6 +157,7 @@ protected $action_list = array();
  * Objects
  */
 protected $objects = array();
+protected $objects_exists = array();
 
 function __sleep()
 {
@@ -466,14 +467,11 @@ else
  * @param boolean $fields_all_init (depreacated ?)
  * @return object
  */
-public function create($fields_all_init=false)
+public function create()
 {
 
 $classname = $this->name;
-$object = new $classname();
-if ($fields_all_init) foreach($this->fields_detail as $name=>$field)
-	$object->{$name} = null;
-return $object;
+return new $classname();
 
 }
 
@@ -642,13 +640,18 @@ if (!is_numeric($id) || $id <= 0)
 	return false;
 elseif (isset($this->objects[$id]))
 	return true;
+elseif (array_key_exists($id, $this->objects_exists))
+	return true;
 elseif (CACHE && ($object=cache::retrieve("dataobject_".$this->id."_".$id)))
 {
 	$this->objects[$id] = $object;
 	return true;
 }
 elseif (db()->query("SELECT 1 FROM `".$this->db."`.`".$this->name."` WHERE `id`='".db()->string_escape($id)."'")->num_rows())
+{
+	$this->objects_exists[$id] = true;
 	return true;
+}
 else
 	return false;
 
@@ -670,6 +673,8 @@ if (is_array($list=$this->db_delete($params)))
 	{
 		if (isset($this->objects[$id]))
 			unset($this->objects[$id]);
+		if (array_key_exists($id, $this->objects_exists))
+			unset($this->objects_exists[$id]);
 		if (CACHE)
 			$cache_delete_list[] = "dataobject_".$this->id."_".$id;
 	}
@@ -1040,6 +1045,7 @@ elseif (is_array($info_list=$this->db_select(array(array("name"=>"id", "value"=>
 	$object->update_from_db($o);
 	if (CACHE)
 		cache::store("dataobject_".$this->id."_".$id, $object, CACHE_DATAOBJECT_TTL);
+	//var_dump($object);
 	return $this->objects[$id] = $object;
 }
 else

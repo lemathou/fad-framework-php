@@ -454,6 +454,8 @@ public function update_from_db($fields=array())
 
 foreach ($fields as $name=>$value)
 {
+	//echo "<p>$name</p>";
+	//var_dump($value);
 	if ($name == "id")
 	{
 		$this->id = (int)$value;

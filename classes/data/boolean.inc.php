@@ -45,10 +45,11 @@ return array("type"=>"boolean");
 }
 
 /* Convert */
-public function value_from_db($value)
+public function convert_from_db(&$value)
 {
 
-$this->value = ($value) ? true : false;
+if ($value !== null)
+	$value = ($value=="1") ? true : false;
 
 }
 public function value_to_db()

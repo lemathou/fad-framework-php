@@ -19,12 +19,17 @@ if (DEBUG_GENTIME == true)
  * Time
  * 
  */
-class data_time extends data_string
+class data_time extends data_datetime
 {
 
-protected $empty_value = "00:00:00";
+protected $empty_value = "00:00:00"; // stored as H:i:s
 
-protected $opt = array("size"=>8);
+protected $opt = array
+(
+	"disp_format" => "%H:%M:%S", // Defined for strftime()
+	"form_format" => "H:i:s", // Defined for date()
+	"db_format" => "H:i:s", // Defined for date()
+);
 
 public function db_field_create()
 {
@@ -33,25 +38,17 @@ return array("type" => "time");
 
 }
 
-/* Convert */
 public function verify(&$value, $convert=false, $options=array())
 {
 
-if (!is_string($value) || !preg_match("/^(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])$/",$value))
+if (!ereg("/([0-1][0-9]|2[0-4]):([0-5][0-9]):([0-5][0-9])/", $value))
 {
 	if ($convert)
-		$value = $this->empty_value;
+		$this->convert($value, $options);
 	return false;
 }
-
-return true;
-
-}
-public function convert(&$value)
-{
-
-if (!is_string($value) || !preg_match("/^(([01][0-9])|(2[0-3])):([0-5][0-9]):([0-5][0-9])$/",$value))
-	$value = $this->empty_value;
+else
+	return true;
 
 }
 

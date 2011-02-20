@@ -248,6 +248,9 @@ public function convert_before(&$value)
 }
 public function convert(&$value, $options=array())
 {
+
+$value =  $this->empty_value;
+
 }
 public function convert_after(&$value)
 {
@@ -325,13 +328,25 @@ else
 public function value_from_db($value)
 {
 
-$this->value = $value;
+$this->value = &$value;
+if ($value !== null)
+{
+	$this->convert_from_db($value);
+	$this->verify($value, true);
+	$this->convert_after($value);
+}
 
 }
 public function value_to_db()
 {
 
 return $this->value;
+
+}
+public function convert_from_db(&$value)
+{
+
+// OVERLOAD
 
 }
 /**
@@ -343,7 +358,7 @@ return $this->value;
 public function db_query_param($value, $type="=")
 {
 
-if (!in_array($type, array("=", "<", ">", "<=", ">=", "<>", "LIKE", "NOT LIKE")))
+if (!in_array($type=strtoupper($type), array("=", "<", ">", "<=", ">=", "<>", "LIKE", "NOT LIKE")))
 	$type = "=";
 
 if (!isset($this->opt["db_field"]) || !($fieldname=$this->opt["db_field"]))
@@ -386,7 +401,19 @@ return array("type"=>"string");
 public function value_from_form($value)
 {
 
-$this->value_set($value, true);
+$this->value = &$value;
+if ($value !== null)
+{
+	$this->convert_from_form($value);
+	$this->verify($value, true);
+	$this->convert_after($value);
+}
+
+}
+public function convert_from_form(&$value)
+{
+
+// OVERLOAD
 
 }
 /**
@@ -398,10 +425,7 @@ $this->value_set($value, true);
 public function value_to_form()
 {
 
-if ($this->nonempty())
-	return $this->value;
-else
-	return "";
+return $this->__tostring();
 
 }
 /**

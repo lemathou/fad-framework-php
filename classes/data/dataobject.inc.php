@@ -72,13 +72,11 @@ else
 
 }
 
-function value_from_db($value)
+function convert_from_db(&$value)
 {
 
-if ($value === null)
-	$this->value = null;
-else
-	$this->value = (int)$value;
+if (is_numeric($value))
+	$value = (int)$value;
 
 }
 

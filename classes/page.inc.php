@@ -18,7 +18,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Defines the accessible pages
  */
-class _page_gestion extends gestion
+class __page_gestion extends _gestion
 {
 
 protected $type = "page";
@@ -147,7 +147,7 @@ else
  * Defines an element of the menu, accessible via an specific url
  *
  */
-class _page extends object_gestion
+class __page extends _object_gestion
 {
 
 protected $_type = "page";
@@ -357,7 +357,7 @@ return (is_string($name) && array_key_exists($name, $this->param_list));
 public function __isset($name)
 {
 
-return array_key_exists($name, $this->param);
+return $this->param_exists($name);
 
 }
 /**
@@ -369,7 +369,7 @@ return array_key_exists($name, $this->param);
 public function __get($name)
 {
 
-if (array_key_exists($name, $this->param))
+if (is_string($name) && array_key_exists($name, $this->param))
 	return $this->param[$name];
 
 }
@@ -380,7 +380,7 @@ if (array_key_exists($name, $this->param))
 public function __set($name, $value)
 {
 
-if (array_key_exists($name, $this->param))
+if (is_string($name) && array_key_exists($name, $this->param))
 	$this->param[$name]->value = $value;
 
 }
@@ -585,8 +585,8 @@ if (ADMIN_LOAD == true)
 }
 else
 {
-	class page_gestion extends _page_gestion {};
-	class page extends _page {};
+	class _page_gestion extends __page_gestion {};
+	class _page extends __page {};
 }
 
 

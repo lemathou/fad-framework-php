@@ -36,20 +36,20 @@ if (DEBUG_GENTIME == true)
 function datamodel($datamodel_id=null, $object_id=null)
 {
 
-if (!isset($GLOBALS["datamodel_gestion"]))
+if (!isset($GLOBALS["_datamodel"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve datamodel() [begin]");
 	if (CACHE)
 	{
-		if (!($GLOBALS["datamodel_gestion"]=cache::retrieve("datamodel_gestion")))
-			$GLOBALS["datamodel_gestion"] = new datamodel_gestion();
+		if (!($GLOBALS["_datamodel"]=cache::retrieve("_datamodel")))
+			$GLOBALS["_datamodel"] = new _datamodel_gestion();
 	}
 	else // Session
 	{
-		if (!isset($_SESSION["datamodel_gestion"]))
-			$_SESSION["datamodel_gestion"] = new datamodel_gestion();
-		$GLOBALS["datamodel_gestion"] = $_SESSION["datamodel_gestion"];
+		if (!isset($_SESSION["_datamodel"]))
+			$_SESSION["_datamodel"] = new _datamodel_gestion();
+		$GLOBALS["_datamodel"] = $_SESSION["_datamodel"];
 	}
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve datamodel() [end]");
@@ -57,10 +57,10 @@ if (!isset($GLOBALS["datamodel_gestion"]))
 
 if ($datamodel_id === null)
 {
-	return $GLOBALS["datamodel_gestion"];
+	return $GLOBALS["_datamodel"];
 }
 
-if ( !(is_numeric($datamodel_id) && ($datamodel=$GLOBALS["datamodel_gestion"]->get($datamodel_id))) && !(is_string($datamodel_id) && ($datamodel=$GLOBALS["datamodel_gestion"]->get_name($datamodel_id))))
+if ( !(is_numeric($datamodel_id) && ($datamodel=$GLOBALS["_datamodel"]->get($datamodel_id))) && !(is_string($datamodel_id) && ($datamodel=$GLOBALS["_datamodel"]->get_name($datamodel_id))))
 {
 	return null;
 }

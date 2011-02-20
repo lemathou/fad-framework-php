@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class gestion extends _gestion
+class _gestion extends __gestion
 {
 
 
@@ -145,7 +145,7 @@ protected function add_more($id, $infos)
 
 }
 
-public function insert_form($action="")
+public function insert_form($action="", $fields=array())
 {
 
 if (!login()->perm(6))
@@ -157,7 +157,9 @@ if (!login()->perm(6))
 <?php
 foreach ($this->info_detail as $name=>$info)
 {
-	if (!isset($info["default"]))
+	if (is_array($fields) && isset($fields[$name]))
+		$info["default"] = $fields[$name];
+	elseif (!isset($info["default"]))
 		$info["default"] = null;
 ?>
 <tr>
@@ -299,7 +301,7 @@ foreach ($this->list as $id=>$object)
 
 };
 
-class object_gestion extends _object_gestion
+class _object_gestion extends __object_gestion
 {
 
 /**

@@ -42,7 +42,7 @@ data_float::__construct($name, $value, $label, $options);
 function __tostring()
 {
 
-if ($this->nonempty())
+if ($this->nonempty()) // TODO : fnction pour afficher proprement une mesure
 	return $this->value." ".$this->opt["numeric_type"];
 else
 	return "";

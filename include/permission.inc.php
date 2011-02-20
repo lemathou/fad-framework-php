@@ -21,31 +21,31 @@ if (DEBUG_GENTIME == true)
 function permission($ref=null)
 {
 
-if (!isset($GLOBALS["permission_gestion"]))
+if (!isset($GLOBALS["_permission"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve permission() [begin]");
 	if (CACHE)
 	{
-		if (!($GLOBALS["permission_gestion"]=cache::retrieve("permission_gestion")))
-			$GLOBALS["permission_gestion"] = new permission_gestion();
+		if (!($GLOBALS["_permission"]=cache::retrieve("permission")))
+			$GLOBALS["_permission"] = new _permission_gestion();
 	}
 	else // Session
 	{
-		if (!isset($_SESSION["permission_gestion"]))
-			$_SESSION["permission_gestion"] = new permission_gestion();
-		$GLOBALS["permission_gestion"] = $_SESSION["permission_gestion"];
+		if (!isset($_SESSION["_permission"]))
+			$_SESSION["_permission"] = new _permission_gestion();
+		$GLOBALS["_permission"] = $_SESSION["_permission"];
 	}
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve permission() [end]");
 }
 
 if (is_numeric($ref))
-	return $GLOBALS["permission_gestion"]->get($ref);
+	return $GLOBALS["_permission"]->get($ref);
 elseif (is_string($ref))
-	return $GLOBALS["permission_gestion"]->get_name($ref);
+	return $GLOBALS["_permission"]->get_name($ref);
 else
-	return $GLOBALS["permission_gestion"];
+	return $GLOBALS["_permission"];
 
 }
 

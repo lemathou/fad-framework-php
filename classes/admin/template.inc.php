@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class template_gestion extends _template_gestion
+class _template_gestion extends __template_gestion
 {
 
 protected function del_more($id)
@@ -30,7 +30,7 @@ db()->query("DELETE FROM `_template_params_opt` WHERE template_id='$id'");
 }
 
 
-class template extends _template
+class _template extends __template
 {
 
 /**

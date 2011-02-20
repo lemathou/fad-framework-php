@@ -16,7 +16,7 @@ define("GENTIME_S",0.25);
 define("GENTIME_M",1);
 define("GENTIME_L",5);
 
-class gentime
+class _gentime
 {
 
 protected $list = array();
@@ -150,18 +150,18 @@ echo "</table\n>";
 function gentime($name=null)
 {
 
-if (!isset($GLOBALS["gentime"]))
-	$GLOBALS["gentime"] = new gentime();
+if (!isset($GLOBALS["_gentime"]))
+	$GLOBALS["_gentime"] = new _gentime();
 
 if (is_string($name))
-	$GLOBALS["gentime"]->add($name);
+	$GLOBALS["_gentime"]->add($name);
 else
-	return $GLOBALS["gentime"];
+	return $GLOBALS["_gentime"];
 
 }
 
 // Instancié de suite pour être le plus précis possible !
-$gentime = new gentime();
+gentime();
 	
 gentime("BEGIN");
 

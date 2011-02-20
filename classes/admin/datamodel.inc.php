@@ -13,7 +13,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class datamodel_gestion extends _datamodel_gestion
+class _datamodel_gestion extends __datamodel_gestion
 {
 
 protected function del_more($id)
@@ -27,37 +27,28 @@ db()->query("DELETE FROM `_datamodel_fields_opt_lang` WHERE `datamodel_id`='$id'
 
 }
 
-}
-
-class datamodel extends _datamodel
+function insert_form()
 {
 
-/**
- * Delete a data field
- * @param unknown_type $name
- */
-public function __unset($name)
-{
+$script = "<?php\n\nclass $this->type extends dataobject\n{\n\nfunction __tostring()\n{\n\nreturn;\n\n}\n\n}\n\n?>";
 
-$this->field_delete($name);
+_gestion::insert_form(null, array("script"=>$script));
 
 }
+
+}
+
+class _datamodel extends __datamodel
+{
 
 /*
  * Add a data field
  */
-public function __set($name, data $field)
-{
-
-$this->field_add($field);
-
-}
-
 public function field_add($field, $options="")
 {
 
 // TODO : security : send an email with complete info about the one who tried to do this and blacklist him if possible ?
-if (!login()->perm(6))
+if (!login()->perm(2))
 	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
 
 if (!is_array($field))
@@ -66,19 +57,19 @@ if (!is_array($field))
 if (!isset($field["type"]) || !($field["type"]) || !isset(data()->{$field["type"]}))
 	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : type");
 
-if (!isset($field["name"]) || !preg_match("/([a-z])+/", $field["name"]))
+if (!isset($field["name"]) || !preg_match("/([a-z]+)/", $field["name"]))
 	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : name");
 
-if (!isset($field["opt"]) || !isset($field["query"]) || !isset($field["lang"]) || !isset($field["label"]))
+if (!isset($field["update"]) || !isset($field["query"]) || !isset($field["lang"]) || !isset($field["label"]))
 	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : opt, query, lang, label");
 
 if (!isset($field["pos"]) || !is_numeric($field["pos"]) || $field["pos"] < 0)
 	die("datamodel(ID#$this->id)::field_add() : Invalid parameters : pos");
 
 $defaultvalue = "'".db()->string_escape($field["defaultvalue"])."'";
-$pos_max = count($this->fields) + 1;
+$pos_max = count($this->fields_detail) + 1;
 
-db()->query("INSERT INTO _datamodel_fields (datamodel_id, pos, name, type, defaultvalue, opt, `query`, lang) VALUES ('$this->id', '$pos_max', '".$field["name"]."', '".$field["type"]."', $defaultvalue, '".$field["opt"]."', '".$field["query"]."', '".$field["lang"]."')");
+db()->query("INSERT INTO _datamodel_fields (datamodel_id, pos, name, type, defaultvalue, `update`, `query`, lang) VALUES ('$this->id', '$pos_max', '".$field["name"]."', '".$field["type"]."', $defaultvalue, '".$field["update"]."', '".$field["query"]."', '".$field["lang"]."')");
 db()->query("INSERT INTO _datamodel_fields_lang (datamodel_id, lang_id, fieldname, label) VALUES ('$this->id', '".SITE_LANG_ID."', '".$field["name"]."', '".db()->string_escape($_POST["label"])."')");
 
 // Gestion du repositionnement
@@ -118,7 +109,7 @@ public function field_delete($name)
 if (!login()->perm(6))
 	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
 
-if (!isset($this->fields[$name]))
+if (!array_key_exists($name, $this->fields_detail))
 	die("datamodel(ID#$this->id)::field_delete() : Field $name does not exists");
 
 
@@ -151,7 +142,7 @@ function field_update($name, $field)
 if (!login()->perm(6))
 	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
-if (!isset($this->fields[$name]))
+if (!array_key_exists($name, $this->fields_detail))
 	die("datamodel(ID#$this->id)::field_update() : Field $name does not exists");
 
 if (!is_array($field))
@@ -160,10 +151,10 @@ if (!is_array($field))
 if (!isset($field["type"]) || !($field["type"]) || !isset(data()->{$field["type"]}))
 	die("datamodel(ID#$this->id)::field_update() : Invalid parmeters updating field $name");
 
-if (!isset($field["name"]) || !preg_match("/([a-z])+/", $field["name"]))
+if (!isset($field["name"]) || !preg_match("/([a-z]+)/", $field["name"]))
 	die("datamodel(ID#$this->id)::field_update() : Invalid parmeters updating field $name");
 
-if (!isset($field["opt"]) || !isset($field["lang"]) || !isset($field["label"]))
+if (!isset($field["update"]) || !isset($field["lang"]) || !isset($field["label"]))
 	die("datamodel(ID#$this->id)::field_update() : Invalid parmeters updating field $name");
 
 // Query infos
@@ -185,7 +176,7 @@ else
 	$defaultvalue = "''";
 
 // Update old values
-$query_str = "UPDATE `_datamodel_fields` SET `name`='".$field["name"]."', `type`='".$field["type"]."', `defaultvalue`=$defaultvalue, `opt`='".db()->string_escape($field["opt"])."', `query`='".db()->string_escape($field["query"])."', `lang`='".db()->string_escape($field["lang"])."' WHERE `datamodel_id`='$this->id' AND name='$name'";
+$query_str = "UPDATE `_datamodel_fields` SET `name`='".$field["name"]."', `type`='".$field["type"]."', `defaultvalue`=$defaultvalue, `update`='".db()->string_escape($field["update"])."', `query`='".db()->string_escape($field["query"])."', `lang`='".db()->string_escape($field["lang"])."' WHERE `datamodel_id`='$this->id' AND name='$name'";
 db()->query($query_str);
 $query_str = "UPDATE `_datamodel_fields_lang` SET `fieldname`='".$field["name"]."', `label`='".db()->string_escape($field["label"])."' WHERE `datamodel_id`='$this->id' AND `fieldname`='$name'";
 db()->query($query_str);
@@ -232,15 +223,12 @@ if (CACHE)
 	cache::store("datamodel_$this->id", $this, CACHE_GESTION_TTL);
 }
 
+$datafield = $this->__get($field["name"]);
 // Mise à jour du champ dans la table associée
-if ($db_sync)
-{
-	$this->query_info();
-	if (isset($field["lang"]) && $field["lang"])
-		db()->field_update($this->name."_lang", $name, $field["name"], $datafield->db_field_create());
-	else
-		db()->field_update($this->name, $name, $field["name"], $datafield->db_field_create());
-}
+if (isset($field["lang"]) && $field["lang"])
+	db()->field_update($this->name."_lang", $name, $field["name"], $datafield->db_field_create());
+else
+	db()->field_update($this->name, $name, $field["name"], $datafield->db_field_create());
 
 }
 
@@ -279,7 +267,7 @@ if ($this->dynamic)
 }
 
 // Other fields
-foreach ($this->fields as $name=>$field)
+foreach ($this->fields() as $name=>$field)
 {
 	if ($field->type != "dataobject_list")
 	{
@@ -409,9 +397,8 @@ function table_list($params=array(), $fields=array(), $sort=array(), $page=1, $p
 <tr>
 	<td class="label" width="250" valign="top"><h3>Sélection :</h3></td>
 	<td><table id="databank_params"><?php
-	foreach ($this->fields as $field)
+	foreach ($this->fields() as $field)
 	{
-		$field = clone $field;
 		echo "<tr>\n";
 		echo "<td class=\"label\"><label for=\"$field->name\">$field->label</label></td>\n";
 		echo "<td>";
@@ -495,7 +482,7 @@ foreach($list as $nb=>$object)
 		echo "<tr>\n";
 			echo "<td><b><a href=\"javascript:;\" onclick=\"databank_list_sort('zeform','id')\">ID</a></b></td>";
 			echo "<td>Default display</td>";
-		foreach($object->field_list() as $field) if (in_array($field->name, $fields))
+		foreach($object->fields() as $field) if (in_array($field->name, $fields))
 		{
 			echo "<td><b><a href=\"javascript:;\" onclick=\"databank_list_sort('zeform','$field->name')\">".$field->label."</a></b></td>";
 		}
@@ -504,15 +491,15 @@ foreach($list as $nb=>$object)
 	echo "<tr>\n";
 			echo "<td width=\"20\"><a href=\"?datamodel_id=$this->id&object_id=$object->id\">$object->id</a></td>";
 			echo "<td>$object</td>";
-	foreach($object->field_list() as $field) if (in_array($field->name, $fields))
+	foreach($object->fields() as $field) if (in_array($field->name, $fields))
 	{
 		if ($field->type == "dataobject" && $field->nonempty())
-			echo "<td><a href=\"?datamodel_id=".$field->structure_opt("databank")."&object_id=$field->value\">$field</a></td>";
+			echo "<td><a href=\"?datamodel_id=".$field->opt("datamodel")."&object_id=$field->value\">$field</a></td>";
 		elseif ($field->type == "dataobject_list" && $field->nonempty())
 		{
 			$fi=array();
 			foreach($field->object_list() as $o)
-				$fi[] = "<a href=\"?datamodel_id=".$field->structure_opt("databank")."&object_id=$o->id\">$o</a>";
+				$fi[] = "<a href=\"?datamodel_id=".$field->opt("datamodel")."&object_id=$o->id\">$o</a>";
 			echo "<td>".implode(", ", $fi)."</td>";
 		}
 		else

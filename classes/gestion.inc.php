@@ -20,7 +20,7 @@ if (DEBUG_GENTIME == true)
  * Default object data bank
  * @author mathieu
  */
-abstract class _gestion
+abstract class __gestion
 {
 
 protected $type = "";
@@ -198,7 +198,7 @@ if (!$rd)
 }
 
 if (CACHE)
-	cache::store($this->type."_gestion", $this, CACHE_GESTION_TTL);
+	cache::store($this->type, $this, CACHE_GESTION_TTL);
 
 }
 protected function query_info_more()
@@ -214,7 +214,7 @@ protected function query_info_more()
 protected function construct_object($id)
 {
 
-$type = $this->type;
+$type = "_$this->type";
 
 if ($this->retrieve_details)
 	return new $type($id, false, $this->list_detail[$id]);
@@ -358,7 +358,7 @@ else
 /**
  * Default object type
  */
-abstract class _object_gestion
+abstract class __object_gestion
 {
 
 protected $_type = "";
@@ -499,8 +499,8 @@ if (ADMIN_LOAD == true)
 }
 else
 {
-	class gestion extends _gestion {};
-	class object_gestion extends _object_gestion {};
+	class _gestion extends __gestion {};
+	class _object_gestion extends __object_gestion {};
 }
 
 

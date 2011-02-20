@@ -21,31 +21,31 @@ if (DEBUG_GENTIME == true)
 function library($ref=null)
 {
 
-if (!isset($GLOBALS["library_gestion"]))
+if (!isset($GLOBALS["_library"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve library() [begin]");
 	if (CACHE)
 	{
-		if (!($GLOBALS["library_gestion"]=cache::retrieve("library_gestion")))
-			$GLOBALS["library_gestion"] = new library_gestion();
+		if (!($GLOBALS["_library"]=cache::retrieve("library")))
+			$GLOBALS["_library"] = new _library_gestion();
 	}
 	else // Session
 	{
-		if (!isset($_SESSION["library_gestion"]))
-			$_SESSION["library_gestion"] = new library_gestion();
-		$GLOBALS["library_gestion"] = $_SESSION["library_gestion"];
+		if (!isset($_SESSION["_library"]))
+			$_SESSION["_library"] = new _library_gestion();
+		$GLOBALS["_library"] = $_SESSION["_library"];
 	}
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve library() [end]");
 }
 
 if (is_numeric($ref))
-	return $GLOBALS["library_gestion"]->get($ref);
+	return $GLOBALS["_library"]->get($ref);
 elseif (is_string($ref))
-	return $GLOBALS["library_gestion"]->get_name($ref);
+	return $GLOBALS["_library"]->get_name($ref);
 else
-	return $GLOBALS["library_gestion"];
+	return $GLOBALS["_library"];
 
 }
 

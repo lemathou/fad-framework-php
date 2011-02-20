@@ -13,13 +13,13 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class menu_gestion extends _menu_gestion
+class _menu_gestion extends __menu_gestion
 {
 
 
 };
 
-class menu extends _menu
+class _menu extends __menu
 {
 
 public function add($page_id, $pos=null)

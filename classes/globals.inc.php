@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class globals
+class _globals
 {
 
 protected $list = array();

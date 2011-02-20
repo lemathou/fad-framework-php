@@ -21,12 +21,20 @@ if (DEBUG_GENTIME == true)
 function __autoload($class_name)
 {
 
+// TODO : simplifier le chargemenbt dynamique de classe !!!!
+//echo "<p>__autoload('$class_name')</p>\n";
+
 $s = substr($class_name, -8);
 
 // Gestion
-if ($s == "_gestion")
+if ($class_name != "_gestion" && substr($class_name, 0, 1) == "_" && $s == "_gestion")
 {
-	if (file_exists($library=PATH_CLASSES."/".substr($class_name, 0, -8).".inc.php"))
+	if (file_exists($library=PATH_CLASSES."/".substr($class_name, 1, -8).".inc.php"))
+		include $library;
+}
+elseif (substr($class_name, 0, 1) == "_")
+{
+	if (file_exists($library=PATH_CLASSES."/".substr($class_name, 1).".inc.php"))
 		include $library;
 }
 // Data

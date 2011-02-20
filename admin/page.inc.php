@@ -90,7 +90,6 @@ if (isset($_POST["param"]) && is_array($_POST["param"])) foreach ($_POST["param"
 {
 	//echo "<p>$name</p>\n";
 	//var_dump($param);
-	//var_dump(isset($page->{$name}));
 	if (isset($page->{$name}))
 		$page->param_update($name, $param);
 	else

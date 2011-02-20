@@ -21,28 +21,23 @@ if (DEBUG_GENTIME == true)
 function db($query=null)
 {
 
-if (!isset($GLOBALS["db"]))
+if (!isset($GLOBALS["_db"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve db() [begin]");
 	// TODO : Mettre les données de session de db() dans login()
-	/*
-	if (!isset($_SESSION["db"]))
-		$_SESSION["db"] = new db();
-	$GLOBALS["db"] = $_SESSION["db"];
-	*/
-	$GLOBALS["db"] = new db();
+	$GLOBALS["_db"] = new _db();
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve db() [end]");
 }
 
 if (is_string($query))
 {
-	return $GLOBALS["db"]->query($query);
+	return $GLOBALS["_db"]->query($query);
 }
 else
 {
-	return $GLOBALS["db"];
+	return $GLOBALS["_db"];
 }
 
 }

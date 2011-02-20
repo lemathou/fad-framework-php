@@ -14,7 +14,7 @@
 /**
   * MySQL abstraction layer
   */
-class db implements db_i
+class _db implements _db_i
 {
 
 protected $id = null;
@@ -89,7 +89,7 @@ public function query($query_string)
 
 $this->queries++;
 $this->query_list[] = $query_string;
-return new db_query($query_string, $this->id);
+return new _db_query($query_string, $this->id);
 
 }
 
@@ -97,7 +97,7 @@ public function select($fields, $join, $where, $order, $groupby, $limit)
 {
 
 $this->queries++;
-return new db_query_select($select, $where, $order, $limit, $this->id);
+return new _db_query_select($select, $where, $order, $limit, $this->id);
 
 }
 
@@ -112,7 +112,7 @@ else
 	$fieldnames = array();
 	foreach ($fields as $key=>$value)
 		$filednames[] = $key;
-	return new db_query("INSERT INTO `".$this->string_escape($table)."` ( `".implode("` , `",$fieldnames)."` ) VALUES ( '".implode("' , '",$fields)."' )", $this->id);
+	return new _db_query("INSERT INTO `".$this->string_escape($table)."` ( `".implode("` , `",$fieldnames)."` ) VALUES ( '".implode("' , '",$fields)."' )", $this->id);
 }
 
 }
@@ -121,7 +121,7 @@ public function update($table, $update, $where="", $order="", $limit="")
 {
 
 $this->queries++;
-return new db_query("UPDATE `".$this->string_escape($table)."` SET $update $where $order $limit", $this->id);
+return new _db_query("UPDATE `".$this->string_escape($table)."` SET $update $where $order $limit", $this->id);
 
 }
 
@@ -129,7 +129,7 @@ public function delete($table, $where, $order, $limit)
 {
 
 $this->queries++;
-return new db_query("DELETE FROM `".$this->string_escape($table)."` $where $order $limit", $this->id);
+return new _db_query("DELETE FROM `".$this->string_escape($table)."` $where $order $limit", $this->id);
 
 }
 
@@ -325,7 +325,7 @@ return mysql_real_escape_string($string);
  *  Classe pour les requètes
  *  
  */
-class db_query implements db_query_i
+class _db_query implements _db_query_i
 {
 
 // server connection ID
@@ -555,7 +555,7 @@ if ($this->id)
  *
  * @return unknown
  */
-class db_query_select
+class _db_query_select
 {
 
 function __construct($db_id, $select, $where, $order, $limit)

@@ -13,12 +13,12 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class library_gestion extends _library_gestion
+class _library_gestion extends __library_gestion
 {
 
 };
 
-class library extends _library
+class _library extends __library
 {
 
 

@@ -21,7 +21,7 @@ if (DEBUG_GENTIME == true)
  * @author mathieu
  * 
  */
-class permission_gestion extends gestion
+class _permission_gestion extends _gestion
 {
 
 protected $type = "permission";
@@ -63,7 +63,7 @@ while (list($perm_id, $menu_id, $perm) = $query->fetch_row())
 /**
  * Permissions
  */
-class permission extends object_gestion
+class _permission extends _object_gestion
 {
 
 protected $_type = "permission";

@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class error
+class _error
 {
 
 protected $list = array();

@@ -19,14 +19,15 @@ if (DEBUG_GENTIME == true)
 function globals()
 {
 
-if (!isset($GLOBALS["globals"]))
+if (!isset($GLOBALS["_globals"]))
 {
-	if (!isset($_SESSION["globals"]))
-		$_SESSION["globals"] = new globals();
-	$GLOBALS["globals"] = $_SESSION["globals"];
+	if (!isset($_SESSION["_globals"]))
+		$_SESSION["_globals"] = new _globals();
+	// TODO : pas en session !
+	$GLOBALS["_globals"] = $_SESSION["_globals"];
 }
 
-return $GLOBALS["globals"];
+return $GLOBALS["_globals"];
 	
 }
 

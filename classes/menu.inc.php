@@ -18,7 +18,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Gestion des menus
  */
-class _menu_gestion extends gestion
+class __menu_gestion extends _gestion
 {
 
 protected $type = "menu";
@@ -39,7 +39,7 @@ while (list($menu_id, $pos, $page_id)=$query->fetch_row())
 /**
  * Menu
  */
-class _menu extends object_gestion
+class __menu extends _object_gestion
 {
 
 protected $_type = "menu";

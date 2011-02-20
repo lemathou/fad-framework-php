@@ -46,32 +46,32 @@ if (DEBUG_GENTIME == true)
 function data($ref=null)
 {
 
-if (!isset($GLOBALS["data_gestion"]))
+if (!isset($GLOBALS["_data"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve data() [begin]");
 	if (CACHE)
 	{
-		if (!($GLOBALS["data_gestion"]=cache::retrieve("datatype_gestion")))
-			$GLOBALS["data_gestion"] = new data_gestion();
+		if (!($GLOBALS["_data"]=cache::retrieve("data")))
+			$GLOBALS["_data"] = new _data_gestion();
 	}
 	// Session
 	else
 	{
-		if (!isset($_SESSION["data_gestion"]))
-			$_SESSION["data_gestion"] = new data_gestion();
-		$GLOBALS["data_gestion"] = $_SESSION["data_gestion"];
+		if (!isset($_SESSION["_data"]))
+			$_SESSION["_data"] = new _data_gestion();
+		$GLOBALS["_data"] = $_SESSION["_data"];
 	}
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve data() [end]");
 }
 
 if (is_numeric($ref))
-	return $GLOBALS["data_gestion"]->get($ref);
+	return $GLOBALS["_data"]->get($ref);
 elseif (is_string($ref))
-	return $GLOBALS["data_gestion"]->get_name($ref);
+	return $GLOBALS["_data"]->get_name($ref);
 else
-	return $GLOBALS["data_gestion"];
+	return $GLOBALS["_data"];
 
 }
 

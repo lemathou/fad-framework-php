@@ -134,6 +134,14 @@ if ($this->value !== null)
 }
 else
 	return false;
+
+}
+
+function now()
+{
+
+$this->value = date("d/m/Y");
+
 }
 
 }

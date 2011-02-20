@@ -176,12 +176,13 @@ $data_list_detail = data()->list_detail_get();
 		<td>Label</td>
 		<td>Type</td>
 		<td>Default value (JSON)</td>
-		<td>Option</td>
+		<td>Update</td>
 		<td>Index</td>
 		<td>langue</td>
+		<td>Inactif</td>
 	</tr>
 <?php
-$field_opt_list = array("" , "required" , "calculated");
+$field_update_list = array("" , "readonly" , "calculated");
 $nb = 0;
 foreach ($object->fields() as $name=>$field)
 {
@@ -215,10 +216,10 @@ foreach ($object->fields() as $name=>$field)
 		}
 		?></select></td>
 		<td><textarea name="defaultvalue"><?php echo json_encode($field->value); ?></textarea></td>
-		<td><select name="opt">
+		<td><select name="update">
 			<option value=""></option>
-			<option value="required"<?php if (in_array($name, $object->fields_required())) echo " selected"; ?>>REQUIRED</option>
-			<option value="calculated">CALCULATED</option>
+			<option value="readonly">READONLY</option>
+			<option value="calculated"<?php if (in_array($name, $object->fields_calculated())) echo " selected"; ?>>CALCULATED</option>
 		</select></td>
 		<td><select name="query">
 			<option value="0"<?php if (!in_array($name, $object->fields_index())) echo " selected"; ?>>NON</option>
@@ -227,6 +228,10 @@ foreach ($object->fields() as $name=>$field)
 		<td><select name="lang">
 			<option value="0"<?php if (!isset($field->opt["lang"]) || !$field->opt["lang"]) echo " selected"; ?>>NON</option>
 			<option value="1"<?php if (isset($field->opt["lang"]) && $field->opt["lang"]) echo " selected"; ?>>OUI</option>
+		</select></td>
+		<td><select name="actif">
+			<option value="0">Inactif</option>
+			<option value="1" selected>Actif</option>
 		</select></td>
 	</tr>
 	<tr> <td colspan="9"><hr /></td> </tr>
@@ -270,9 +275,10 @@ foreach ($object->fields() as $name=>$field)
 		<td><input readonly value="<?=$field->label?>" /></td>
 		<td><?php echo data()->{substr(get_class($field), 5)}->label; ?></td>
 		<td><?php echo json_encode($field->value); ?></td>
-		<td><?php if (in_array($name, $object->fields_required())) echo "<span style=\"color:blue;\">REQUIRED</span>"; ?></td>
+		<td><?php if (in_array($name, $object->fields_calculated())) echo "<span style=\"color:blue;\">CALCULATED</span>"; ?></td>
 		<td><?php if (in_array($name, $object->fields_index())) echo "<span style=\"color:blue;\">INDEX</span>"; ?></td>
 		<td><?php if ($field->opt_get("lang")) echo "<span style=\"color:blue;\">LANG</span>"; ?></td>
+		<td>ACTIF</td>
 	</tr>
 	<?php
 	}
@@ -298,8 +304,8 @@ if (!isset($_GET["field_edit"])) {
 		}
 		?></select></td>
 		<td><textarea name="defaultvalue"></textarea></td>
-		<td><select name="opt"><?php
-		foreach($field_opt_list as $opt)
+		<td><select name="update"><?php
+		foreach($field_update_list as $opt)
 		{
 			echo "<option value=\"$opt\">$opt</option>\n";
 		}
@@ -311,6 +317,10 @@ if (!isset($_GET["field_edit"])) {
 		<td><select name="lang">
 			<option value="0">NON</option>
 			<option value="1">OUI</option>
+		</select></td>
+		<td><select name="actif">
+			<option value="0">NON</option>
+			<option value="1" selected>OUI</option>
 		</select></td>
 	</tr>
 <?php } ?>

@@ -21,7 +21,7 @@ if (DEBUG_GENTIME == true)
 function login()
 {
 
-if (!isset($GLOBALS["login"]))
+if (!isset($GLOBALS["_login"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve login() [begin]");
@@ -33,15 +33,15 @@ if (!isset($GLOBALS["login"]))
 		gentime("Session_start [end]");
 	// Session
 	{
-		if (!isset($_SESSION["login"]))
-			$_SESSION["login"] = new login();
-		$GLOBALS["login"] = $_SESSION["login"];
+		if (!isset($_SESSION["_login"]))
+			$_SESSION["_login"] = new _login();
+		$GLOBALS["_login"] = $_SESSION["_login"];
 	}
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve login() [end]");
 }
 
-return $GLOBALS["login"];
+return $GLOBALS["_login"];
 
 }
 

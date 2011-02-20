@@ -24,31 +24,31 @@ if (DEBUG_GENTIME == true)
 function template($ref=null)
 {
 
-if (!isset($GLOBALS["template_gestion"]))
+if (!isset($GLOBALS["_template"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve template() [begin]");
 	if (CACHE)
 	{
-		if (!($GLOBALS["template_gestion"]=cache::retrieve("template_gestion")))
-			$GLOBALS["template_gestion"] = new template_gestion();
+		if (!($GLOBALS["_template"]=cache::retrieve("template")))
+			$GLOBALS["_template"] = new _template_gestion();
 	}
 	else // Session
 	{
-		if (!isset($_SESSION["template_gestion"]))
-			$_SESSION["template_gestion"] = new template_gestion();
-		$GLOBALS["template_gestion"] = $_SESSION["template_gestion"];
+		if (!isset($_SESSION["_template"]))
+			$_SESSION["_template"] = new _template_gestion();
+		$GLOBALS["_template"] = $_SESSION["_template"];
 	}
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve template() [end]");
 }
 
 if (is_numeric($ref))
-	return $GLOBALS["template_gestion"]->get($ref);
+	return $GLOBALS["_template"]->get($ref);
 elseif (is_string($ref))
-	return $GLOBALS["template_gestion"]->get_name($ref);
+	return $GLOBALS["_template"]->get_name($ref);
 else
-	return $GLOBALS["template_gestion"];
+	return $GLOBALS["_template"];
 
 }
 

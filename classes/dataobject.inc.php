@@ -125,6 +125,17 @@ if ($this->datamodel_id)
 
 }
 
+protected function construct_field($name)
+{
+
+if ($field=$this->datamodel()->{$name})
+{
+	$field->object_set($this);
+	return $field;
+}
+
+}
+
 public function __isset($name)
 {
 
@@ -144,7 +155,7 @@ if (array_key_exists($name, $this->fields))
 }
 else
 {
-	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name] = $this->construct_field($name);
 	$this->fields[$name]->value = null;
 }
 
@@ -173,14 +184,13 @@ elseif (array_key_exists($name, $this->fields))
 }
 elseif (array_key_exists($name, $this->field_values))
 {
-	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name] = $this->construct_field($name);
 	$this->fields[$name]->value = $value;
 }
-elseif (isset($this->datamodel()->{$name}))
+elseif ($field=$this->construct_field($name))
 {
-	$this->fields[$name] = clone $this->datamodel()->{$name};
-	$this->field_values[$name] = $this->fields[$name]->value;
-	$this->fields[$name]->value = $value;
+	$this->field_values[$name] = $field->value = $value;
+	$this->fields[$name] = $field;
 }
 
 }
@@ -190,21 +200,20 @@ public function __get($name)
 
 if ($name == "id" || $name == "_update")
 	return $this->{$name};
-elseif (isset($this->fields[$name]))
+elseif (array_key_exists($name, $this->fields))
 {
 	return $this->fields[$name];
 }
-elseif (isset($this->field_values[$name]))
+elseif (array_key_exists($name, $this->field_values))
 {
-	$this->fields[$name] = clone $this->datamodel()->{$name};
+	$this->fields[$name] = $this->construct_field($name);
 	$this->fields[$name]->value = $this->field_values[$name];
 	return $this->fields[$name];
 }
-elseif (isset($this->datamodel()->{$name}))
+elseif ($field=$this->construct_field($name))
 {
-	$this->fields[$name] = clone $this->datamodel()->{$name};
-	$this->field_values[$name] = $this->fields[$name]->value;
-	return $this->fields[$name];
+	$this->field_values[$name] = $field->value;
+	return $this->fields[$name] = $field;
 }
 
 }
@@ -225,17 +234,18 @@ return $this->datamodel()->label()." ID#$this->id";
 /**
  * Returns field list
  */
-public function field_list()
+public function fields()
 {
 
 foreach ($this->datamodel()->fields() as $name=>$field)
 {
 	if (!array_key_exists($name, $this->fields))
-		$this->fields[$name] = clone $field;
-	if (array_key_exists($name, $this->field_values))
-		$this->fields[$name]->value = $this->field_values[$name];
-	else
-		$this->field_values[$name] = $this->fields[$name]->value;
+	{
+		$this->fields[$name] = $field;
+		$field->object_set($this);
+		if (array_key_exists($name, $this->field_values))
+			$this->fields[$name]->value = $this->field_values[$name];
+	}
 }
 
 return $this->fields;
@@ -427,7 +437,6 @@ if ($this->datamodel()->db_insert($this))
 {
 	foreach ($this->fields as $name=>$field)
 		$this->field_values[$name] = $field->value;
-	$this->_update = time();
 	return true;
 }
 else
@@ -447,25 +456,25 @@ foreach ($fields as $name=>$value)
 {
 	if ($name == "id")
 	{
-		$this->{$name} = (int)$value;
+		$this->id = (int)$value;
 	}
 	elseif ($name == "_update")
 	{
 		$e = explode(" ", $value);
 		$d = explode("-", $e[0]);
 		$t = explode(":", $e[1]);
-		$this->{$name} = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
+		$this->_update = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
 	}
 	elseif (array_key_exists($name, $this->fields))
 	{
 		$this->fields[$name]->value_from_db($value);
 		$this->field_values[$name] = $this->fields[$name]->value;
 	}
-	elseif (array_key_exists($name, $this->field_values) || isset($this->datamodel()->{$name}))
+	elseif ($field=$this->construct_field($name))
 	{
-		$this->fields[$name] = clone $this->datamodel()->{$name};
-		$this->fields[$name]->value_from_db($value);
-		$this->field_values[$name] = $this->fields[$name]->value;
+		$field->value_from_db($value);
+		$this->fields[$name] = $field;
+		$this->field_values[$name] = $field->value;
 	}
 }
 
@@ -477,10 +486,12 @@ foreach ($fields as $name=>$value)
 public function update_from_form($fields=array(), $db_update=false)
 {
 
+//var_dump($fields);
 if (is_array($fields) && count($fields) > 0)
 {
 	foreach($fields as $name=>$value)
 	{
+		//echo "<p>$name : $value</p>\n";
 		if ($name == "id")
 		{
 			$this->__set("id", $value);
@@ -492,6 +503,7 @@ if (is_array($fields) && count($fields) > 0)
 	}
 	// Calculated fields
 	// TODO : UPDATE
+	//var_dump($this->fields);
 	if (count($this->datamodel()->fields_calculated()))
 	{
 		$calculate = array();
@@ -731,6 +743,23 @@ public function ref_change($datamodel_name, $blahblah)
 
 // TODO
 
+
+}
+
+public function url()
+{
+
+if ($page=page(get_class($this)))
+	return $page->url(array($this->id));
+else
+	return "#";
+
+}
+
+public function link()
+{
+
+return "<a href=\"".$this->url()."\">".$this->__tostring()."</a>";
 
 }
 

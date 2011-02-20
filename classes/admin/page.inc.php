@@ -15,14 +15,14 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class page_gestion extends _page_gestion
+class _page_gestion extends __page_gestion
 {
 
 
 
 }
 
-class page extends _page
+class _page extends __page
 {
 
 /**
@@ -85,23 +85,10 @@ db()->query($query_string);
 //echo "<p>$query_string : ".mysql_error()."</p>\n";
 if ($n=array_search($name, $this->params_url))
 {
-	unset($this->params_url[$n]);
-	for ($i=$n+1;$i=count($this->params_url)-1;$i++)
-	{
-		$this->params_url[$i-1] = $this->params_url[$i];
-		unset($this->params_url[$i]);
-	}
 	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`-1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
 }
-
 if (is_numeric($n=$infos["update_pos"]))
 {
-	for ($i=count($this->params_url)-1;$i=$n;$i--)
-	{
-		$this->params_url[$i+1] = $this->params_url[$i];
-		unset($this->params_url[$i]);
-	}
-	$this->params_url[$n] = $name;
 	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`+1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
 	db()->query("UPDATE `_page_params` SET `update_pos`='$n' WHERE `page_id`='$this->id' AND `name`='$name'");
 }

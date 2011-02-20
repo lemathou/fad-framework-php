@@ -19,7 +19,7 @@ if (DEBUG_GENTIME == true)
  * Library gestion
  *
  */
-class _library_gestion extends gestion
+class __library_gestion extends _gestion
 {
 
 protected $type = "library";
@@ -73,7 +73,7 @@ return $return;
  * @author mathieu
  *
  */
-class _library extends object_gestion
+class __library extends _object_gestion
 {
 
 protected $_type = "library";
@@ -133,8 +133,8 @@ if (ADMIN_LOAD == true)
 }
 else
 {
-	class library_gestion extends _library_gestion {};
-	class library extends _library {};
+	class _library_gestion extends __library_gestion {};
+	class _library extends __library {};
 }
 
 

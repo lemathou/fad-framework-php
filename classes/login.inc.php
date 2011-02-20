@@ -19,7 +19,7 @@ if (DEBUG_GENTIME == true)
  * Compte utilisateur
  * 
  */
-class account
+class _account
 {
 
 protected $id = 0;
@@ -152,7 +152,7 @@ return (db()->query("SELECT '1' FROM `_account` WHERE `email` LIKE '".db()->stri
 
 // Login
 
-class login extends account
+class _login extends _account
 {
 
 // Statistique

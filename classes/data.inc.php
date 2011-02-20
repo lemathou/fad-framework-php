@@ -18,7 +18,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Data types global container class
  */
-class data_gestion extends gestion
+class _data_gestion extends _gestion
 {
 
 protected $type = "datatype";

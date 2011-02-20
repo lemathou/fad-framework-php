@@ -21,10 +21,10 @@ if (DEBUG_GENTIME == true)
 function error()
 {
 
-if (!isset($GLOBALS["error"]))
-	$GLOBALS["error"] = new error();
+if (!isset($GLOBALS["_error"]))
+	$GLOBALS["_error"] = new _error();
 
-return $GLOBALS["error"];
+return $GLOBALS["_error"];
 
 }
 

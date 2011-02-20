@@ -19,7 +19,7 @@ if (DEBUG_GENTIME == true)
  * Datamodel global managing class
  * 
  */
-class _datamodel_gestion extends gestion
+class __datamodel_gestion extends _gestion
 {
 
 protected $type = "datamodel";
@@ -41,7 +41,7 @@ protected $retrieve_details = false;
 function __wakeup()
 {
 
-gestion::__wakeup();
+_gestion::__wakeup();
 $this->access_function_create();
 
 }
@@ -75,7 +75,7 @@ foreach($this->list_name as $name=>$id)
  * Modèle de données pour remplir une maquette
  *
  */
-class _datamodel extends object_gestion
+class __datamodel extends _object_gestion
 {
 
 protected $_type = "datamodel";
@@ -141,9 +141,9 @@ protected $perm = "";
  * 
  * @var array
  */
+protected $fields_detail = array();
 protected $fields = array();
 
-protected $fields_required = array();
 protected $fields_calculated = array();
 protected $fields_index = array();
 protected $fields_ref = array();
@@ -161,7 +161,7 @@ protected $objects = array();
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "dynamic", "shared", "perm", "fields", "fields_required", "fields_calculated", "fields_index", "fields_ref", "action_list");
+return array("id", "name", "label", "description", "dynamic", "shared", "perm", "fields_detail", "fields_calculated", "fields_index", "fields_ref", "action_list");
 
 }
 function __wakeup()
@@ -210,40 +210,93 @@ public function query_fields()
 {
 
 $this->fields = array();
-$this->fields_required = array();
+$this->fields_detail = array();
 $this->fields_calculated = array();
 $this->fields_index = array();
 // Création des champs du datamodel
-$query = db("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`opt` , t1.`lang` , t1.`query` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
+$query = db("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`update` , t1.`lang` , t1.`query` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
-	$datatype = "data_$field[type]";
-	$this->fields[$field["name"]] = new $datatype($field["name"], json_decode($field["defaultvalue"], true), $field["label"]);
-	$this->fields[$field["name"]]->datamodel_set($this->id);
-	if ($field["opt"] == "required")
-		$this->fields_required[] = $field["name"];
+	$field["defaultvalue"] = json_decode($field["defaultvalue"], true);
+	$field["opt"] = array();
+	$this->fields_detail[$field["name"]] = $field;
 	if ($field["query"])
 		$this->fields_index[] = $field["name"];
-	if ($field["lang"])
-		$this->fields[$field["name"]]->opt_set("lang",true);
+	if ($field["update"]=="calculated")
+		$this->fields_calculated[] = $field["name"];
 }
 $query = db("SELECT `fieldname`, `opt_name`, `opt_value` FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
 while ($opt=$query->fetch_assoc())
 {
 	//echo "<p>$this->id : $opt[fieldname] : $opt[opt_name]</p>\n";
 	//var_dump(json_decode($opt["opt_value"], true));
-	$this->fields[$opt["fieldname"]]->opt_set($opt["opt_name"], json_decode($opt["opt_value"], true));
+	$this->fields_detail[$opt["fieldname"]]["opt"][$opt["opt_name"]] = json_decode($opt["opt_value"], true);
 }
 
+
 $this->fields_ref = array();
-// References
-$query_string = "SELECT t1.`datamodel_id` as id, t1.`name` as name, t1.`type` as datatype, t3.`opt_value` as ref_id FROM `_datamodel_fields` as t1, `_datamodel_fields_opt` as t2 LEFT JOIN `_datamodel_fields_opt` as t3 ON t2.datamodel_id=t3.datamodel_id AND t2.fieldname=t3.fieldname AND t3.opt_name='db_ref_id' WHERE t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname AND t2.`opt_name`='datamodel' AND t2.`opt_value` IN ('$this->id', '\"$this->name\"')";
+// Linked fields in other datamodels
+$query_string = "SELECT t0.`id` as datamodel_id, t0.`name` as datamodel_name, t1.`name` as fieldname, t1.`type` as type, t3.`opt_value` as ref_id, t4.`opt_value` as ref_field, t5.`opt_value` as ref_table FROM `_datamodel` as t0, `_datamodel_fields` as t1, `_datamodel_fields_opt` as t2 LEFT JOIN `_datamodel_fields_opt` as t3 ON t2.datamodel_id=t3.datamodel_id AND t2.fieldname=t3.fieldname AND t3.opt_name='db_ref_id' LEFT JOIN `_datamodel_fields_opt` as t4 ON t2.datamodel_id=t4.datamodel_id AND t2.fieldname=t4.fieldname AND t4.opt_name='db_ref_field' LEFT JOIN `_datamodel_fields_opt` as t5 ON t2.datamodel_id=t5.datamodel_id AND t2.fieldname=t5.fieldname AND t5.opt_name='db_ref_table' WHERE t0.id=t1.datamodel_id AND t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname AND t2.`opt_name`='datamodel' AND t2.`opt_value` IN ('$this->id', '\"$this->name\"')";
 $query = db($query_string);
 //echo "<p>$query_string</p>\n";
-while($ref=$query->fetch_assoc())
+while($row=$query->fetch_assoc())
 {
-	$this->fields_ref[] = $ref;
+	$row["ref_table"] = json_decode($row["ref_table"], true);
+	$row["ref_id"] = json_decode($row["ref_id"], true);
+	$row["ref_field"] = json_decode($row["ref_field"], true);
+	$ok = false;
+	// Liste avec table de liaison
+	// TODO : Liste sans liaison (ni table ni champ) => OUBLI => Notification. Vérifier en amont !
+	if ($row["type"] == "dataobject_list" && $row["ref_table"])
+	{
+		reset($this->fields_detail);
+		while (!$ok && (list($name, $field)=each($this->fields_detail)))
+			if (isset($field["opt"]["datamodel"]) && isset($field["opt"]["db_ref_table"]) && $field["opt"]["db_ref_table"] == $row["ref_table"] && $field["opt"]["db_ref_id"] == $row["ref_field"])
+			{
+				//$this->fields_ref[$name] = array("datamodel"=>$row["datamodel_name"], "field"=>$row["fieldname"]);
+				$ok = true;
+			}
+		if (!$ok)
+		{
+			$name = $row["datamodel_name"]."_list";
+			$this->fields_ref[$name] = new data_dataobject_list($name, null, $name);
+			$this->fields_ref[$name]->opt_set("datamodel", $row["datamodel_name"]);
+			$this->fields_ref[$name]->opt_set("db_ref_table", $row["ref_table"]);
+			$this->fields_ref[$name]->opt_set("db_ref_field", $row["ref_id"]);
+			$this->fields_ref[$name]->opt_set("db_ref_id", $row["ref_field"]);
+			$this->fields_ref[$name]->datamodel_set($this->id);
+			$ok = true;
+		}
+	}
+	// Liste avec champ de liaison
+	elseif ($row["type"] == "dataobject_list" && $row["ref_id"])
+	{
+		//$this->fields_ref[$row["ref_id"]] = array("datamodel"=>$row["datamodel_name"], "field"=>$row["fieldname"]);
+		$ok = true;
+	}
+	elseif ($row["type"] == "dataobject")
+	{
+		reset($this->fields_detail);
+		while (!$ok && (list($name, $field)=each($this->fields_detail)))
+			if (isset($field["opt"]["datamodel"]) && ($row["datamodel_id"] == $field["opt"]["datamodel"] || $row["datamodel_name"] == $field["opt"]["datamodel"]) && isset($field["opt"]["db_ref_id"]) && $field["opt"]["db_ref_id"] == $row["fieldname"])
+			{
+				//$this->fields_ref[$name] = array("datamodel"=>$row["datamodel_name"], "field"=>$row["fieldname"]);
+				$ok = true;
+			}
+		if (!$ok)
+		{
+			$name = $row["datamodel_name"]."_list";
+			$this->fields_ref[$name] = new data_dataobject_list($name, null, $name);
+			$this->fields_ref[$name]->opt_set("datamodel", $row["datamodel_name"]);
+			$this->fields_ref[$name]->opt_set("db_ref_id", $row["fieldname"]);
+			$this->fields_ref[$name]->datamodel_set($this->id);
+			$ok = true;
+		}
+	}
 }
+
+// TODO : les champs de type "dataobject" peuvent n'avoir aucune correspondance dans le datamodel lié, idem "dataobject_list" avec "db_ref_table".
+// Comment le notifier ..?
 
 $this->library_load();
 
@@ -253,6 +306,29 @@ public function __tostring()
 {
 
 return $this->label;
+
+}
+
+protected function construct_field($name)
+{
+
+if (!array_key_exists($name, $this->fields_detail))
+	return false;
+else
+{
+	if (!array_key_exists($name, $this->fields))
+	{
+		$field = $this->fields_detail[$name];
+		$datatype = "data_$field[type]";
+		$this->fields[$name] = new $datatype($name, $field["defaultvalue"], $field["label"]);
+		$this->fields[$name]->datamodel_set($this->id);
+		if ($field["lang"])
+			$this->fields[$name]->opt_set("lang",true);
+		foreach($field["opt"] as $i=>$j)
+			$this->fields[$name]->opt_set($i, $j);
+	}
+	return $this->fields[$name];
+}
 
 }
 
@@ -277,7 +353,7 @@ if ($library=$this->library())
 
 /**
  * Returns database name
- * in case of shared datamodel
+ * (in case of shared datamodel)
  */
 public function db()
 {
@@ -294,10 +370,14 @@ public function __get($name)
 {
 
 if (array_key_exists($name, $this->fields))
-	return $this->fields[$name];
-
+	return clone $this->fields[$name];
+elseif (array_key_exists($name, $this->fields_detail))
+{
+	$this->construct_field($name);
+	return clone $this->fields[$name];
 }
 
+}
 /**
  * Returns if a data field is defined
  * @param unknown_type $name
@@ -305,7 +385,7 @@ if (array_key_exists($name, $this->fields))
 public function __isset($name)
 {
 
-return array_key_exists($name, $this->fields);
+return array_key_exists($name, $this->fields_detail);
 
 }
 
@@ -315,6 +395,9 @@ return array_key_exists($name, $this->fields);
 public function fields()
 {
 
+foreach($this->fields_detail as $name=>$field)
+	if (!array_key_exists($name, $this->fields))
+		$this->construct_field($name);
 return $this->fields;
 
 }
@@ -388,7 +471,7 @@ public function create($fields_all_init=false)
 
 $classname = $this->name;
 $object = new $classname();
-if ($fields_all_init) foreach($this->fields as $name=>$field)
+if ($fields_all_init) foreach($this->fields_detail as $name=>$field)
 	$object->{$name} = null;
 return $object;
 
@@ -402,7 +485,7 @@ return $object;
 function insert_form()
 {
 
-return new datamodel_insert_form($this, $this->fields);
+return new datamodel_insert_form($this, $this->fields());
 
 }
 /**
@@ -419,11 +502,10 @@ if (!is_array($fields))
 
 foreach($fields as $name=>$value)
 {
-	if (!isset($this->fields[$name]))
+	if (!($field=$this->__get($name)))
 		unset($fields[$name]);
 	else
 	{
-		$field = clone $this->fields[$name];
 		$field->value_from_form($value);
 		$fields[$name] = $field;
 	}
@@ -444,13 +526,12 @@ else
 public function db_insert($object)
 {
 
-$fields = $object->field_list();
+$fields = $object->fields();
 
 // Verify required fields
 //foreach ($this->fields_required as $name) if (!$fields[$name]->nonempty())
 //	return false;
 
-// Verify fields and supress keys
 $query_list = array();
 $query_fields = array("`id`");
 $query_values = array("null");
@@ -458,46 +539,43 @@ $query_fields_lang = array();
 $query_values_lang = array();
 foreach ($fields as $name=>$field)
 {
+	//var_dump($field);
 	// Unknown field name
-	if (!isset($this->fields[$name]))
+	if (!array_key_exists($name, $this->fields_detail))
 	{
 		unset($fields[$name]);
 	}
 	// Champs complexes
-	elseif ($this->fields[$name]->type == "dataobject_list")
+	elseif ($this->fields_detail[$name]["type"] == "dataobject_list")
 	{
-		if ($fields[$name]->nonempty())
+		if ($field->nonempty())
 		{
 			$query_list[$name] = $field->value_to_db();
 		}
 	}
-	elseif ($this->fields[$name]->type == "list")
+	elseif ($this->fields_detail[$name]["type"] == "list")
 	{
-		if ($fields[$name]->nonempty())
+		if ($field->nonempty())
 		{
 			$query_list[$name] = $field->value_to_db();
 		}
 	}
-	elseif ($this->fields[$name]->type == "dataobject_select")
+	elseif ($this->fields_detail[$name]["type"] == "dataobject_select")
 	{
-		if (!isset($this->fields[$name]->opt["db_field"]) || !($fieldname=$this->fields[$name]->opt["db_field"]))
-			$fieldname = $name;
-		$query_fields[] = "`$fieldname`";
+		$query_fields[] = "`$name`";
 		$query_values[] = "'".db()->string_escape($field->value_to_db())."'";
 	}
 	// Champ simple
 	else
 	{
-		if (!isset($this->fields[$name]->opt["db_field"]) || !($fieldname=$this->fields[$name]->opt["db_field"]))
-			$fieldname = $name;
-		if (isset($this->fields[$name]->opt["lang"]))
+		if (isset($this->fields_detail[$name]["opt"]["lang"]))
 		{
-			$query_fields_lang[] = "`$fieldname`";
+			$query_fields_lang[] = "`$name`";
 			$query_values_lang[] = "'".db()->string_escape($field->value_to_db())."'";
 		}
 		else
 		{
-			$query_fields[] = "`$fieldname`";
+			$query_fields[] = "`$name`";
 			$query_values[] = "'".db()->string_escape($field->value_to_db())."'";
 		}
 	}
@@ -511,6 +589,7 @@ if ($this->dynamic)
 }
 
 $query_str = "INSERT INTO `".$this->db."`.`".$this->name."` (".implode(", ", $query_fields).") VALUES (".implode(", ", $query_values).")";
+//echo "<p>$query_str</p>";
 $query = db()->query($query_str);
 // db()->insert("$this->name","");
 
@@ -527,8 +606,10 @@ if (count($query_list)>0)
 {
 	foreach($query_list as $name=>$list)
 	{
-		if (in_array($this->fields[$name]->type, array("list", "dataobject_list")) && ($ref_field=$this->fields[$name]->opt("db_ref_field")) && ($ref_table=$this->fields[$name]->opt("db_ref_table")) && ($ref_id=$this->fields[$name]->opt("db_ref_id")))
+		if (in_array($this->fields_detail[$name]["type"], array("list", "dataobject_list")) && isset($this->fields_detail[$name]["opt"]["db_ref_table"]) && ($ref_table=$this->fields_detail[$name]["opt"]["db_ref_table"]))
 		{
+			$ref_field = $this->fields_detail[$name]["opt"]["db_ref_field"];
+			$ref_id = $this->fields_detail[$name]["opt"]["db_ref_id"];
 			$details["query_values"] = array();
 			foreach ($list as $value) if (is_string($value) || is_numeric($value))
 			{
@@ -544,8 +625,7 @@ if (count($query_list)>0)
 }
 
 $object->id = $id;
-if ($this->dynamic)
-	$object->_update = $datetime;
+$object->_update = $datetime;
 
 return $id;
 
@@ -617,16 +697,19 @@ foreach ($list as $fields)
 	$delete_list_id[] = $fields["id"];
 }
 
-db()->query("DELETE FROM `".$this->db."`.`".$this->name."` WHERE `id` IN (".implode(", ", $delete_list_id).")");
+$query = db()->query("DELETE FROM `".$this->db."`.`".$this->name."` WHERE `id` IN (".implode(", ", $delete_list_id).")");
+$return = $query->affected_rows();
 
-foreach($this->fields as $name=>$field)
+foreach($this->fields_detail as $name=>$field)
 {
-	if (isset($field->opt["lang"]) && $field->opt["lang"])
+	if (isset($field["opt"]["lang"]) && $field["opt"]["lang"])
 		$delete_lang = true;
-	elseif ($field->type == "dataobject_list" || $field->type == "list")
+	elseif (($field["type"] == "dataobject_list" || $field["type"] == "list") && isset($field["opt"]["ref_table"]))
 	{
-		db()->query("DELETE FROM `".$this->db."`.`".$field->opt["ref_table"]."` WHERE `".$field->opt["ref_id"]."` IN (".implode(", ", $delete_list_id).")");
+		db()->query("DELETE FROM `".$this->db."`.`".$field["opt"]["ref_table"]."` WHERE `".$field["opt"]["ref_id"]."` IN (".implode(", ", $delete_list_id).")");
 	}
+	// TODO : reaffecter les ID des enregistrements non supprimés
+	// TODO : Faire une alerte pour confirmation
 }
 
 if ($delete_lang)
@@ -660,22 +743,22 @@ $query_list = array();
 foreach ($fields as $name=>$field)
 {
 	// Unknown field
-	if (!isset($this->fields[$name]))
+	if (!array_key_exists($name, $this->fields_detail))
 	{
 		unset($fields[$name]);
 	}
 	// Bad field
-	elseif (!is_a($field, "data") || get_class($this->fields[$name]) != get_class($field))
+	elseif (!is_a($field, "data") || $this->fields_detail[$name]["type"] != $field->type)
 	{
 		unset($fields[$name]);
 	}
 	// Extra table update : dataobject_list or List
-	elseif ($this->fields[$name]->type == "dataobject_list" || $this->fields[$name]->type == "list")
+	elseif ($this->fields_detail[$name]["type"] == "dataobject_list" || $this->fields_detail[$name]["type"] == "list")
 	{
 		$query_list[$name] = array();
 	}
 	// Primary table update
-	elseif ($this->fields[$name]->type == "dataobject_select")
+	elseif ($this->fields_detail[$name]["type"] == "dataobject_select")
 	{
 		//print $field->value;
 		if ($field->nonempty())
@@ -693,7 +776,7 @@ foreach ($fields as $name=>$field)
 	// Primary table update
 	else
 	{
-		if (!isset($this->fields[$name]->opt["db_field"]) || !($fieldname = $this->fields[$name]->opt["db_field"]))
+		if (!isset($this->fields_detail[$name]["opt"]["db_field"]) || !($fieldname = $this->fields_detail[$name]["opt"]["db_field"]))
 			$fieldname = $name;
 		if (($value = $fields[$name]->value_to_db()) !== null)
 			$value = "'".db()->string_escape($value)."'";
@@ -727,7 +810,7 @@ else
 if (count($sort)>0)
 {
 	foreach($sort as $name=>$order)
-		if (isset($this->fields[$name]) || $name == "relevance")
+		if (array_key_exists($name, $this->fields_detail) || $name == "relevance")
 		{
 			if (strtolower($order) == "desc")
 				$query_base["sort"][] = "`$name` DESC";
@@ -774,8 +857,10 @@ if (count($query_base["update"])>0)
 
 foreach($query_list as $name=>$insert_list)
 {
-	if (($this->fields[$name]->type == "dataobject_list" || $this->fields[$name]->type == "list") && ($ref_field=$this->fields[$name]->opt("db_ref_field")) && ($ref_table=$this->fields[$name]->opt("db_ref_table")) && ($ref_id=$this->fields[$name]->opt("db_ref_id")))
+	if (($this->fields_detail[$name]["type"] == "dataobject_list" || $this->fields_detail[$name]["type"] == "list") && (isset($this->fields_detail[$name]["opt"]["db_ref_table"])) && ($ref_table=$this->fields_detail[$name]["opt"]["db_ref_table"]))
 	{
+		$ref_id=$this->fields_detail[$name]["opt"]["db_ref_id"];
+		$ref_field=$this->fields_detail[$name]["opt"]["db_ref_field"];
 		if ($query_where)
 			$query_string = "DELETE `".$this->db."`.`$ref_table` FROM ".implode(", ", array_merge(array("`$ref_table`"), $query_base["from"]))." $query_where AND `$ref_table`.`$ref_id`=t0.`id` $query_having $query_sort $query_limit";
 		else
@@ -795,8 +880,10 @@ foreach($query_list as $name=>$insert_list)
 			$return = true;
 		}
 	}
-	elseif ($this->fields[$name]->type == "dataobject_list" && ($ref_id=$this->fields[$name]->opt("db_ref_id")) && ($datamodel=datamodel($this->fields[$name]->opt("datamodel"))))
+	elseif ($this->fields_detail[$name]["type"] == "dataobject_list")
 	{
+		$ref_id=$this->fields_detail[$name]["opt"]["db_ref_id"];
+		$datamodel=datamodel($this->fields_detail[$name]["opt"]["datamodel"]);
 		$query_string = "SELECT t0.`id` FROM ".implode(", ", $query_base["from"])." $query_where $query_having $query_sort $query_limit";
 		$query = db()->query($query_string);
 		// Only 1 record, otherwise unicity problem !
@@ -980,7 +1067,7 @@ if (is_array($result = $this->db_select($params, $fields, $sort, $limit, $start)
 		$elm = array();
 		foreach($list as $name=>$value) if ($name != "id" && $name != "_update")
 		{
-			$elm[$name] = clone $this->fields[$name];
+			$elm[$name] = $this->__get($name);
 			$elm[$name]->value_from_db($value);
 		}
 		$return[] = $elm;
@@ -1020,11 +1107,12 @@ $fields_explode = array();
 
 $fields = array();
 // Verify fields to be retrieved :
-foreach($this->fields as $name=>$field)
+foreach($this->fields_detail as $name=>$field)
 {
 	// Add fields
 	if ($fields_input === true || (is_array($fields_input) && in_array($name, $fields_input)) || (is_string($fields_input) && $name == $fields_input))
 	{
+		$field = $this->__get($name);
 		$fields[] = $name;
 		if ($field->type == "dataobject_select")
 		{
@@ -1042,7 +1130,7 @@ foreach($this->fields as $name=>$field)
 			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE($tablename.`$ref_field`) SEPARATOR ',') as CHAR) as `$name`";
 			$fields_explode[] = $name;
 		}
-		elseif ($this->fields[$name]->type == "dataobject_list" && ($ref_id=$this->fields[$name]->opt("db_ref_id")) && ($datamodel=datamodel($this->fields[$name]->opt("datamodel"))))
+		elseif ($field->type == "dataobject_list" && ($ref_id=$field->opt("db_ref_id")) && ($datamodel=datamodel($field->opt("datamodel"))))
 		{
 			$query_base["table_nb"]++;
 			$tablename = "t".$query_base["table_nb"];
@@ -1105,7 +1193,7 @@ else
 // Sort
 if (count($sort)>0)
 {
-	foreach($sort as $name=>$order) if (isset($this->fields[$name]) || $name == "relevance")
+	foreach($sort as $name=>$order) if (array_key_exists($name, $this->fields_detail) || $name == "relevance")
 	{
 		if (strtolower($order) == "desc")
 			$query_base["sort"][] = "`$name` DESC";
@@ -1147,10 +1235,10 @@ while ($row=$query->fetch_assoc())
 		else
 		{
 			$row[$name] = explode("','",substr($row[$name], 1, -1));
-			if ($this->fields[$name]->type == "list")
+			if ($this->fields_detail[$name]["type"] == "list")
 				foreach($row[$name] as $i=>$value)
 					$row[$name][$i] = stripslashes($value);
-			elseif ($this->fields[$name]->type == "dataobject_list")
+			elseif ($this->fields_detail[$name]["type"] == "dataobject_list")
 				foreach($row[$name] as $i=>$value)
 					$row[$name][$i] = (int)$value;
 		}
@@ -1267,11 +1355,10 @@ foreach($params as $param_nb=>$param)
 		$where_list[] = "t$t0nb.".$data_datetime->db_query_param($param["value"], $param["type"]);
 	}
 	// User Field
-	elseif (isset($param["name"]) && isset($this->fields[$param["name"]]))
+	elseif (isset($param["name"]) && ($field=$this->__get($param["name"])))
 	{
 		if (!isset($param["type"]))
 			$param["type"] = "";
-		$field = $this->fields[$param["name"]];
 		// Champs "spéciaux"
 		if ($field->type == "dataobject_select")
 		{
@@ -1432,7 +1519,7 @@ $o = array();
 foreach ($query as $object)
 {
 	$field_list = array();
-	foreach ($this->fields as $i=>$field)
+	foreach ($this->fields_detail as $i=>$field)
 	{
 		if ($fields === "1" || (is_array($fields) && in_array($i, $fields)))
 		{
@@ -1502,12 +1589,13 @@ if (ADMIN_LOAD == true)
 }
 else
 {
-	class datamodel_gestion extends _datamodel_gestion {};
-	class datamodel extends _datamodel {};
+	class _datamodel_gestion extends __datamodel_gestion {};
+	class _datamodel extends __datamodel {};
 }
 
-include PATH_CLASSES."/dataobject.inc.php";
-include PATH_CLASSES."/data_display.inc.php";
+//include PATH_CLASSES."/dataobject.inc.php";
+// TODO : autoload()
+include PATH_CLASSES."/datamodel_display.inc.php";
 
 
 if (DEBUG_GENTIME == true)

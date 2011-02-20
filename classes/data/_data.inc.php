@@ -51,6 +51,8 @@ protected $label="";
  * @var unknown_type
  */
 protected $datamodel_id=0;
+protected $object_id=0;
+protected $object=null;
 
 /**
  * Données brutes dans le format dééfini et "contraint" le plus adapté
@@ -72,7 +74,7 @@ protected $opt = array();
 protected static $opt_list = array
 (
 	// structure
-	"size", "ereg", "numeric_signed", "numeric_precision", "value_list", "boolean", "date_format", "datetime_format", "object_type", "datamodel", "email_strict", "urltype",
+	"size", "ereg", "numeric_signed", "numeric_precision", "numeric_type", "value_list", "boolean", "date_format", "datetime_format", "object_type", "datamodel", "email_strict", "urltype",
 	// db
 	"db_table", "db_field", "db_ref_table", "db_ref_field", "db_ref_id", "db_order_field", "db_databank_field", "db_type", "select_params",
 	// disp
@@ -102,10 +104,40 @@ if (is_array($options)) foreach ($options as $i=>$j)
 
 }
 
+public function __sleep()
+{
+
+return array("name", "label", "datamodel_id", "object_id", "value", "empty_value", "opt");
+
+}
+public function __wakeup()
+{
+
+if ($this->datamodel_id && $this->object_id && ($datamodel=datamodel()->get($this->datamodel_id)) && ($object=$datamodel->get($this->object_id)))
+	$this->object = $object;
+
+}
+
+function __clone()
+{
+
+$this->object_id = null;
+$this->object = null;
+
+}
+
 public function datamodel_set($datamodel_id)
 {
 
 $this->datamodel_id = $datamodel_id;
+
+}
+public function object_set($object)
+{
+
+//$this->datamodel_id = $object->datamodel()->id();
+$this->object_id = $object->id;
+$this->object = $object;
 
 }
 public function datamodel()
@@ -115,6 +147,12 @@ if ($this->datamodel_id && datamodel()->exists($this->datamodel_id))
 	return datamodel($this->datamodel_id);
 else
 	return null;
+
+}
+public function dataobject()
+{
+
+return $this->object;
 
 }
 

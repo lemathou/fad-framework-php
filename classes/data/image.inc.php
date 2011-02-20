@@ -28,7 +28,7 @@ protected $opt = array("fileformat"=>"jpg", "imgquality"=>90);
 
 /*
  * A TRAVAILLER... PAS EVIDENT
- * On doit pouvoir forcer un format en entr�e, convertir en un format donn� au besoin.
+ * On doit pouvoir forcer un format en entrée, convertir en un format donné au besoin.
  */
 
 function format_convert($format)
@@ -36,6 +36,30 @@ function format_convert($format)
 
 if (isset(self::$format_list[$format]))
 	$this->format = $format;
+
+}
+
+function form_field_disp($print=true, $options=array())
+{
+
+$return = "<input name=\"$this->name\" size=\"16\" value=\"".$this->value."\" /> <input name=\"$this->name\" type=\"file\" />";
+if ($this->datamodel_id && $this->object_id)
+	$return .= "<img src=\"/data/".$this->datamodel()->name()."/$this->object_id/$this->value\" alt=\"$this->value\" />";
+
+if ($print)
+	echo $return;
+else
+	return $return;
+
+}
+
+function __tostring()
+{
+
+if ($this->nonempty())
+	return "<img src=\"/data/".$this->datamodel()->name()."/1/$this->value\" alt=\"$this->value\" />";
+else
+	return "";
 
 }
 

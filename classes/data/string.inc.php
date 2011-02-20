@@ -92,6 +92,12 @@ if (isset($this->opt["ereg"]) && ($ereg=$this->opt["ereg"]) && !preg_match($ereg
 	$value = null;
 
 }
+public function convert_before(&$value)
+{
+
+$value = strip_tags($value);
+
+}
 
 /* View */
 public function __tostring()

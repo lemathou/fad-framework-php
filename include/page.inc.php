@@ -21,31 +21,31 @@ if (DEBUG_GENTIME == true)
 function page($ref=null)
 {
 
-if (!isset($GLOBALS["page_gestion"]))
+if (!isset($GLOBALS["_page"]))
 {
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve page() [begin]");
 	if (CACHE)
 	{
-		if (!($GLOBALS["page_gestion"]=cache::retrieve("page_gestion")))
-			$GLOBALS["page_gestion"] = new page_gestion();
+		if (!($GLOBALS["_page"]=cache::retrieve("page")))
+			$GLOBALS["_page"] = new _page_gestion();
 	}
 	else // Session
 	{
-		if (!isset($_SESSION["page_gestion"]))
-			$_SESSION["page_gestion"] = new page_gestion();
-		$GLOBALS["page_gestion"] = $_SESSION["page_gestion"];
+		if (!isset($_SESSION["_page"]))
+			$_SESSION["_page"] = new _page_gestion();
+		$GLOBALS["_page"] = $_SESSION["_page"];
 	}
 	if (DEBUG_GENTIME == true)
 		gentime("retrieve page() [end]");
 }
 
 if (is_numeric($ref))
-	return $GLOBALS["page_gestion"]->get($ref);
+	return $GLOBALS["_page"]->get($ref);
 elseif (is_string($ref))
-	return $GLOBALS["page_gestion"]->get_name($ref);
+	return $GLOBALS["_page"]->get_name($ref);
 else
-	return $GLOBALS["page_gestion"];
+	return $GLOBALS["_page"];
 
 }
 

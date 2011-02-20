@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class _template_gestion extends gestion
+class __template_gestion extends _gestion
 {
 
 protected $type = "template";
@@ -47,20 +47,20 @@ protected function construct_object($id)
 if ($this->retrieve_details)
 {
 	if ($this->list_detail[$id]["type"] == "container")
-		return new template_container($id, false, $this->list_detail[$id]);
+		return new _template_container($id, false, $this->list_detail[$id]);
 	elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
-		return new template_datamodel($id, false, $this->list_detail[$id]);
+		return new _template_datamodel($id, false, $this->list_detail[$id]);
 	else
-		return new template($id, false, $this->list_detail[$id]);
+		return new _template($id, false, $this->list_detail[$id]);
 }
 else
 {
 	if ($this->list_detail[$id]["type"] == "container")
-		return new template_container($id, true);
+		return new _template_container($id, true);
 	elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
-		return new template_datamodel($id, true);
+		return new _template_datamodel($id, true);
 	else
-		return new template($id, true);
+		return new _template($id, true);
 }
 
 }
@@ -95,7 +95,7 @@ while ($opt = $query_opt->fetch_assoc())
  * Defines the display of the page, based on database infos and a template file
  * 
  */
-class _template extends object_gestion
+class __template extends _object_gestion
 {
 
 protected $_type = "template";
@@ -291,6 +291,9 @@ echo $this->__tostring();
 public function __tostring()
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("template($this->id) [begin]");
+
 $this->params_check();
 
 //echo "<p>template($this->id)::__tostring()</p>\n";
@@ -308,12 +311,17 @@ if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && 
 	{
 		$this->cache_generate();
 	}
-	return $this->cache_return();
+	$return =  $this->cache_return();
 }
 else
 {
-	return $this->execute();
+	$return =  $this->execute();
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("template($this->id) [end]");
+
+return $return;
 
 }
 
@@ -512,7 +520,7 @@ else
 	fwrite(fopen($this->cache_filename,"w"), ob_get_contents());
 ob_end_clean();
 
-fwrite(fopen(PATH_ROOT."/log/cache.txt","a"), date("Y-m-d H:i:s", $_time)." : Write tpl($this->id) params $this->cache_id\n");
+//fwrite(fopen(PATH_ROOT."/log/cache.txt","a"), date("Y-m-d H:i:s", $_time)." : Write tpl($this->id) params $this->cache_id\n");
 
 }
 
@@ -614,6 +622,7 @@ else // (TEMPLATE_CACHE_TYPE == "file")
 						$return=false;
 				}
 			}
+			// TODO : dataobject_list
 		}
 		if (DEBUG_CACHE)
 			if ($return)
@@ -666,8 +675,8 @@ if (ADMIN_LOAD == true)
 }
 else
 {
-	class template_gestion extends _template_gestion {};
-	class template extends _template {};
+	class _template_gestion extends __template_gestion {};
+	class _template extends __template {};
 }
 
 
@@ -676,7 +685,7 @@ else
  * @author mathieu
  * 
  */
-class template_container extends template
+class _template_container extends _template
 {
 
 public function __set($name, $value)
@@ -735,7 +744,7 @@ foreach($this->param_list as $name=>$param)
  * @author mathieu
  * 
  */
-class template_datamodel extends template
+class _template_datamodel extends _template
 {
 
 protected $datamodel_id = null;

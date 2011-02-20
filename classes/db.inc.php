@@ -33,7 +33,7 @@ if (DEBUG_GENTIME == true)
   * Si le besoin se fait de se connecter d'autres bases, c'est tout à fait possible.
   * 
   */
-interface db_i
+interface _db_i
 {
 
 function __construct();
@@ -84,7 +84,7 @@ function __wakeup();
 
 // Interface de requête de base de donnée
 
-interface db_query_i
+interface _db_query_i
 {
 
 // On effectue la requête

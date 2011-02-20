@@ -38,6 +38,23 @@ data_float::__construct($name, $value, $label, $options);
 
 }
 
+function convert_before(&$value)
+{
+
+$value = $value/100;
+
+}
+
+function __tostring()
+{
+
+if ($this->nonempty())
+	return ($this->value*100)." ".$this->opt["numeric_type"];
+else
+	return "";
+
+}
+
 public function verify(&$value, $convert=false, $options=array())
 {
 

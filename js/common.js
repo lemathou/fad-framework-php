@@ -289,6 +289,34 @@ function opener_url(url)
 
 /* Gestion des banques de donnée (formulaires, etc.) */
 
+var datamodel_autoadd_count = new Object();
+
+function datamodel_insert_form(datamodel, template, element, name)
+{
+	$.post("/view.php", {datamodel: datamodel, template: template}, function(data){
+		if (data.length > 0 && element)
+		{
+			$(element).append("<div><hr />"+data+"<p><input type=\"button\" value=\"REMOVE\" onclick=\"$(this.parentNode.parentNode).remove()\" /></p></div>");
+			if (name)
+			{
+				if (name.substr(-2,2) == "[]")
+				{
+					if (!datamodel_autoadd_count[datamodel])
+						datamodel_autoadd_count[datamodel] = 0;
+					else
+						datamodel_autoadd_count[datamodel]++;
+					var nb = datamodel_autoadd_count[datamodel];
+					name = name.substr(0,name.length-2)+'['+nb+']';
+				}
+				$("[name]", element).each(function(){
+						this.name = name+'['+this.name+']';
+				});
+			}
+			datamodel_fields_clean(element);
+		}
+	});
+}
+
 function databank_list_create(name)
 {
 	if (fields[name]['value'])
@@ -468,7 +496,41 @@ function field_control(field, type)
 	}
 }
 
-/* Gestion formulaires */
+/* Gestion formulaires avec data fields */
+
+function datamodel_fields_clean(element)
+{
+	$("select.data_dataobject_list", element).each(function(){
+		$(this).asmSelect({
+			sortable: true,
+			animate: true,
+			addItemTarget: 'bottom'
+		});
+		$("select.asmSelect", this.parentNode).hide();
+	});
+	$("select.data_fromlist", element).asmSelect({
+		sortable: true,
+		animate: true,
+		addItemTarget: 'bottom'
+	});
+	$("textarea.data_script", element).each(function(){
+		// initialisation
+		editAreaLoader.init({
+			"id": this.id	// id of the textarea to transform		
+			,"start_highlight": true	// if start with highlight
+			,"allow_resize": "both"
+			,"allow_toggle": true
+			,"word_wrap": true
+			,"language": "fr"
+			,"syntax": "php"	
+		});
+	});
+	$("textarea.data_text", element).autoGrow();
+	$("textarea.data_richtext", element).ckeditor();
+	$("input.data_datetime", element).datetimepicker();
+	$("input.data_time", element).timepicker();
+	$("input.data_date", element).datepicker();
+}
 
 function datamodel_form_colorinit(element_id)
 {
@@ -591,7 +653,8 @@ function field_captcha(field)
 
 /* Modal */
 
-// pseudo-POPUP
+// pseudo-POPUP de notification
+
 function info_show(src, type, height)
 {
 	if (type == "930")
@@ -703,34 +766,5 @@ function article_edit(id)
 /* MODIFICATIONS GÉNÉRIQUES */
 
 $(document).ready( function(){
-	$("select.data_dataobject_list").each(function(){
-		$(this).asmSelect({
-			sortable: true,
-			animate: true,
-			addItemTarget: 'bottom'
-		});
-		$("select.asmSelect", this.parentNode).hide();
-	});
-	$("select.data_fromlist").asmSelect({
-		sortable: true,
-		animate: true,
-		addItemTarget: 'bottom'
-	});
-	$("textarea.data_script").each(function(){
-		// initialisation
-		editAreaLoader.init({
-			"id": this.id	// id of the textarea to transform		
-			,"start_highlight": true	// if start with highlight
-			,"allow_resize": "both"
-			,"allow_toggle": true
-			,"word_wrap": true
-			,"language": "fr"
-			,"syntax": "php"	
-		});
-	});
-	$("textarea.data_text").autoGrow();
-	$("textarea.data_richtext").ckeditor();
-	$("input.data_datetime").datetimepicker();
-	$("input.data_time").timepicker();
-	$("input.data_date").datepicker();
+	datamodel_fields_clean(this);
 });

@@ -26,6 +26,7 @@ protected $empty_value = "00:00:00"; // stored as H:i:s
 
 protected $opt = array
 (
+	"datetime_format" => "H:i:s", // for the value
 	"disp_format" => "%H:%M:%S", // Defined for strftime()
 	"form_format" => "H:i:s", // Defined for date()
 	"db_format" => "H:i:s", // Defined for date()
@@ -38,17 +39,10 @@ return array("type" => "time");
 
 }
 
-public function verify(&$value, $convert=false, $options=array())
+public function form_field_disp($options=array())
 {
 
-if (!ereg("/([0-1][0-9]|2[0-4]):([0-5][0-9]):([0-5][0-9])/", $value))
-{
-	if ($convert)
-		$this->convert($value, $options);
-	return false;
-}
-else
-	return true;
+return "<input type=\"text\" name=\"".$this->name."\" value=\"".$this->value_to_form()."\" size=\"8\" maxlength=\"8\" class=\"".get_called_class()."\" />";
 
 }
 

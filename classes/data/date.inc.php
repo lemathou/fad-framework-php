@@ -30,6 +30,7 @@ protected $empty_value = "0000-00-00"; // stored as Y-m-d
 
 protected $opt = array
 (
+	"datetime_format" => "Y-m-d", // for the value
 	"disp_format" => "%A %d %B %G", // Defined for strftime()
 	"form_format" => "d/m/Y", // Defined for date()
 	"db_format" => "Y-m-d", // Defined for date()
@@ -39,43 +40,6 @@ public function db_field_create()
 {
 
 return array("type" => "date");
-
-}
-
-public function verify(&$value, $convert=false, $options=array())
-{
-
-if (!preg_match("/([0-2][0-9]{3})-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])/", $value))
-{
-	if ($convert)
-		$this->convert($value, $options);
-	return false;
-}
-else
-	return true;
-
-}
-function value_to_form()
-{
-
-if ($this->nonempty())
-{
-	return str_replace(array("Y", "m", "d"), explode("-", $this->value), $this->opt["form_format"]);
-}
-else
-	return "";
-
-}
-
-function value_to_db()
-{
-
-if ($this->nonempty())
-{
-	return str_replace(array("Y", "m", "d"), explode("-", $this->value), $this->opt["db_format"]);
-}
-else
-	return "";
 
 }
 

@@ -579,9 +579,9 @@ foreach ($fields as $name=>$field)
 	}
 }
 
+$datetime = time();
 if ($this->dynamic)
 {
-	$datetime = time();
 	$query_fields[] = "`_update`";
 	$query_values[] = "'".date("Y-m-d H:i:s", $datetime)."'";
 }

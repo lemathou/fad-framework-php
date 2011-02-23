@@ -91,8 +91,22 @@ class datamodel_insert_form extends datamodel_display
 public function disp($print=true)
 {
 
-$return = "<form class=\"datamodel_form datamodel_insert_form ".$this->datamodel->name()."_form\" id=\"".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this, new Array ('".implode("','",$this->datamodel->fields_required())."'))\">\n";
-$return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
+$return = "<form class=\"datamodel_form datamodel_insert_form ".$this->datamodel->name()."_form\" id=\"".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this))\">\n";
+$return .= $this->content_disp();
+$return .= "<p><input type=\"submit\" value=\"Ajouter\" /></p>\n";
+$return .= "</form>\n";
+
+if ($print)
+	echo $return;
+else
+	return $return;
+
+}
+
+public function content_disp()
+{
+
+$return = "<table cellspacing=\"5\" cellpadding=\"0\">\n";
 foreach ($this->object->fields() as $name=>$field)
 {
 	if (in_array($name, $this->datamodel->fields_calculated()))
@@ -104,17 +118,9 @@ foreach ($this->object->fields() as $name=>$field)
 	$return .= "	<td>".$field->form_field_disp(false)."</td>\n";
 	$return .= "</tr>\n";
 }
-$return .= "<tr>\n";
-$return .= "	<td>&nbsp;</td>\n";
-$return .= "	<td><input type=\"submit\" value=\"Ajouter\" /></td>\n";
-$return .= "</tr>\n";
 $return .= "</table>\n";
-$return .= "</form>\n";
 
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
 

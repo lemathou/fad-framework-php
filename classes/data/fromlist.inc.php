@@ -47,6 +47,7 @@ if (is_array($value)) foreach ($value as $i)
 		$this->value[] = $i;
 
 }
+/*
 public function value_to_db()
 {
 
@@ -56,6 +57,7 @@ else
 	return null;
 
 }
+*/
 public function verify(&$value, $convert=false, $options=array())
 {
 
@@ -112,7 +114,7 @@ public function form_field_disp($print=true, $options=array())
 
 $return = "<select name=\"".$this->name."[]\" multiple class=\"".get_called_class()."\">";
 foreach ($this->opt["value_list"] as $i=>$j)
-	if (in_array($i, $this->value))
+	if (is_array($this->value) && in_array($i, $this->value))
 		$return .= "<option value=\"$i\" selected=\"selected\">$j</option>";
 	else
 		$return .= "<option value=\"$i\">$j</option>";

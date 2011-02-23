@@ -28,7 +28,6 @@ function datamodel_opt_del(type, name)
 {
 	$("#opt_"+type+'_'+name).remove();
 }
-
 /* DATA QUERY */
 function admin_data_query(element)
 {

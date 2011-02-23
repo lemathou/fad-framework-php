@@ -127,6 +127,29 @@ return $return;
 
 }
 
+public function convert_from_form(&$value)
+{
+
+if (is_array($value))
+{
+	foreach($value as $nb=>&$ref)
+	{
+		// We create an associated object
+		if (is_array($ref) && ($object = datamodel($this->opt["datamodel"])->create()))
+		{
+			$object->update_from_form($ref);
+			/*if ($this->object_id && $ref_id=$this->opt["db_ref_id"])
+				$object->__set($ref_id, $this->object_id);*/
+			if ($object->db_insert())
+				$ref = $object->id;
+			else
+				unset($value["nb"]);
+		}
+	}
+}
+
+}
+
 function convert(&$value)
 {
 
@@ -157,7 +180,7 @@ if (($nb=datamodel($this->opt["datamodel"])->db_count()) < 20)
 		$size = $nb;
 	else
 		$size = 5;
-	$return = "<input name=\"$this->name\" type=\"hidden\" />";
+	$return = "<div style=\"display:inline;\"><input name=\"$this->name\" type=\"hidden\" />";
 	$return .= "<select name=\"".$this->name."[]\" title=\"$this->label\" multiple size=\"$size\" class=\"".get_called_class()."\">\n";
 	if (is_array($this->value)) foreach ($this->value as $id)
 			$return .= "<option value=\"$id\" selected>".datamodel($this->opt["datamodel"])->get($id)."</option>";
@@ -166,7 +189,8 @@ if (($nb=datamodel($this->opt["datamodel"])->db_count()) < 20)
 		if (!is_array($this->value) || !in_array($object->id, $this->value))
 			$return .= "<option value=\"$object->id\">$object</option>";
 	}
-	$return .= "</select>\n";
+	$return .= "</select>";
+	$return = "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '".$this->name."[]')\" /></div>\n";
 }
 // Beaucoup de valeurs : liste Ajax complexe
 else
@@ -185,6 +209,7 @@ else
 	$return .= "</select></div>";
 	$return .= "<div class=\"q_select\"></div>";
 	$return .= "</div>";
+	$return .= "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '".$this->name."[]')\" /></div>";
 }
 
 // DISP

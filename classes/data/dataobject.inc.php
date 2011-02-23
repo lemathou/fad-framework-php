@@ -80,16 +80,36 @@ if (is_numeric($value))
 
 }
 
+function convert_from_form(&$value)
+{
+
+// We create an associated object
+if (is_array($value) && ($object = datamodel($this->opt["datamodel"])->create()))
+{
+	$object->update_from_form($value);
+	/*if ($this->object_id && $ref_id=$this->opt["db_ref_id"])
+		$object->__set($ref_id, $this->object_id);*/
+	if ($object->db_insert())
+		$value = $object->id;
+	else
+		$value = 0;
+}
+
+}
+
 function form_field_disp($print=true, $option=array())
 {
 
+if (!($datamodel=datamodel($this->opt["datamodel"])))
+	return;
+
 // Pas beaucoup de valeurs : liste simple
-if (($databank=datamodel($this->opt["datamodel"])) && (($nb=$databank->count()) <= 50))
+if ((($nb=$datamodel->count()) <= 50))
 {
 	if (isset($option["order"]))
-		$query = $databank->query(array(), array(), $option["order"]);
+		$query = $datamodel->query(array(), array(), $option["order"]);
 	else
-		$query = $databank->query();
+		$query = $datamodel->query();
 
 	$return = "<select name=\"$this->name\" title=\"$this->label\" class=\"".get_called_class()."\">\n";
 	$return .= "<option></option>";
@@ -102,19 +122,21 @@ if (($databank=datamodel($this->opt["datamodel"])) && (($nb=$databank->count()) 
 		else
 			$return .= "<option value=\"$object->id\">$object</option>";
 	}
-	$return .= "</select>\n";
+	$return .= "</select>";
+	$return .= "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '$this->name')\" /></div>\n";
 }
 // Beaucoup de valeurs : liste Ajax complexe
 else
 {
 	$return = "<div style=\"display:inline;\"><input name=\"$this->name\" value=\"$this->value\" type=\"hidden\" class=\"q_id\" />";
-	if ($this->nonempty())
-		$value = (string)datamodel()->get($this->opt["datamodel"], $this->value, true);
+	if ($object=$this->object())
+		$value = (string)$object;
 	else
 		$value = "";
 	$return .= "<select class=\"q_type\"><option value=\"like\">Approx.</option><option value=\"fulltext\">Precis</option></select><input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query(".$this->opt["datamodel"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->opt["datamodel"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" />";
 	$return .= "<div class=\"q_select\"></div>";
-	$return .= "</div>";
+	$return .= "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '$this->name')\" /></div>\n";
+ 	$return .= "</div>";
 }
 
 if ($print)

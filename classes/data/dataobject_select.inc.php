@@ -37,6 +37,28 @@ data::__construct($name, $value, $label, $options);
 
 }
 
+/* Convert */
+function value_to_db()
+{
+
+if ($this->nonempty())
+	return $this->value;
+else
+	return array(null, null);
+
+}
+function verify(&$value)
+{
+
+//print_r($value);
+if (!is_array($value) || !isset($value[0]) || !isset($value[1]) || !in_array(!$value[0],$this->opt["datamodel"]) || !datamodel($value[0],$value[1]))
+{
+	$value = array(0, 0);
+}
+
+}
+
+/* View */
 function __tostring()
 {
 
@@ -54,31 +76,6 @@ if ($this->nonempty() && ($datamodel=datamodel($this->value[0])) && ($object=$da
 	return $object;
 else
 	return null;
-
-}
-
-function value_to_db()
-{
-
-if ($this->nonempty())
-{
-	return $this->value;
-}
-else
-{
-	return array(null, null);
-}
-
-}
-
-function verify(&$value)
-{
-
-//print_r($value);
-if (!is_array($value) || !isset($value[0]) || !isset($value[1]) || !in_array(!$value[0],$this->opt["datamodel"]) || !datamodel($value[0],$value[1]))
-{
-	$value = array(0, 0);
-}
 
 }
 

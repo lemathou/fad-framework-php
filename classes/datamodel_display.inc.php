@@ -1,11 +1,14 @@
 <?php
 
 /**
-  * $Id: datamodel_display.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
+  * $Id: datamodel_display.inc.php 32 2011-01-24 07:13:42Z lemathoufou $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
+  * 
   */
 
 if (DEBUG_GENTIME == true)
@@ -64,18 +67,25 @@ class datamodel_display_form extends datamodel_display
 public function disp($print=true)
 {
 
-$return = "<div>\n";
-$return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
-foreach ($this->object->fields() as $name=>$field)
-	$return .= "<tr> <td>".$field->label." :</td> <td>".$field->form_field_disp(false)."</td> </tr>\n";
-$return .= "<tr style=\"border:1px gray dotted;\"> <td>&nbsp;</td> <td><input type=\"submit\" value=\"Mettre à jour\" /></td> </tr>\n";
-$return .= "</table>\n";
-$return .= "</div>\n";
+$return = $this->content_disp();
 
 if ($print)
 	echo $return;
 else
 	return $return;
+
+}
+
+public function content_disp()
+{
+
+$return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
+foreach ($this->object->fields() as $name=>$field)
+	$return .= "<tr> <td>".$field->label." :</td> <td>".$field->form_field_disp(false)."</td> </tr>\n";
+$return .= "<tr style=\"border:1px gray dotted;\"> <td>&nbsp;</td> <td><input type=\"submit\" value=\"Mettre à jour\" /></td> </tr>\n";
+$return .= "</table>\n";
+
+return $return;
 
 }
 
@@ -91,7 +101,7 @@ class datamodel_insert_form extends datamodel_display
 public function disp($print=true)
 {
 
-$return = "<form class=\"datamodel_form datamodel_insert_form ".$this->datamodel->name()."_form\" id=\"".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this))\">\n";
+$return = "<form class=\"datamodel_form datamodel_insert_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
 $return .= $this->content_disp();
 $return .= "<p><input type=\"submit\" value=\"Ajouter\" /></p>\n";
 $return .= "</form>\n";
@@ -136,8 +146,21 @@ class datamodel_update_form extends datamodel_display
 public function disp($print=true)
 {
 
-$return = "<form id=\"".$this->datamodel->name()."_form\" class=\"datamodel_form datamodel_update_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
-$return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
+$return = "<form class=\"datamodel_form datamodel_update_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
+$return .= $this->content_disp();
+$return .= "</form>\n";
+
+if ($print)
+	echo $return;
+else
+	return $return;
+
+}
+
+public function content_disp()
+{
+
+$return = "<table cellspacing=\"5\" cellpadding=\"0\">\n";
 {
 		$return .= "<tr class=\"data_id\">\n";
 		$return .= "	<td class=\"label\"><label for=\"id\">ID</label> :</td>\n";
@@ -168,12 +191,8 @@ $return .= "	<td>&nbsp;</td>\n";
 $return .= "	<td><input type=\"submit\" value=\"Mettre à jour\" /></td>\n";
 $return .= "</tr>\n";
 $return .= "</table>\n";
-$return .= "</form>\n";
-
-if ($print)
-	echo $return;
-else
-	return $return;
+	
+return $return;
 
 }
 

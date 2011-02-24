@@ -55,15 +55,10 @@ else
 	return (string)$this->value;
 
 }
-public function form_field_disp($print=true, $options=array())
+public function form_field_disp()
 {
 
-$return = "<textarea name=\"$this->name\" class=\"".get_called_class()."\">$this->value</textarea>";
-
-if ($print)
-	print $return;
-else
-	return $return;
+return"<textarea name=\"$this->name\" class=\"".get_called_class()."\">$this->value</textarea>";
 
 }
 

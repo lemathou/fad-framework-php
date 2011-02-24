@@ -38,26 +38,6 @@ return array("type" => "fromlist", "value_list" => array_keys($this->opt["value_
 }
 
 /* Convert */
-public function value_from_db($value)
-{
-
-$this->value = array();
-if (is_array($value)) foreach ($value as $i)
-	if (isset($this->opt["value_list"][$i]))
-		$this->value[] = $i;
-
-}
-/*
-public function value_to_db()
-{
-
-if (is_array($this->value))
-	return implode(",", $this->value);
-else
-	return null;
-
-}
-*/
 public function verify(&$value, $convert=false, $options=array())
 {
 
@@ -109,7 +89,7 @@ else
 	return "";
 
 }
-public function form_field_disp($print=true, $options=array())
+public function form_field_disp()
 {
 
 $return = "<select name=\"".$this->name."[]\" multiple class=\"".get_called_class()."\">";
@@ -120,10 +100,7 @@ foreach ($this->opt["value_list"] as $i=>$j)
 		$return .= "<option value=\"$i\">$j</option>";
 $return .= "</select>";
 
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
 

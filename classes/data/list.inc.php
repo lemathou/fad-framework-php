@@ -86,7 +86,7 @@ else
 	return "";
 
 }
-function form_field_disp($print=true)
+function form_field_disp()
 {
 
 if (isset($this->opt["db_order_field"]))
@@ -116,23 +116,7 @@ else
 	// TODO : liste ajax
 }
 
-// DISP
-if ($print)
-	echo $return;
-else
-	return $return;
-
-}
-function form_field_select_disp($print=true)
-{
-
-$return = "<input name=\"$this->name\"  />";
-
-// DISP
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
 

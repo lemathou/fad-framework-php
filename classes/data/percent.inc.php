@@ -111,12 +111,7 @@ if ($this->value === null)
 else
 	$value = $this->value*100;
 
-$return = "<input type=\"text\" name=\"$this->name\" value=\"$value\" size=\"4\" maxlength=\"5\" class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
+return "<input type=\"text\" name=\"$this->name\" value=\"$value\" size=\"4\" maxlength=\"5\" class=\"".get_called_class()."\" />";
 
 }
 

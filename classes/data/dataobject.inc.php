@@ -47,6 +47,7 @@ return array("type"=>"integer", "size"=>10, "signed"=>false);
 
 }
 
+/* Convert */
 public function verify(&$value, $convert=false, $options=array())
 {
 
@@ -61,7 +62,6 @@ $value = (int)$value;
 return true;
 
 }
-
 function convert(&$value)
 {
 
@@ -71,7 +71,6 @@ else
 	$value = (int)$value;
 
 }
-
 function convert_from_db(&$value)
 {
 
@@ -79,7 +78,6 @@ if (is_numeric($value))
 	$value = (int)$value;
 
 }
-
 function convert_from_form(&$value)
 {
 
@@ -97,7 +95,8 @@ if (is_array($value) && ($object = datamodel($this->opt["datamodel"])->create())
 
 }
 
-function form_field_disp($print=true, $option=array())
+/* View */
+function form_field_disp()
 {
 
 if (!($datamodel=datamodel($this->opt["datamodel"])))
@@ -139,14 +138,10 @@ else
  	$return .= "</div>";
 }
 
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
-
-function form_field_disp_all($print=true)
+function form_field_disp_all()
 {
 
 $return = "<div id=\"".$this->name."_list\">\n";
@@ -165,13 +160,9 @@ $return .= "</select>\n";
 $return .= "</div>\n";
 
 
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
-
 function __tostring()
 {
 

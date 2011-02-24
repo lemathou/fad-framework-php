@@ -99,15 +99,10 @@ else
 }
 
 /* View */
-public function form_field_disp($print=true, $options=array())
+public function form_field_disp()
 {
 
-$return = "<input type=\"radio\" name=\"$this->name\" value=\"0\"".(($this->value === false)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["value_list"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\"".(($this->value === true)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["value_list"][1];
-
-if ($print)
-	print $return;
-else
-	return $return;
+return "<input type=\"radio\" name=\"$this->name\" value=\"0\"".(($this->value === false)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["value_list"][0]." <input name=\"$this->name\" type=\"radio\" value=\"1\"".(($this->value === true)?" checked":"")." class=\"".get_called_class()."\" />&nbsp;".$this->opt["value_list"][1];
 
 }
 public function __tostring()

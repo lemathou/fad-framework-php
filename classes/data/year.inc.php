@@ -21,52 +21,23 @@ if (DEBUG_GENTIME == true)
  * Associated to a year DB field
  * 
  */
-class data_year extends data_string
+class data_year extends data_datetime
 {
 
 protected $empty_value = "0000";
 
 protected $opt = array
 (
-	"size"=>4
+	"datetime_format" => "Y", // for the value
+	"disp_format" => "%G", // Defined for strftime()
+	"form_format" => "Y", // Defined for date()
+	"db_format" => "Y", // Defined for date()
 );
 
 public function db_field_create()
 {
 
 return array("type" => "year");
-
-}
-
-/* Convert */
-public function verify(&$value, $convert=false, $options=array())
-{
-
-if (!is_string($value) || !preg_match("([0-9]{4})", $value))
-{
-	if ($convert)
-		$value = $this->empty_value;
-	return false;
-}
-
-return true;
-
-}
-function convert(&$value)
-{
-
-if (!is_string($value) || !preg_match("([0-9]{4})", $value))
-	$value = $this->empty_value;
-
-}
-
-public function __tostring()
-{
-
-if ($this->nonempty())
-	return $this->value;
-else
-	return "";
 
 }
 

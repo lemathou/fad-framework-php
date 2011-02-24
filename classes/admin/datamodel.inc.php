@@ -272,11 +272,7 @@ foreach ($this->fields() as $name=>$field)
 	if ($field->type != "dataobject_list")
 	{
 		$f = $field->db_field_create();
-		if (in_array($name, $this->fields_required))
-		{
-			$f["null"] = false;
-		}
-		elseif (!isset($f["null"]) || $f["null"])
+		if (!isset($f["null"])) // || $f["null"]
 		{
 			$f["null"] = true;
 		}
@@ -287,7 +283,7 @@ foreach ($this->fields() as $name=>$field)
 	}
 	else
 	{
-		$fields_ref[] = $field->db_create();
+		$fields_ref[] = $field->db_ref_create();
 	}
 }
 

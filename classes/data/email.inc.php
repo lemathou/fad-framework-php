@@ -31,6 +31,9 @@ protected $opt = array
 	"email_strict"=>false
 );
 
+protected static $ereg = '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+protected static $ereg_strict = '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+
 function __construct($name, $value, $label="Email", $options=array())
 {
 
@@ -38,24 +41,11 @@ data_string::__construct($name, $value, $label, $options);
 
 }
 
-function link($protect=false)
-{
-
-if ($protect)
-{
-	$id = rand(1,10000);
-	list($nom, $domain) = explode("@", $this->value);
-	return "<div id=\"id_$id\" style=\"diaplay:inline;\"></div><script type=\"text/javascript\">email_replace('$id', '$domain', '$nom');</script>";
-}
-else
-	return "<a href=\"mailto:$this->value\">$this->value</a>";
-
-}
-
+/* Convert */
 public function verify(&$value, $convert=false, $options=array())
 {
 
-$regex = ($this->opt["email_strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+$regex = ($this->opt["email_strict"]) ? self::$ereg_strict : self::$ereg;
 
 if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($match[2], "MX"))
 {
@@ -67,14 +57,28 @@ if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($ma
 return false;
 
 }
-
 public function convert(&$value)
 {
 
-$regex = ($this->opt["email_strict"]) ? '/^([.0-9a-z_-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i' : '/^([*+!.&#$¦\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,4})$/i';
+$regex = ($this->opt["email_strict"]) ? self::$ereg_strict : self::$ereg;
 
 if (!is_string($value) || !preg_match($regex, $value, $match) || !checkdnsrr($match[2], "MX"))
 	$value = "";
+
+}
+
+/* View */
+function link($protect=false)
+{
+
+if ($protect)
+{
+	$id = rand(1,10000);
+	list($nom, $domain) = explode("@", $this->value);
+	return "<div id=\"id_$id\" style=\"diaplay:inline;\"></div><script type=\"text/javascript\">email_replace('$id', '$domain', '$nom');</script>";
+}
+else
+	return "<a href=\"mailto:$this->value\">$this->value</a>";
 
 }
 

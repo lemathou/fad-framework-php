@@ -31,7 +31,7 @@ protected $opt = array
 	"db_ref_field" => "", // id du dataobject à récupérer
 	"db_ref_table" => "", // table de liaison
 	"db_ref_id" => "", // champ de liaison
-	"db_order_field" => "", // champ qui gère ordre (optinonel)
+	"db_order_field" => "", // champ qui gère ordre (optionnel)
 	"ref_field_disp" => "", // field to display if needed
 );
 
@@ -61,7 +61,7 @@ else
 /**
  * Data to create the associated database 
  */
-public function db_create()
+public function db_ref_create()
 {
 
 if ($this->opt["db_ref_table"])
@@ -89,16 +89,7 @@ if ($this->opt["db_ref_table"])
 
 }
 
-public function value_add($id)
-{
-
-if (!is_array($this->value))
-	$this->value = array($id);
-else
-	$this->value[] = $id;
-
-}
-
+/* Convert */
 public function verify(&$value, $convert=false, $options=array())
 {
 
@@ -156,15 +147,27 @@ function convert(&$value)
 if (!is_array($value))
 	$value = array();
 
-foreach($value as $n=>$id)
+foreach($value as $nb=>$id)
 {
 	if (!datamodel($this->opt["datamodel"])->exists($id))
-		unset($value[$n]);
+		unset($value[$nb]);
 }
 
 }
 
-function form_field_disp($print=true)
+/* Update */
+public function value_add($id)
+{
+
+if (!is_array($this->value))
+	$this->value = array($id);
+else
+	$this->value[] = $id;
+
+}
+
+/* View */
+function form_field_disp()
 {
 
 if ($this->opt["db_order_field"])
@@ -190,7 +193,7 @@ if (($nb=datamodel($this->opt["datamodel"])->db_count()) < 20)
 			$return .= "<option value=\"$object->id\">$object</option>";
 	}
 	$return .= "</select>";
-	$return = "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '".$this->name."[]')\" /></div>\n";
+	$return .= "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '".$this->name."[]')\" /></div>\n";
 }
 // Beaucoup de valeurs : liste Ajax complexe
 else
@@ -212,11 +215,7 @@ else
 	$return .= "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '".$this->name."[]')\" /></div>";
 }
 
-// DISP
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
 

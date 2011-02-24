@@ -36,15 +36,10 @@ class data_file extends data
 
 protected $opt = array("fileformat"=>"");
 
-function form_field_disp($print=true, $options=array())
+function form_field_disp()
 {
 
-$return = "<input name=\"$this->name\" size=\"16\" value=\"".$this->value."\" /> <input name=\"$this->name\" type=\"file\" />";
-
-if ($print)
-	echo $return;
-else
-	return $return;
+return "<input name=\"$this->name\" size=\"16\" value=\"".$this->value."\" /> <input name=\"$this->name\" type=\"file\" />";
 
 }
 

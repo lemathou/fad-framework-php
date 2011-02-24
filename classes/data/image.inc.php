@@ -39,6 +39,7 @@ if (isset(self::$format_list[$format]))
 
 }
 
+/* View */
 function form_field_disp($print=true, $options=array())
 {
 
@@ -46,13 +47,9 @@ $return = "<input name=\"$this->name\" size=\"16\" value=\"".$this->value."\" />
 if ($this->datamodel_id && $this->object_id)
 	$return .= "<img src=\"/data/".$this->datamodel()->name()."/$this->object_id/$this->value\" alt=\"$this->value\" />";
 
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
-
 function __tostring()
 {
 

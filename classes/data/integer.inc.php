@@ -84,21 +84,6 @@ if (isset($this->opt["numeric_signed"]) && $this->opt["numeric_signed"] == false
 
 }
 
-public function form_field_disp($print=true, $options=array())
-{
-
-$attrib_size = " size=\"".($this->opt["size"]+1)."\"";
-$attrib_maxlength = " maxlength=\"".($this->opt["size"]+1)."\"";
-
-$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
-
-}
-
 function value_from_db($value)
 {
 
@@ -109,17 +94,32 @@ else
 
 }
 
-public function increment()
+/* View */
+public function form_field_disp()
 {
 
-$this->value++;
+$attrib_size = " size=\"".($this->opt["size"]+1)."\"";
+$attrib_maxlength = " maxlength=\"".($this->opt["size"]+1)."\"";
+
+return "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
 
 }
 
+/* Misc */
+public function increment()
+{
+
+if ($this->value)
+	$this->value++;
+else
+	$this->value = 1;
+
+}
 public function decrement()
 {
 
-$this->value--;
+if ($this->value && $this->value > 0)
+	$this->value--;
 
 }
 

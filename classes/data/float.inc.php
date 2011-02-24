@@ -93,28 +93,21 @@ if (!preg_match('/^?[-]?([0-9]*)(\.([0-9]*)){0,1}$/', $value))
 
 }
 
-function value_from_db($value)
+function convert_from_db(&$value)
 {
 
-if ($value === null)
-	$this->value = null;
-else
-	$this->value = floatval($value);
+if ($value !== null)
+	$value = floatval($value);
 
 }
 
-public function form_field_disp($print=true, $options=array())
+public function form_field_disp()
 {
 
 $attrib_size = " size=\"".($this->opt["size"]+2)."\"";
 $attrib_maxlength = " maxlength=\"".($this->opt["size"]+2)."\"";
 
-$return = "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
-
-if ($print)
-	print $return;
-else
-	return $return;
+return "<input type=\"text\" name=\"$this->name\" value=\"$this->value\"$attrib_size$attrib_maxlength class=\"".get_called_class()."\" />";
 
 }
 

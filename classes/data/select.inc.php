@@ -64,7 +64,7 @@ if (!isset($this->opt["value_list"][$value]))
 }
 
 /* View */
-public function form_field_disp($print=true, $options=array())
+public function form_field_disp()
 {
 
 $return = "<select name=\"$this->name\" class=\"".get_called_class()."\">";
@@ -76,13 +76,10 @@ foreach ($this->opt["value_list"] as $i=>$j)
 		$return .= "<option value=\"$i\">$j</option>";
 $return .= "</select>";
 
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
-public function form_field_select_disp($print=true, $options=array())
+public function form_field_select_disp($options=array())
 {
 
 $return = "<select name=\"$this->name\">";
@@ -94,10 +91,7 @@ foreach ($this->opt["value_list"] as $i=>$j)
 		$return .= "<option value=\"$i\">$j</option>";
 $return .= "</select>";
 
-if ($print)
-	print $return;
-else
-	return $return;
+return $return;
 
 }
 function __tostring()

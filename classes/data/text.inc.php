@@ -38,23 +38,13 @@ return array("type"=>"string");
 public function form_field_disp($print=true, $options=array())
 {
 
-$return = "<textarea name=\"$this->name\" class=\"".get_called_class()."\">$this->value</textarea>";
-
-if ($print)
-	print $return;
-else
-	return $return;
+return "<textarea name=\"$this->name\" class=\"".get_called_class()."\">$this->value</textarea>";
 
 }
 public function form_field_select_disp($print=true, $options=array())
 {
 
-$return = data_string::form_field_disp();
-
-if ($print)
-	print $return;
-else
-	return $return;
+return data_string::form_field_disp();
 
 }
 public function __tostring()

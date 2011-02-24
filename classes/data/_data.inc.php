@@ -434,13 +434,10 @@ return $this->__tostring();
  * @param array $options
  * @return string
  */
-public function form_field_disp($print=true, $options=array())
+public function form_field_disp($options=array())
 {
 
-if ($print)
-	echo "";
-else
-	return "";
+return "";
 
 }
 /**
@@ -449,15 +446,10 @@ else
  * @param array $options
  * @return string
  */
-public function form_field_select_disp($print=true, $options=array())
+public function form_field_select_disp($options=array())
 {
 
-$return = $this->form_field_disp(false, $options);
-	
-if ($print)
-	echo $return;
-else
-	return $return;
+return $this->form_field_disp($options);
 
 }
 

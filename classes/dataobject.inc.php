@@ -610,6 +610,22 @@ return false;
 }
 
 /**
+ * Returns the details for Javascript control functions
+ */
+public function js()
+{
+
+$list = array();
+foreach($this->fields() as $field)
+{
+	$list[] = "\"$field->name\":".$field->js();
+}
+
+return "{\"datamodel\":".$this->datamodel_id.", \"id\":$this->id, \"label\":\"".json_encode($this->__tostring())."\", \"fields\":{\n".implode(",\n", $list)."\n} }";
+
+}
+
+/**
  * Returns the datamodel action list
  */
 public function action_list()

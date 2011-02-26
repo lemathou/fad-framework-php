@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: datamodel.js.php 42 2011-02-20 10:57:47Z lemathoufou $
+  * $Id: dataobject.js.php 42 2011-02-20 10:57:47Z lemathoufou $
   * 
   * « Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr »
   * 
@@ -14,7 +14,7 @@
 
 include PATH_INCLUDE."/header.inc.php";
 
-if (isset($_GET["id"]) && ($datamodel=datamodel($_GET["id"])))
-	echo $datamodel->js();
+if (isset($_GET["datamodel"]) && ($datamodel=datamodel($_GET["datamodel"])) && isset($_GET["id"]) && ($object=$datamodel->get($_GET["id"])))
+	echo $object->js();
 
 ?>

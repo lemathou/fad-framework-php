@@ -1,9 +1,11 @@
 /**
   * $Id$
   * 
-  * Copyright 2008-2010 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -289,8 +291,10 @@ function opener_url(url)
 
 /* Gestion des banques de donnée (formulaires, etc.) */
 
+// Compteur pour chaque datamodel
 var datamodel_autoadd_count = new Object();
 
+// Ajoute un formulaire d'insertion à l'élement
 function datamodel_insert_form(datamodel, template, element, name)
 {
 	$.post("/view.php", {datamodel: datamodel, template: template}, function(data){
@@ -317,87 +321,9 @@ function datamodel_insert_form(datamodel, template, element, name)
 	});
 }
 
-function databank_list_create(name)
-{
-	if (fields[name]['value'])
-	{
-		for (var nb in fields[name]['value'])
-		{
-			databank_list_add(name, fields[name]['value'][nb]['id'], fields[name]['value'][nb]['name']);
-		}
-	}
-}
-function databank_list_add(name, id, text)
-{
-	fields[name]['nb']++;
-	var nb = fields[name]['nb'];
-	var node = document.getElementById(name+'_list');
-	var childnode = document.createElement('div');
-	childnode.setAttribute('id', name+'_'+nb);
-	var s = document.createElement('input');
-		s.setAttribute('id', name+'['+nb+']');
-		s.setAttribute('type', 'hidden');
-		s.setAttribute('value', id);
-		childnode.appendChild(s);
-	var s = document.createElement('span');
-		s.innerHTML = text;
-		childnode.appendChild(s);
-	var s = document.createElement('span');
-		s.innerHTML = ' X';
-		s.setAttribute('style', 'color: red;cursor: pointer;font-weight: bold;');
-		s.setAttribute('onclick', 'databank_list_del(\''+name+'\', \''+nb+'\')');
-		childnode.appendChild(s);
-	node.appendChild(childnode);
-	for (var i=0;i<=nb;i++)
-	{
-		if (document.getElementById(name+'['+i+']'))
-			document.getElementById(name+'['+i+']').name = name+'['+i+']';
-	}
-	$('#'+name+'_suggestions').hide();
-	$('#'+name+'_autoSuggestionsList').html('');
-}
-function databank_list_del(name, nb)
-{
-	if (fields[name] && fields[name]['type'] == 'link')
-	{
-		//if (window.confirm('About to remove the link between objects. Are you sure ?'))
-		{
-			childname = name+'_'+nb;
-			var node = document.getElementById(childname)
-			var parent = node.parentNode;
-			parent.removeChild(node);
-			change(name);
-		}
-	}
-	else
-	{
-		//if (window.confirm('About to remove the linked object and all its attached resources ! Are you sure ?'))
-		{
-			childname = name+'_'+nb;
-			var node = document.getElementById(childname)
-			var parent = node.parentNode;
-			parent.removeChild(node);
-			// AJAX !
-		}
-	}
-}
-function databank_lookup(name)
-{
-	var field = document.getElementById(name+'_input');
-	$.post("/rpc.php", {queryString: field.value, method: "databank_list_add"}, function(data){
-		if (data.length >0)
-		{
-			$('#'+name+'_suggestions').show();
-			$('#'+name+'_autoSuggestionsList').html(data);
-		}
-		else
-		{
-			$('#'+name+'_suggestions').hide();
-			$('#'+name+'_autoSuggestionsList').html('');
-		}
-	});
-}
-
+// Field last update time to tell script when execute the Ajax query
+var query_lasttime = 0;
+// Query objects using Ajax and a callback function
 function rpc_query(datamodel, params, callback_func, fields, time)
 {
 	var d = new Date();
@@ -416,8 +342,6 @@ function rpc_query(datamodel, params, callback_func, fields, time)
 		}, "json");
 	}
 }
-
-var query_lasttime = 0;
 
 // Requête sur une databank et renvoi des résultats vers une fonction
 function object_list_query(datamodel, params, field)
@@ -467,13 +391,15 @@ function object_list_hide(field)
 
 /* Gestion champs de formulaires (datamodel) avec controles */
 
-function field_control(field, type)
+function field_verify(field, options)
 {
 	switch(type)
 	{
 	case "data_email":
+		return field_email_verify(field, options);
 		break;
 	case "data_url":
+		return field_url_verify(field, options);
 		break;
 	case "data_text":
 		break;
@@ -482,18 +408,24 @@ function field_control(field, type)
 	case "data_measure":
 		break;
 	case "data_float":
-		break;
-	case "data_id":
+		return field_float_verify(field, options);
 		break;
 	case "data_number":
 		break;
 	case "data_integer":
+		return field_integer_verify(field, options);
 		break;
 	case "data_string":
+		return field_string_verify(field, options);
 		break;
 	default:
 		break;
 	}
+}
+
+function field_string_verify(field, options)
+{
+
 }
 
 /* Gestion formulaires avec data fields */

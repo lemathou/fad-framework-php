@@ -41,10 +41,6 @@ return self::$perm_list;
 protected function query_info_more()
 {
 
-$query = db()->query("SELECT `perm_id`, `library_id`, `perm` FROM `_library_perm_ref`");
-while (list($perm_id, $library_id, $perm) = $query->fetch_row())
-	$this->list_detail[$perm_id]["library_perm"][$library_id] = $perm;
-
 $query = db()->query("SELECT `perm_id`, `datamodel_id`, `perm` FROM `_datamodel_perm_ref`");
 while (list($perm_id, $datamodel_id, $perm) = $query->fetch_row())
 	$this->list_detail[$perm_id]["datamodel_perm"][$datamodel_id] = $perm;
@@ -53,17 +49,21 @@ $query = db()->query("SELECT `perm_id`, `datamodel_id`, `object_id`, `perm` FROM
 while (list($perm_id, $datamodel_id, $object_id, $perm) = $query->fetch_row())
 	$this->list_detail[$perm_id]["dataobject_perm"][$datamodel_id][$object_id] = $perm;
 
-$query = db()->query("SELECT `perm_id`, `template_id`, `perm` FROM `_template_perm_ref`");
+$query = db()->query("SELECT `perm_id`, `library_id` FROM `_library_perm_ref`");
+while (list($perm_id, $library_id, $perm) = $query->fetch_row())
+	$this->list_detail[$perm_id]["library_perm"][$library_id] = array();
+
+$query = db()->query("SELECT `perm_id`, `template_id` FROM `_template_perm_ref`");
 while (list($perm_id, $template_id, $perm) = $query->fetch_row())
-	$this->list_detail[$perm_id]["template_perm"][$template_id] = $perm;
+	$this->list_detail[$perm_id]["template_perm"][$template_id] = array();
 
 $query = db()->query("SELECT `perm_id`, `page_id` FROM `_page_perm_ref`");
 while (list($perm_id, $page_id) = $query->fetch_row())
-	$this->list_detail[$perm_id]["page_perm"][$page_id] = true;
+	$this->list_detail[$perm_id]["page_perm"][$page_id] = array();
 
-$query = db()->query("SELECT `perm_id`, `menu_id`, `perm` FROM `_menu_perm_ref`");
+$query = db()->query("SELECT `perm_id`, `menu_id` FROM `_menu_perm_ref`");
 while (list($perm_id, $menu_id, $perm) = $query->fetch_row())
-	$this->list_detail[$perm_id]["menu_perm"][$menu_id] = $perm;
+	$this->list_detail[$perm_id]["menu_perm"][$menu_id] = array();
 
 }
 
@@ -77,7 +77,6 @@ class __permission extends _object_gestion
 
 protected $_type = "permission";
 
-//protected $list = array();
 protected $library_perm = array();
 protected $datamodel_perm = array();
 protected $dataobject_perm = array();
@@ -102,11 +101,6 @@ $this->query_perm();
 public function query_perm()
 {
 
-$this->library_perm = array();
-$query = db()->query("SELECT `library_id`, `perm` from `_library_perm_ref` WHERE `perm_id` = '$this->id'");
-while (list($library_id, $perm) = $query->fetch_row())
-	$this->library_perm[$library_id] = $perm;
-
 $this->datamodel_perm = array();
 $query = db()->query("SELECT `datamodel_id`, `perm` from `_datamodel_perm_ref` WHERE `perm_id` = '$this->id'");
 while (list($datamodel_id, $perm) = $query->fetch_row())
@@ -117,30 +111,38 @@ $query = db()->query("SELECT `datamodel_id`, `object_id`, `perm` from `_dataobje
 while (list($datamodel_id, $object_id, $perm) = $query->fetch_row())
 	$this->dataobject_perm[$datamodel_id][$object_id] = $perm;
 
+$this->library_perm = array();
+$query = db()->query("SELECT `library_id` from `_library_perm_ref` WHERE `perm_id` = '$this->id'");
+while (list($library_id, $perm) = $query->fetch_row())
+	$this->library_perm[$library_id] = array();
+
 $this->template_perm = array();
-$query = db()->query("SELECT `template_id`, `perm` from `_template_perm_ref` WHERE `perm_id` = '$this->id'");
+$query = db()->query("SELECT `template_id` from `_template_perm_ref` WHERE `perm_id` = '$this->id'");
 while (list($template_id, $perm) = $query->fetch_row())
-	$this->template_perm[$template_id] = $perm;
+	$this->template_perm[$template_id] = array();
 
 $this->page_perm = array();
 $query = db()->query("SELECT `page_id` from `_page_perm_ref` WHERE `perm_id` = '$this->id'");
 while (list($page_id) = $query->fetch_row())
-	$this->page_perm[$page_id] = true;
+	$this->page_perm[$page_id] = array();
 
 $this->menu_perm = array();
-$query = db()->query("SELECT `menu_id`, `perm` from `_menu_perm_ref` WHERE `perm_id` = '$this->id'");
-while (list($menu_id, $perm) = $query->fetch_row())
-	$this->menu_perm[$menu_id] = $perm;
+$query = db()->query("SELECT `menu_id` from `_menu_perm_ref` WHERE `perm_id` = '$this->id'");
+while (list($menu_id) = $query->fetch_row())
+	$this->menu_perm[$menu_id] = array();
 
 }
 
-function datamodel($id=null)
+function datamodel($id=null, $action=null)
 {
 
 if (is_numeric($id))
 {
 	if (isset($this->datamodel_perm[$id]))
-		return $this->datamodel_perm[$id];
+		if (is_string($action) && isset($this->datamodel_perm[$id][$action]))
+			return $this->datamodel_perm[$id][$action];
+		else
+			return $this->datamodel_perm[$id];
 	else
 		return false;
 }
@@ -149,7 +151,7 @@ else
 
 }
 
-function dataobject($datamodel_id, $object_id)
+function dataobject($datamodel_id=null, $object_id=null, $action=null)
 {
 
 if (isset($this->dataobject_perm[$datamodel_id][$object_id]))
@@ -159,33 +161,50 @@ else
 
 }
 
-function template($id)
+function template($id=null)
 {
 
-if (isset($this->template_perm[$id]))
-	return $this->template_perm[$id];
+if (is_numeric($id))
+{
+	if (isset($this->template_perm[$id]))
+		return $this->template_perm[$id];
+	else
+		return false;
+}
 else
-	return false;
+	return $this->template_perm;
 
 }
 
-function page($id)
+function page($id=null, $action=null)
 {
 
-if (isset($this->page_perm[$id]))
-	return $this->page_perm[$id];
-else
+if (is_numeric($id))
+{
+	if (isset($this->page_perm[$id]))
+		if (is_string($action) && isset($this->page_perm[$id][$action]))
+			return $this->page_perm[$id][$action];
+		else
+			return $this->page_perm[$id];
 	return false;
+}
+else
+	return $this->page_perm;
 
 }
 
 function menu($id)
 {
 
-if (isset($this->menu_perm[$id]))
-	return $this->menu_perm[$id];
+if (is_numeric($id))
+{
+	if (isset($this->menu_perm[$id]))
+		return $this->menu_perm[$id];
+	else
+		return false;
+}
 else
-	return false;
+	return $this->menu_perm;
 
 }
 
@@ -193,6 +212,8 @@ else
 
 /**
  * Object used to retrieve permissions
+ * Used for datamodels and dataobjects essentially for basic use
+ * but also for pages actions
  */
 class permission_info
 {

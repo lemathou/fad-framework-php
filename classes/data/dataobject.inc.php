@@ -96,7 +96,7 @@ if (is_array($value) && ($object = datamodel($this->opt["datamodel"])->create())
 }
 
 /* View */
-function form_field_disp()
+function form_field_disp($options=array())
 {
 
 if (!($datamodel=datamodel($this->opt["datamodel"])))

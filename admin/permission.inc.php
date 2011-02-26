@@ -3,9 +3,11 @@
 /**
   * $Id: permission.inc.php 21 2010-12-17 15:48:39Z lemathoufou $
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -65,6 +67,7 @@ $object = $_type($id);
 	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" <?php if ($submenu == "update_form") echo "class=\"selected\""; ?>>Formulaire</a>
 	<a href="javascript:;" name="datamodel_perm" onclick="admin_submenu(this.name)" <?php if ($submenu == "datamodel_perm") echo "class=\"selected\""; ?>>Datamodels</a>
 	<a href="javascript:;" name="dataobject_perm" onclick="admin_submenu(this.name)" <?php if ($submenu == "dataobject_perm") echo "class=\"selected\""; ?>>Dataobjects</a>
+	<a href="javascript:;" name="page_perm" onclick="admin_submenu(this.name)" <?php if ($submenu == "page_perm") echo "class=\"selected\""; ?>>Pages</a>
 </div>
 
 <div id="update_form" class="subcontents"<?php if ($submenu != "update_form") echo " style=\"display:none;\""; ?>>
@@ -75,6 +78,7 @@ $object->update_form();
 
 <div id="datamodel_perm" class="subcontents"<?php if ($submenu != "datamodel_perm") echo " style=\"display:none;\""; ?>>
 <h1>Permissions spécifiques aux datamodels :</h1>
+<p>En blue : permission OUI globale, en rouge : permission OUI cumulée</p>
 <table cellspacing="2" cellpadding="2" border="1">
 <tr>
 	<td>Datamodel</td>
@@ -91,7 +95,12 @@ foreach (datamodel()->list_get() as $datamodel)
 	echo "<tr>\n";
 	echo "<td>".$datamodel->label()."</td>\n";
 	foreach(_permission_gestion::perm_list() as $p=>$q)
-		if (strpos($perm, $p) !== false)
+		if (in_array($p, $datamodel->info("perm")))
+			if (strpos($perm, $p) !== false)
+				echo "<td><b style=\"color: red;\">OUI</b></td>\n";
+			else
+				echo "<td><b style=\"color: blue;\">OUI</b></td>\n";
+		elseif (strpos($perm, $p) !== false)
 			echo "<td><b>OUI</b></td>\n";
 		else
 			echo "<td>NON</td>\n";
@@ -102,6 +111,36 @@ foreach (datamodel()->list_get() as $datamodel)
 </div>
 
 <div id="dataobject_perm" class="subcontents"<?php if ($submenu != "dataobject_perm") echo " style=\"display:none;\""; ?>>
+</div>
+
+<div id="page_perm" class="subcontents"<?php if ($submenu != "page_perm") echo " style=\"display:none;\""; ?>>
+<h1>Permissions spécifiques aux pages :</h1>
+<p>En blue : permission OUI globale, en rouge : permission OUI cumulée</p>
+<table cellspacing="2" cellpadding="2" border="1">
+<tr>
+	<td>Page</td>
+	<td>Accès</td>
+</tr>
+<?php
+page()->retrieve_objects();
+foreach (page()->list_get() as $page)
+{
+	$perm = $object->page($page->id());
+	echo "<tr>\n";
+	echo "<td>".$page->label()."</td>\n";
+	if ($page->info("perm"))
+		if (is_array($perm))
+			echo "<td><b style=\"color: red;\">OUI</b></td>\n";
+		else
+			echo "<td><b style=\"color: blue;\">OUI</b></td>\n";
+	elseif (is_array($perm))
+		echo "<td><b>OUI</b></td>\n";
+	else
+		echo "<td>NON</td>\n";
+	echo "</tr>\n";
+}
+?>
+</table>
 </div>
 <?php
 

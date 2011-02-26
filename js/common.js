@@ -296,7 +296,7 @@ function datamodel_insert_form(datamodel, template, element, name)
 	$.post("/view.php", {datamodel: datamodel, template: template}, function(data){
 		if (data.length > 0 && element)
 		{
-			$(element).append("<div><hr />"+data+"<p><input type=\"button\" value=\"REMOVE\" onclick=\"$(this.parentNode.parentNode).remove()\" /></p></div>");
+			$(element).append("<div>"+data+"<p style=\"text-align: right;margin-top: 0;\"><input type=\"button\" value=\"CANCEL\" onclick=\"$(this.parentNode.parentNode).remove()\" /></p></div>");
 			if (name)
 			{
 				if (name.substr(-2,2) == "[]")

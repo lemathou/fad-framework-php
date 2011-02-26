@@ -20,8 +20,6 @@ class __template_gestion extends _gestion
 
 protected $type = "template";
 
-protected $info_list = array("name", "type", "cache_mintime", "cache_maxtime", "login_dependant");
-
 protected $info_detail = array
 (
 	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"page", "select_list"=> array('container'=>"Conteneur principal",'inc'=>"Inclusion fréquente",'page'=>"Contenu de page",'datamodel'=>"Vue de datamodel")),
@@ -29,9 +27,9 @@ protected $info_detail = array
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
 	"mime"=>array("label"=>"Type de contenu (MIME)", "type"=>"string", "size"=>128, "lang"=>false, "default"=>"text/html"),
-	"cache_mintime"=>array("label"=>"Durée minimum du cache", "lang"=>false, "default"=>TEMPLATE_CACHE_MIN_TIME, "type"=>"integer"),
-	"cache_maxtime"=>array("label"=>"Durée maximum du cache", "lang"=>false, "default"=>TEMPLATE_CACHE_MAX_TIME, "type"=>"integer"),
-	"login_dependant"=>array("label"=>"Dépendant du login", "lang"=>false, "default"=>"0", "type"=>"boolean"),
+	"cache_mintime"=>array("label"=>"Durée minimum du cache", "type"=>"integer", "lang"=>false, "default"=>TEMPLATE_CACHE_MIN_TIME),
+	"cache_maxtime"=>array("label"=>"Durée maximum du cache", "type"=>"integer", "lang"=>false, "default"=>TEMPLATE_CACHE_MAX_TIME),
+	"login_dependant"=>array("label"=>"Dépendant du login", "type"=>"boolean", "lang"=>false, "default"=>"0"),
 	"library_list"=>array("label"=>"Librairies", "type"=>"object_list", "object_type"=>"library", "db_table"=>"_template_library_ref", "db_id"=>"template_id", "db_field"=>"library_id"),
 	"tplfile"=>array("label"=>"Template", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.tpl.php"),
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.inc.php")
@@ -46,22 +44,21 @@ protected function construct_object($id)
 
 if ($this->retrieve_details)
 {
-	if ($this->list_detail[$id]["type"] == "container")
-		return new _template_container($id, false, $this->list_detail[$id]);
-	elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
-		return new _template_datamodel($id, false, $this->list_detail[$id]);
-	else
-		return new _template($id, false, $this->list_detail[$id]);
+	$query = false;
+	$info = $this->list_detail[$id];
 }
 else
 {
-	if ($this->list_detail[$id]["type"] == "container")
-		return new _template_container($id, true);
-	elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
-		return new _template_datamodel($id, true);
-	else
-		return new _template($id, true);
+	$query = true;
+	$info = array();
 }
+
+if ($this->list_detail[$id]["type"] == "container")
+	return new _template_container($id, $query, $info);
+elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
+	return new _template_datamodel($id, $query, $info);
+else
+	return new _template($id, $query, $info);
 
 }
 

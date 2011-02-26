@@ -31,7 +31,7 @@ $admin_menu = array
 // Default page
 $admin_page = "template";
 
-function admin_select()
+function admin_page_select()
 {
 
 global $admin_menu;
@@ -44,7 +44,7 @@ if (isset($_GET["_page"]) && isset($admin_menu[$_GET["_page"]]))
 
 }
 
-function admin_disp()
+function admin_page_disp()
 {
 
 global $admin_page;
@@ -53,7 +53,13 @@ include PATH_ADMIN."/$admin_page.inc.php";
 
 }
 
-admin_select();
+function admin_disp()
+{
+
+admin_page_select();
+
+global $admin_menu;
+global $admin_page;
 
 header("Content-type: text/html; charset=".SITE_CHARSET);
 ?>
@@ -110,9 +116,16 @@ foreach ($admin_menu as $_page => $_name)
 ?></div>
 
 <div class="page_content">
-<?php admin_disp(); ?>
+<?php admin_page_disp(); ?>
 </div>
 
 </body>
 
 </html>
+<?php
+
+}
+
+admin_disp();
+
+?>

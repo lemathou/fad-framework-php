@@ -174,13 +174,13 @@ td.label
 {
 	width: 100%;
 }
-.datamodel_form > table
+.datamodel_form fieldset > table, .datamodel_form > table
 {
 	width: 100%;
 }
-.datamodel_form > table td.label
+.datamodel_form fieldset > table td.label, .datamodel_form > table td.label
 {
-	width: 250px;
+	width: 200px;
 }
 
 /* DATATYPES */

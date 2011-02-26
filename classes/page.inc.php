@@ -25,9 +25,6 @@ protected $type = "page";
 
 protected $page_id = 0;
 
-protected $info_list = array("name", "type", "template_id", "redirect_url", "alias_page_id", "perm");
-protected $info_lang_list = array("label", "description", "url", "shortlabel");
-
 protected $retrieve_details = false;
 
 protected $info_detail = array
@@ -37,9 +34,10 @@ protected $info_detail = array
 	"shortlabel"=>array("label"=>"Titre court (pour liens)", "type"=>"string", "size"=>64, "lang"=>true),
 	"url"=>array("label"=>"URL", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
-	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"template", "select_list"=> array("static_html"=>"Page HTML statique", "template"=>"Utilisation d'un template (valeur par défaut)", "redirect"=>"Redirection vers une page extérieure", "alias"=>"Alias d'une autre page du site", "static_html"=>"Page HTML statique", "php"=>"Script PHP")),
+	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"template", "select_list"=>array("static_html"=>"Page HTML statique", "template"=>"Utilisation d'un template (valeur par défaut)", "redirect"=>"Redirection vers une page extérieure", "alias"=>"Alias d'une autre page du site", "static_html"=>"Page HTML statique", "php"=>"Script PHP")),
 	"template_id"=>array("label"=>"Template", "type"=>"object", "object_type"=>"template", "lang"=>false),
-	"perm_list"=>array("label"=>"Permissions", "type"=>"object_list", "object_type"=>"permission", "db_table"=>"_page_perm_ref", "db_id"=>"page_id", "db_field"=>"perm_id"),
+	"perm"=>array("label"=>"Permission par défaut", "type"=>"boolean", "default"=>0, "value_list"=>array("Protégé", "Accès pour tous"), "lang"=>false),
+	"perm_list"=>array("label"=>"Permissions spécifiques", "type"=>"object_list", "object_type"=>"permission", "db_table"=>"_page_perm_ref", "db_id"=>"page_id", "db_field"=>"perm_id"),
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGE, "filename"=>"{name}.inc.php")
 );
 
@@ -86,9 +84,10 @@ $i = array_pop($GLOBALS["url_e"]);
 
 $url_params = array();
 
+// No page => Default page
 if (!$i)
 {
-	define("PAGE_ID", 1);
+	define("PAGE_ID", PAGE_DEFAULT_ID);
 }
 else
 {
@@ -103,15 +102,14 @@ else
 			$i = substr($i,0,$j);
 		}
 	}
-	// Test existance
-	// TODO : define PAGE_ID only id exists and have permission, otherwise do something else elsewhere but not in this class !
+	// Page exists
 	if (!array_key_exists($i, $this->list_detail))
 	{
-		define("PAGE_ID", 2);
+		define("PAGE_ID", PAGE_UNDEFINED_ID);
 	}
 	elseif (!$this->get($i)->perm_login()) // perm("r")
 	{
-		define("PAGE_ID", 3);
+		define("PAGE_ID", PAGE_UNAUTHORIZED_ID);
 	}
 	else
 	{
@@ -255,6 +253,10 @@ else
 }
 public function perm_login()
 {
+
+// Default Access Permission
+if ($this->perm)
+	return true;
 
 $return = false;
 

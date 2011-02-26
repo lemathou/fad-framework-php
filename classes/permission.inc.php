@@ -21,13 +21,22 @@ if (DEBUG_GENTIME == true)
  * @author mathieu
  * 
  */
-class _permission_gestion extends _gestion
+class __permission_gestion extends _gestion
 {
 
 protected $type = "permission";
 
-protected $retrieve_objects = true;
+protected $retrieve_objects = false;
 protected $retrieve_details = false;
+
+protected static $perm_list = array("l"=>"List", "r"=>"Read", "i"=>"Insert", "u"=>"Update", "d"=>"Delete", "a"=>"Admin");
+
+public static function perm_list()
+{
+
+return self::$perm_list;
+	
+}
 
 protected function query_info_more()
 {
@@ -48,9 +57,9 @@ $query = db()->query("SELECT `perm_id`, `template_id`, `perm` FROM `_template_pe
 while (list($perm_id, $template_id, $perm) = $query->fetch_row())
 	$this->list_detail[$perm_id]["template_perm"][$template_id] = $perm;
 
-$query = db()->query("SELECT `perm_id`, `page_id`, `perm` FROM `_page_perm_ref`");
-while (list($perm_id, $page_id, $perm) = $query->fetch_row())
-	$this->list_detail[$perm_id]["page_perm"][$page_id] = $perm;
+$query = db()->query("SELECT `perm_id`, `page_id` FROM `_page_perm_ref`");
+while (list($perm_id, $page_id) = $query->fetch_row())
+	$this->list_detail[$perm_id]["page_perm"][$page_id] = true;
 
 $query = db()->query("SELECT `perm_id`, `menu_id`, `perm` FROM `_menu_perm_ref`");
 while (list($perm_id, $menu_id, $perm) = $query->fetch_row())
@@ -63,7 +72,7 @@ while (list($perm_id, $menu_id, $perm) = $query->fetch_row())
 /**
  * Permissions
  */
-class _permission extends _object_gestion
+class __permission extends _object_gestion
 {
 
 protected $_type = "permission";
@@ -86,63 +95,57 @@ return array("id", "name", "label", "description", "library_perm", "datamodel_pe
 protected function query_info_more()
 {
 
+$this->query_perm();
+
+}
+
+public function query_perm()
+{
+
 $this->library_perm = array();
 $query = db()->query("SELECT `library_id`, `perm` from `_library_perm_ref` WHERE `perm_id` = '$this->id'");
-if ($query->num_rows())
-{
-	while (list($library_id, $perm) = $query->fetch_row())
-		$this->library_perm[$library_id] = $perm;
-}
+while (list($library_id, $perm) = $query->fetch_row())
+	$this->library_perm[$library_id] = $perm;
 
 $this->datamodel_perm = array();
 $query = db()->query("SELECT `datamodel_id`, `perm` from `_datamodel_perm_ref` WHERE `perm_id` = '$this->id'");
-if ($query->num_rows())
-{
-	while (list($datamodel_id, $object_id, $perm) = $query->fetch_row())
-		$this->datamodel_perm[$datamodel_id][$object_id] = $perm;
-}
+while (list($datamodel_id, $perm) = $query->fetch_row())
+	$this->datamodel_perm[$datamodel_id] = $perm;
 
 $this->dataobject_perm = array();
 $query = db()->query("SELECT `datamodel_id`, `object_id`, `perm` from `_dataobject_perm_ref` WHERE `perm_id` = '$this->id'");
-if ($query->num_rows())
-{
-	while (list($datamodel_id, $object_id, $perm) = $query->fetch_row())
-		$this->dataobject_perm[$datamodel_id][$object_id] = $perm;
-}
+while (list($datamodel_id, $object_id, $perm) = $query->fetch_row())
+	$this->dataobject_perm[$datamodel_id][$object_id] = $perm;
 
 $this->template_perm = array();
 $query = db()->query("SELECT `template_id`, `perm` from `_template_perm_ref` WHERE `perm_id` = '$this->id'");
-if ($query->num_rows())
-{
-	while (list($template_id, $perm) = $query->fetch_row())
-		$this->template_perm[$template_id] = $perm;
-}
+while (list($template_id, $perm) = $query->fetch_row())
+	$this->template_perm[$template_id] = $perm;
 
 $this->page_perm = array();
-$query = db()->query("SELECT `page_id`, `perm` from `_page_perm_ref` WHERE `perm_id` = '$this->id'");
-if ($query->num_rows())
-{
-	while (list($page_id, $perm) = $query->fetch_row())
-		$this->page_perm[$page_id] = $perm;
-}
+$query = db()->query("SELECT `page_id` from `_page_perm_ref` WHERE `perm_id` = '$this->id'");
+while (list($page_id) = $query->fetch_row())
+	$this->page_perm[$page_id] = true;
 
 $this->menu_perm = array();
 $query = db()->query("SELECT `menu_id`, `perm` from `_menu_perm_ref` WHERE `perm_id` = '$this->id'");
-if ($query->num_rows())
-{
-	while (list($menu_id, $perm) = $query->fetch_row())
-		$this->menu_perm[$menu_id] = $perm;
-}
+while (list($menu_id, $perm) = $query->fetch_row())
+	$this->menu_perm[$menu_id] = $perm;
 
 }
 
-function datamodel($id)
+function datamodel($id=null)
 {
 
-if (isset($this->datamodel_perm[$id]))
-	return $this->datamodel_perm[$id];
+if (is_numeric($id))
+{
+	if (isset($this->datamodel_perm[$id]))
+		return $this->datamodel_perm[$id];
+	else
+		return false;
+}
 else
-	return false;
+	return $this->datamodel_perm;
 
 }
 
@@ -226,15 +229,10 @@ function update($list)
 
 if (is_array($list))
 {
-	foreach($list as $i=>$j)
+	foreach($this->list as $i=>$j)
 	{
-		if (isset($this->list[$i]))
-		{
-			if ($j)
-				$this->list[$i] = true;
-			else
-				$this->list[$i] = false;
-		}
+		if (in_array($i, $list))
+			$this->list[$i] = true;
 	}
 }
 elseif (is_string($list))
@@ -279,6 +277,20 @@ return $this->list;
 
 }
 
+}
+
+
+/*
+ * Specific classes for admin
+ */
+if (ADMIN_LOAD == true)
+{
+	include PATH_CLASSES."/admin/permission.inc.php";
+}
+else
+{
+	class _permission_gestion extends __permission_gestion {};
+	class _permission extends __permission {};
 }
 
 

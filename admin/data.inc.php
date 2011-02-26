@@ -102,7 +102,7 @@ foreach($opt_list as $i=>$j)
 if (isset($_GET["datamodel_id"]) && $_GET["datamodel_id"] && isset($_GET["add"]))
 {
 
-datamodel($_GET["datamodel_id"])->create(true)->insert_form()->disp();
+echo datamodel($_GET["datamodel_id"])->create(true)->insert_form()->disp();
 
 }
 
@@ -110,7 +110,7 @@ datamodel($_GET["datamodel_id"])->create(true)->insert_form()->disp();
 elseif (isset($_GET["datamodel_id"]) && isset($_GET["object_id"]) && $_GET["object_id"])
 {
 
-datamodel($_GET["datamodel_id"])->get($_GET["object_id"])->form()->disp();
+echo datamodel($_GET["datamodel_id"])->get($_GET["object_id"])->form()->disp();
 
 }
 

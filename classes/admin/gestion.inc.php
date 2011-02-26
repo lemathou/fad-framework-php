@@ -172,7 +172,7 @@ foreach ($this->info_detail as $name=>$info)
 <?php } elseif ($info["type"] == "integer") { ?>
 	<td><input name="<?php echo $name; ?>" size="10" maxlength="10" value="<?php if (isset($info["default"])) echo $info["default"]; ?>" class="data_integer" /></td>
 <?php } elseif ($info["type"] == "boolean") { ?>
-	<td><input name="<?php echo $name; ?>" type="radio" value="1"<?php if ($info["default"] == "1") echo " checked"; ?> /> OUI <input name="<?php echo $name; ?>" type="radio" value="0"<?php if ($info["default"] == "0") echo " checked"; ?> /> NON</td>
+	<td><input name="<?php echo $name; ?>" type="radio" value="1"<?php if ($info["default"] == "1") echo " checked"; ?> /> <?php if (isset($info["value_list"])) echo $info["value_list"][1]; else echo "OUI"; ?> <input name="<?php echo $name; ?>" type="radio" value="0"<?php if ($info["default"] == "0") echo " checked"; ?> /> <?php if (isset($info["value_list"])) echo $info["value_list"][0]; else echo "NON"; ?></td>
 <?php } elseif ($info["type"] == "select") { ?>
 	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
 	foreach($info["select_list"] as $i=>$j)
@@ -180,6 +180,11 @@ foreach ($this->info_detail as $name=>$info)
 			echo "<option value=\"$i\" selected>$j</option>";
 		else
 			echo "<option value=\"$i\">$j</option>";
+	?></select></td>
+<?php } elseif ($info["type"] == "fromlist") { ?>
+	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" class="data_fromlist" multiple><?
+	foreach($info["select_list"] as $i=>$j)
+		echo "<option value=\"$i\">$j</option>";
 	?></select></td>
 <?php } elseif ($info["type"] == "object_list") { $object_type = $info["object_type"]; $object_type()->retrieve_objects(); ?>
 	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" title="<?php echo $info["label"]; ?>" size="10" multiple class="data_fromlist"><?
@@ -330,6 +335,8 @@ if (isset($infos["name"]) && (!is_string($infos["name"]) || !preg_match("/^([a-z
 
 foreach ($info_detail as $name=>$field_info)
 {
+	if ($field_info["type"] == "fromlist" && isset($infos[$name]) && is_array($infos[$name]))
+		$infos[$name] = implode(",", $infos[$name]);
 	if (isset($field_info["lang"]) && !$field_info["lang"] && isset($infos[$name]))
 	{
 		$query_info[] = "`$name`='".db()->string_escape($infos[$name])."'";
@@ -422,11 +429,19 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 <?php } elseif ($info["type"] == "integer") { ?>
 	<td><input name="<?php echo $name; ?>" size="10" maxlength="10" value="<?php echo $this->{$name}; ?>" class="data_integer" /></td>
 <?php } elseif ($info["type"] == "boolean") { ?>
-	<td><input name="<?php echo $name; ?>" type="radio" value="1"<?php if ($this->{$name}) echo " checked"; ?> /> OUI <input name="<?php echo $name; ?>" type="radio" value="0"<?php if (!$this->{$name}) echo " checked"; ?> /> NON</td>
+	<td><input name="<?php echo $name; ?>" type="radio" value="1"<?php if ($this->{$name}) echo " checked"; ?> /> <?php if (isset($info["value_list"])) echo $info["value_list"][1]; else echo "OUI"; ?> <input name="<?php echo $name; ?>" type="radio" value="0"<?php if (!$this->{$name}) echo " checked"; ?> /> <?php if (isset($info["value_list"])) echo $info["value_list"][0]; else echo "NON"; ?></td>
 <?php } elseif ($info["type"] == "select") { ?>
 	<td><select name="<?php echo $name; ?>" class="data_select"><option value=""></option><?
 	foreach($info["select_list"] as $i=>$j)
 		if ($i == $this->{$name})
+			echo "<option value=\"$i\" selected>$j</option>";
+		else
+			echo "<option value=\"$i\">$j</option>";
+	?></select></td>
+<?php } elseif ($info["type"] == "fromlist") { ?>
+	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" class="data_fromlist" multiple><?
+	foreach($info["select_list"] as $i=>$j)
+		if (in_array($i, $this->{$name}))
 			echo "<option value=\"$i\" selected>$j</option>";
 		else
 			echo "<option value=\"$i\">$j</option>";

@@ -176,10 +176,10 @@ else
 	$order = array();
 
 // Pas beaucoup de valeurs : liste simple
-if (($nb=datamodel($this->opt["datamodel"])->db_count()) < 20)
+if (($nb=datamodel($this->opt["datamodel"])->db_count()) < 10)
 {
 	$query = datamodel($this->opt["datamodel"])->query();
-	if ($nb<10)
+	if ($nb<5)
 		$size = $nb;
 	else
 		$size = 5;
@@ -200,7 +200,7 @@ else
 {
 	$return = "<div style=\"display:inline;\">";
 	$return .= "<input name=\"$this->name\" type=\"hidden\" />";
-	$return .= "<input class=\"q_str\" onkeyup=\"object_list_query(".$this->opt["datamodel"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->opt["datamodel"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" />";
+	$return .= "<input class=\"q_str\" onkeyup=\"object_list_query('".$this->opt["datamodel"]."', [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->opt["datamodel"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" />";
 	$return .= "<select class=\"q_type\"><option value=\"like\">Approx.</option><option value=\"fulltext\">Precis</option></select>";
 	$return .= "<div><select name=\"".$this->name."[]\" title=\"$this->label\" multiple class=\"".get_called_class()." q_id\">";
 	if (is_array($this->value) && count($this->value))

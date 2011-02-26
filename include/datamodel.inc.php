@@ -42,7 +42,7 @@ if (!isset($GLOBALS["_datamodel"]))
 		gentime("retrieve datamodel() [begin]");
 	if (CACHE)
 	{
-		if (!($GLOBALS["_datamodel"]=cache::retrieve("_datamodel")))
+		if (!($GLOBALS["_datamodel"]=cache::retrieve("datamodel")))
 			$GLOBALS["_datamodel"] = new _datamodel_gestion();
 	}
 	else // Session

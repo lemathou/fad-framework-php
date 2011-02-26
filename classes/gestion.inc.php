@@ -29,10 +29,6 @@ protected $list = array();
 protected $list_detail = array();
 protected $list_name = array();
 
-// Data in main database table
-protected $info_list = array("name"); // Keep at least name ! This is a unique string key
-// Data in lang database table
-protected $info_lang_list = array("label", "description"); // Keep at least label
 // Detailled data (with type, etc.)
 protected $info_detail = array // Keep at least name and label !
 (
@@ -42,6 +38,10 @@ protected $info_detail = array // Keep at least name and label !
 );
 // Required info
 protected $info_required = array("name");
+// Data in main database table
+protected $info_list = array();
+// Data in lang database table
+protected $info_lang_list = array();
 
 // Retrieve all objects on first load
 protected $retrieve_objects = false;
@@ -82,8 +82,29 @@ else
 function __wakeup()
 {
 
+$this->info_list_update();
+
 foreach($this->list_detail as $id=>$info)
+{
 	$this->list_name[$info["name"]] = $id;
+}
+
+}
+
+protected function info_list_update()
+{
+
+$this->info_list = array();
+$this->info_lang_list = array();
+
+foreach($this->info_detail as $name=>&$info)
+{
+	if (isset($info["lang"]))
+		if ($info["lang"] == true)
+			$this->info_lang_list[] = &$info["name"];
+		else
+			$this->info_list[] = &$info["name"];
+}
 
 }
 
@@ -93,6 +114,8 @@ foreach($this->list_detail as $id=>$info)
  */
 function __construct($query=true)
 {
+
+$this->info_list_update();
 
 if ($query)
 {
@@ -140,7 +163,8 @@ foreach ($this->info_detail as $name=>$field)
 	}
 }
 
-$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$this->type` as t1 LEFT JOIN `_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."'";
+$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_".$this->type."` as t1 LEFT JOIN `_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."'";
+//echo "<p>$query_string</p>\n";
 $query = db()->query($query_string);
 while($info = $query->fetch_assoc())
 {
@@ -374,21 +398,20 @@ public function __construct($id, $query=true, $infos=array())
 $type = $this->_type;
 $this->id = $id;
 
-foreach ($infos as $name=>$value)
+if ($query)
 {
-	//echo "<p>$id : $name</p>\n";
-	if (isset($this->{$name}))
+	$this->query_info();
+}
+else foreach ($infos as $name=>$value)
+{
+	if (property_exists($this, $name))
 	{
-		//var_dump($value);
 		$this->{$name} = $value;
 	}
 }
 
 //var_dump($this->param_list);
 $this->construct_more($infos);
-
-if ($query)
-	$this->query_info();
 
 }
 protected function construct_more($infos)
@@ -429,7 +452,10 @@ $query = db()->query($query_string);
 while($infos = $query->fetch_assoc())
 {
 	foreach($infos as $name=>$value)
-		$this->{$name} = $value;
+		if (isset($info_detail[$name]["type"]) && $info_detail[$name]["type"] == "fromlist")
+			$this->{$name} = explode(",", $value);
+		else
+			$this->{$name} = $value;
 }
 
 foreach ($query_objects as $name)
@@ -483,7 +509,7 @@ return $this->label;
 public function info($name)
 {
 
-if (isset($this->{$name}))
+if (property_exists($this, $name))
 	return $this->{$name};
 
 }

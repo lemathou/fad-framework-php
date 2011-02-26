@@ -24,15 +24,14 @@ class __datamodel_gestion extends _gestion
 
 protected $type = "datamodel";
 
-protected $info_list = array("name", "perm", "dynamic", "shared");
-
 protected $info_detail = array
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
 	"dynamic"=>array("label"=>"Dynamique", "type"=>"boolean", "lang"=>false),
-	"shared"=>array("label"=>"Shared database", "type"=>"boolean", "lang"=>false), // TODO : or use a 'shared' keyword ..?
+	"db"=>array("label"=>"Database (optionnal)", "type"=>"string", "size"=>32, "lang"=>false),
+	"perm"=>array("label"=>"Permissions par défaut", "type"=>"fromlist", "select_list"=> array("l"=>"List", "r"=>"Read", "i"=>"Insert", "u"=>"Update", "d"=>"Delete"), "size"=>8, "lang"=>false),
 	"script"=>array("label"=>"Class", "type"=>"script", "folder"=>PATH_DATAMODEL, "filename"=>"{name}.inc.php")
 );
 
@@ -97,7 +96,6 @@ protected $dynamic = 0;
  * Be carefull that the mysql user must have select/insert/update/etc. right correctly defined !
  * TODO : Put the good rights if there is only a select permission on database
  */
-protected $shared = false;
 protected $db = null;
 
 /**
@@ -162,15 +160,13 @@ protected $objects_exists = array();
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "dynamic", "shared", "perm", "fields_detail", "fields_calculated", "fields_index", "fields_ref", "action_list");
+return array("id", "name", "label", "description", "dynamic", "db", "perm", "fields_detail", "fields_calculated", "fields_index", "fields_ref", "action_list");
 
 }
 function __wakeup()
 {
 
-if ($this->shared)
-	$this->db = DB_SHARED_BASE;
-else
+if (!$this->db)
 	$this->db = DB_BASE;
 
 $this->library_load();
@@ -180,9 +176,7 @@ $this->library_load();
 protected function construct_more($infos)
 {
 
-if ($this->shared)
-	$this->db = DB_SHARED_BASE;
-else
+if (!$this->db)
 	$this->db = DB_BASE;
 
 $this->query_fields();
@@ -444,16 +438,21 @@ return $this->action_list;
 public function perm($type="")
 {
 
-$_type = $this->_type;
-
-// Default perm (all)
-$perm = new permission_info($this->perm);
-// Specific perm
-foreach(login()->perm_list() as $perm_id)
-	$perm->update(permission($perm_id)->$_type($this->id));
-// Specific perm for user
-if ($account_perm=login()->user_perm($_type, $this->id))
-	$perm->update($account_perm);
+if (!isset($this->perm_info))
+{
+	$_type = $this->_type;
+	// Default perm (all)
+	$perm = new permission_info($this->perm);
+	// Specific perm
+	foreach(login()->perm_list() as $perm_id)
+		$perm->update(permission($perm_id)->$_type($this->id));
+	// Specific perm for user
+	if ($account_perm=login()->user_perm($_type, $this->id))
+		$perm->update($account_perm);
+	$this->perm_info = $perm;
+}
+else
+	$perm = $this->perm_info;
 
 if ($type)
 	return $perm->get($type);
@@ -523,6 +522,9 @@ else
 }
 public function db_insert($object)
 {
+
+if (!$this->perm("i"))
+	return false;
 
 $fields = $object->fields();
 
@@ -636,6 +638,9 @@ return $id;
 public function exists($id)
 {
 
+if (!$this->perm("l") && !$this->perm("r"))
+	return false;
+
 if (!is_numeric($id) || $id <= 0)
 	return false;
 elseif (isset($this->objects[$id]))
@@ -689,6 +694,9 @@ else
 public function db_delete($params)
 {
 
+if (!$this->perm("d"))
+	return false;
+
 if (!$this->db_count($params))
 	return false;
 
@@ -733,6 +741,9 @@ return $return;
  */
 public function db_update($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
+
+if (!$this->perm("u"))
+	return false;
 
 $query_ok = true;
 
@@ -936,6 +947,9 @@ return $this->db_get($params, $fields, $sort, $limit, $start);
 public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
+if (!$this->perm("r"))
+	return false;
+
 if (!is_array($result=$this->db_select($params, "id", $sort, $limit, $start)) || !count($result))
 {
 	return array();
@@ -1016,13 +1030,8 @@ return $objects;
 public function get($id, $fields=array())
 {
 
-// Permissinon check
-if (false && !$this->perm("r"))
-{
-	if (DEBUG_DATAMODEL)
-		trigger_error("Databank $this->name : Permission error : Read access denied");
+if (!$this->perm("r"))
 	return false;
-}
 
 // Parameters check
 if (!is_numeric($id) || $id <= 0 || !is_array($fields))
@@ -1093,6 +1102,9 @@ else
 public function db_select($params=array(), $fields_input=array(), $sort=array(), $limit=0, $start=0)
 {
 
+if (!$this->perm("r"))
+	return false;
+
 if ($params === true)
 {
 	$params = array();
@@ -1145,7 +1157,6 @@ foreach($this->fields_detail as $name=>$field)
 				$query_base["groupby"][] = "t0.`id`";
 			$query_base["fields"][] = "CAST(GROUP_CONCAT(DISTINCT QUOTE($tablename.`id`) SEPARATOR ',') as CHAR) as $name";
 			$fields_explode[] = $name;
-			
 		}
 		else
 		{
@@ -1269,6 +1280,9 @@ return $this->db_count($params);
 public function db_count($params=array())
 {
 
+if (!$this->perm("l"))
+	return false;
+
 if (!is_array($params))
 {
 	return false;
@@ -1302,7 +1316,7 @@ else
 	$query_having = "";
 
 $query_string = "SELECT COUNT(*) FROM ".implode(", ", $query_base["from"])." $query_where $query_having";
-// echo "<p>$query_string</p>\n";
+//echo "<p>$query_string</p>\n";
 
 return array_pop(db()->query($query_string)->fetch_row());
 
@@ -1312,7 +1326,7 @@ return array_pop(db()->query($query_string)->fetch_row());
  * Constructs the query with specific params...
  * Used in functions db_select(), db_count() and db_update().
  */
-public function query_params(&$params, &$query_base, &$where_list=null, $t0nb=0)
+protected function query_params(&$params, &$query_base, &$where_list=null, $t0nb=0)
 {
 
 if (!isset($query_base["table_nb"]))
@@ -1516,8 +1530,11 @@ else
  * @param array $order
  * @param integer $limit
  */
-function json_query($params=array(), $fields=true, $order=array(), $limit=0)
+public function json_query($params=array(), $fields=true, $order=array(), $limit=0)
 {
+
+if (!$this->perm("r"))
+	return false;
 
 $query = $this->query($params, $fields, $order, $limit);
 
@@ -1580,6 +1597,22 @@ foreach ($objects as $object)
 </select></p>
 </form>
 <?
+
+}
+
+/**
+ * returns the specificatios in JSON for JS control
+ */
+public function js()
+{
+
+$list = array();
+foreach($this->fields() as $field)
+{
+	$list[] = "\"$field->name\":".$field->js();
+}
+
+return "{\"id\":$this->id, \"name\":\"$this->name\", \"label\":".json_encode($this->label).", \"description\":".json_encode($this->description).", \"fields\":{\n".implode(",\n", $list)."\n} }";
 
 }
 

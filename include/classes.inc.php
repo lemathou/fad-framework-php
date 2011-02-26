@@ -26,18 +26,28 @@ function __autoload($class_name)
 
 $s = substr($class_name, -8);
 
-// Gestion
+// Framework Managing classes
 if ($class_name != "_gestion" && substr($class_name, 0, 1) == "_" && $s == "_gestion")
 {
-	if (file_exists($library=PATH_CLASSES."/".substr($class_name, 1, -8).".inc.php"))
-		include $library;
+	if (file_exists($filename=PATH_CLASSES."/".substr($class_name, 1, -8).".inc.php"))
+		include $filename;
 }
 elseif (substr($class_name, 0, 1) == "_")
 {
-	if (file_exists($library=PATH_CLASSES."/".substr($class_name, 1).".inc.php"))
-		include $library;
+	if (file_exists($filename=PATH_CLASSES."/".substr($class_name, 1).".inc.php"))
+		include $filename;
 }
-// Data
+// Dataobject native class
+elseif ($class_name == "dataobject")
+{
+	include PATH_CLASSES."/dataobject.inc.php";
+}
+// Permission native class
+elseif ($class_name == "permission_info")
+{
+	include PATH_CLASSES."/permission.inc.php";
+}
+// Data fields
 elseif ($class_name == "data")
 {
 	include PATH_CLASSES."/data/_data.inc.php";
@@ -46,39 +56,36 @@ elseif (substr($class_name, 0, 5) == "data_")
 {
 	if ($name=substr($class_name, 5))
 	{
-		if (file_exists($library=PATH_CLASSES."/data/$name.inc.php"))
-			include $library;
-		elseif (file_exists($library=PATH_ROOT."/classes/data/$name.inc.php"))
-			include $library;
+		if (file_exists($filename=PATH_CLASSES."/data/$name.inc.php"))
+			include $filename;
+		elseif (file_exists($filename=PATH_CLASSES."/data/$name.inc.php"))
+			include $filename;
+		// TODO : Useful or dumb ..?
 		if (!class_exists($class_name, false))
 			eval("class $class_name extends data {};");
 	}
 }
-// Datamodel / Dataobject
-elseif ($class_name == "dataobject")
-{
-	include PATH_CLASSES."/dataobject.inc.php";
-}
 // Framework native classes
-elseif (file_exists($library=PATH_CLASSES."/$class_name.inc.php"))
+elseif (file_exists($filename=PATH_CLASSES."/$class_name.inc.php"))
 {
-	include $library;
+	include $filename;
 }
-// Project library
-elseif (file_exists($library=PATH_LIBRARY."/$class_name.inc.php"))
-{
-	include $library;
-}
+// Project Datamodel
 elseif (datamodel()->exists_name($class_name))
 {
-	if (file_exists($library=PATH_DATAMODEL."/$class_name.inc.php"))
+	if (file_exists($filename=PATH_DATAMODEL."/$class_name.inc.php"))
 	{
-		include $library;
+		include $filename;
 	}
 	if (!class_exists($class_name, false))
 	{
 		eval("class $class_name extends dataobject {};");
 	}
+}
+// Project library
+elseif (file_exists($filename=PATH_LIBRARY."/$class_name.inc.php"))
+{
+	include $filename;
 }
 
 /*

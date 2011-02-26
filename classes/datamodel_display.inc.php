@@ -16,9 +16,7 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * datamodel display class
- * 
- * Donne un affichage suivant un datamodel.
+ * object display class
  * 
  */
 class datamodel_display
@@ -46,44 +44,12 @@ if (isset($this->object->$name))
 public function disp()
 {
 
-echo "<div>\n";
+$return = "<div>\n";
 foreach ($this->object->fields() as $name=>$field)
 {
-	echo "<p>$field->label : $field</p>\n";
+	$return .= "<p>$field->label : $field</p>\n";
 }
-echo "</div>\n";
-
-}
-
-}
-
-/**
- * Used to update fields
- *
- */
-class datamodel_display_form extends datamodel_display
-{
-
-public function disp($print=true)
-{
-
-$return = $this->content_disp();
-
-if ($print)
-	echo $return;
-else
-	return $return;
-
-}
-
-public function content_disp()
-{
-
-$return .= "<table cellspacing=\"5\" cellpadding=\"0\">\n";
-foreach ($this->object->fields() as $name=>$field)
-	$return .= "<tr> <td>".$field->label." :</td> <td>".$field->form_field_disp(false)."</td> </tr>\n";
-$return .= "<tr style=\"border:1px gray dotted;\"> <td>&nbsp;</td> <td><input type=\"submit\" value=\"Mettre à jour\" /></td> </tr>\n";
-$return .= "</table>\n";
+$return .= "</div>\n";
 
 return $return;
 
@@ -92,31 +58,34 @@ return $return;
 }
 
 /**
- * Used to update fields
+ * Used to display object properly
  *
  */
-class datamodel_insert_form extends datamodel_display
+class datamodel_display_form extends datamodel_display
 {
 
-public function disp($print=true)
+public function disp($type="table")
 {
 
-$return = "<form class=\"datamodel_form datamodel_insert_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
-$return .= $this->content_disp();
-$return .= "<p><input type=\"submit\" value=\"Ajouter\" /></p>\n";
-$return .= "</form>\n";
-
-if ($print)
-	echo $return;
-else
-	return $return;
+return $this->content_disp();
 
 }
 
-public function content_disp()
+public function content_disp($type="table")
 {
 
-$return = "<table cellspacing=\"5\" cellpadding=\"0\">\n";
+$return = "<table cellspacing=\"2\" cellpadding=\"2\" border=\"0\">\n";
+$return .= $this->table_disp();
+$return .= "</table>\n";
+
+return $return;
+
+}
+
+public function fields_disp($type="table")
+{
+
+$return = "";
 foreach ($this->object->fields() as $name=>$field)
 {
 	if (in_array($name, $this->datamodel->fields_calculated()))
@@ -128,7 +97,6 @@ foreach ($this->object->fields() as $name=>$field)
 	$return .= "	<td>".$field->form_field_disp(false)."</td>\n";
 	$return .= "</tr>\n";
 }
-$return .= "</table>\n";
 
 return $return;
 
@@ -137,30 +105,65 @@ return $return;
 }
 
 /**
- * Used to update fields
+ * Used to insert object
  *
  */
-class datamodel_update_form extends datamodel_display
+class datamodel_insert_form extends datamodel_display_form
 {
 
-public function disp($print=true)
+public function disp()
 {
 
-$return = "<form class=\"datamodel_form datamodel_update_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
+$return = "<form class=\"datamodel_form datamodel_insert_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
 $return .= $this->content_disp();
+$return .= "<p style=\"text-align: right;margin: 0;\"><input type=\"submit\" value=\"Ajouter\" /></p>\n";
 $return .= "</form>\n";
 
-if ($print)
-	echo $return;
-else
-	return $return;
+return $return;
 
 }
 
 public function content_disp()
 {
 
-$return = "<table cellspacing=\"5\" cellpadding=\"0\">\n";
+$return = "<fieldset>\n";
+$return .= "<legend><b>Ajouter :</b> ".$this->datamodel->label()."</legend>\n";
+$return .= "<table cellspacing=\"2\" cellpadding=\"2\" border=\"0\" width=\"100%\">\n";
+$return .= $this->fields_disp();
+$return .= "</table>\n";
+$return .= "</fieldset>\n";
+	
+return $return;
+
+}
+
+}
+
+/**
+ * Used to update object
+ *
+ */
+class datamodel_update_form extends datamodel_display_form
+{
+
+public function disp()
+{
+
+$return = "<form class=\"datamodel_form datamodel_update_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
+$return .= $this->content_disp();
+$return .= "<p style=\"text-align: right;margin: 0;\"><input type=\"submit\" value=\"Mettre à jour\" /></p>\n";
+$return .= "</form>\n";
+
+return $return;
+
+}
+
+public function content_disp()
+{
+
+$return = "<fieldset>\n";
+$return .= "<legend><b>Mettre à jour :</b> ".$this->object."</legend>\n";
+$return .= "<table cellspacing=\"2\" cellpadding=\"2\" border=\"0\" width=\"100%\">\n";
 {
 		$return .= "<tr class=\"data_id\">\n";
 		$return .= "	<td class=\"label\"><label for=\"id\">ID</label> :</td>\n";
@@ -171,26 +174,13 @@ $return = "<table cellspacing=\"5\" cellpadding=\"0\">\n";
 if ($this->datamodel->info("dynamic"))
 {
 		$return .= "<tr class=\"data_string\">\n";
-		$return .= "	<td class=\"label\"><label>Update datetime</label> :</td>\n";
+		$return .= "	<td class=\"label\"><label for=\"_update\">Update datetime</label> :</td>\n";
 		$return .= "	<td><input size=\"17\" maxlength=\"17\" value=\"".date("d/m/Y H:i:s", $this->object->_update)."\" readonly /></td>\n";
 		$return .= "</tr>\n";
 }
-foreach ($this->object->fields() as $name=>$field)
-{
-	if (in_array($name, $this->datamodel->fields_calculated()))
-		$field_class = "field calculated_field";
-	else
-		$field_class = "field";
-	$return .= "<tr class=\"$field_class\">\n";
-	$return .= "	<td class=\"label\"><label for=\"$name\">".$field->label."</label> :</td>\n";
-	$return .= "	<td>".$field->form_field_disp(false)."</td>\n";
-	$return .= "</tr>\n";
-}
-$return .= "<tr>\n";
-$return .= "	<td>&nbsp;</td>\n";
-$return .= "	<td><input type=\"submit\" value=\"Mettre à jour\" /></td>\n";
-$return .= "</tr>\n";
+$return .= $this->fields_disp();
 $return .= "</table>\n";
+$return .= "</fieldset>\n";
 	
 return $return;
 

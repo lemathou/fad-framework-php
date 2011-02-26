@@ -51,8 +51,6 @@ else
 
 /**
  * Access the current page
- *
- * @return menu
  */
 function page_current()
 {

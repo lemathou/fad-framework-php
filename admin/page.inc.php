@@ -122,7 +122,7 @@ if ($template=$page->template())
 	<?php
 	$tpl_filename = PATH_TEMPLATE."/".$template->name().".tpl.php";
 	$subtemplates[] = array("id"=>$template->id(), "params"=>true, "type"=>"main");
-	foreach(template::subtemplates($tpl_file=fread(fopen($tpl_filename, "r"), filesize($tpl_filename))) as $tpl)
+	foreach(_template::subtemplates($tpl_file=fread(fopen($tpl_filename, "r"), filesize($tpl_filename))) as $tpl)
 		$subtemplates[] = array("id"=>$tpl["id"], "params"=>(isset($tpl["params"])?$tpl["params"]:null), "type"=>"sub");
 	$tpl_page = "<!--INCLUDE:page/<?=page_current()->name()?>,true-->";
 	if (strpos($tpl_file, $tpl_page) !== false && template()->exists_name("page/".$page->name()))

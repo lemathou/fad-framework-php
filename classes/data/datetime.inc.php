@@ -163,7 +163,7 @@ public function strftime($format="")
 if (!$this->value)
 	return "";
 elseif (!$format)
-	return strftime($this->opt["disp_format"], $this->value);
+	return strftime($this->opt["disp_format"], strtotime($this->value));
 else
 	return strftime($format, $this->value);
 
@@ -174,7 +174,7 @@ public function date($format="")
 if (!$this->value)
 	return "";
 elseif (!$format)
-	return date($this->opt["form_format"], $this->value);
+	return date($this->opt["form_format"], strtotime($this->value));
 else
 	return date($format, $this->value);
 

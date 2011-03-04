@@ -764,6 +764,9 @@ public function ref_change($datamodel_name, $blahblah)
 
 }
 
+/**
+ * Returns default URL to the view page
+ */
 public function url()
 {
 
@@ -774,6 +777,9 @@ else
 
 }
 
+/**
+ * Returns default LINK to the view page, using default URL and default display
+ */
 public function link()
 {
 
@@ -782,6 +788,7 @@ return "<a href=\"".$this->url()."\">".$this->__tostring()."</a>";
 }
 
 }
+
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

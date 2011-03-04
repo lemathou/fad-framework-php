@@ -149,7 +149,7 @@ class datamodel_update_form extends datamodel_display_form
 public function disp()
 {
 
-$return = "<form class=\"datamodel_form datamodel_update_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return agregat_verify(this)\">\n";
+$return = "<form class=\"datamodel_form datamodel_update_form ".$this->datamodel->name()."_form\" method=\"post\" onsubmit=\"return datamodel_verify('".$this->datamodel->name()."', this)\">\n";
 $return .= $this->content_disp();
 $return .= "<p style=\"text-align: right;margin: 0;\"><input type=\"submit\" value=\"Mettre à jour\" /></p>\n";
 $return .= "</form>\n";

@@ -34,7 +34,7 @@ protected $opt = array
 );
 
 protected static $ereg_params = array("Y", "m", "d", "H", "i", "s");
-protected static $ereg_default=array
+protected static $ereg_default = array
 (
 	"Y"=>"0000",
 	"m"=>"00",
@@ -43,7 +43,7 @@ protected static $ereg_default=array
 	"i"=>"00",
 	"s"=>"00"
 );
-protected static $ereg_format=array
+protected static $ereg_format = array
 (
 	"Y"=>"([0-2][0-9]{3})",
 	"m"=>"(0[0-9]|1[0-2])",
@@ -140,7 +140,7 @@ if ($this->nonempty())
 	return $value;
 }
 else
-	return "";
+	return null;
 
 }
 
@@ -149,6 +149,14 @@ public function __tostring()
 {
 
 return $this->view();
+
+}
+public function format($format="")
+{
+
+$value = $this->value;
+$this->convert_format($value, $this->opt["datetime_format"], $format);
+return $value;
 
 }
 public function view($format="")
@@ -165,7 +173,7 @@ if (!$this->value)
 elseif (!$format)
 	return strftime($this->opt["disp_format"], strtotime($this->value));
 else
-	return strftime($format, $this->value);
+	return strftime($format, $this->timestamp());
 
 }
 public function date($format="")
@@ -176,7 +184,7 @@ if (!$this->value)
 elseif (!$format)
 	return date($this->opt["form_format"], strtotime($this->value));
 else
-	return date($format, $this->value);
+	return date($format, $this->timestamp());
 
 }
 
@@ -194,7 +202,12 @@ public function timestamp()
 {
 
 if ($this->nonempty())
-	return $this->value;
+{
+	$value = $this->value;
+	$this->convert_format($value, $this->opt["datetime_format"], "H-i-s-m-d-Y");
+	$v = explode("-", $value);
+	return mktime($v[0], $v[1], $v[2], $v[3], $v[4], $v[5]);
+}
 else
 	return null;
 

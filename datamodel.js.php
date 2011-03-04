@@ -14,7 +14,7 @@
 
 include PATH_INCLUDE."/header.inc.php";
 
-if (isset($_GET["id"]) && ($datamodel=datamodel($_GET["id"])))
+if (isset($_GET["ref"]) && ($datamodel=datamodel($_GET["ref"])))
 	echo $datamodel->js();
 
 ?>

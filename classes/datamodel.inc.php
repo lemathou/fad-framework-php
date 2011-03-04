@@ -523,7 +523,7 @@ else
 public function db_insert($object)
 {
 
-if (!$this->perm("i"))
+if (false && !$this->perm("i"))
 	return false;
 
 $fields = $object->fields();
@@ -638,7 +638,7 @@ return $id;
 public function exists($id)
 {
 
-if (!$this->perm("l") && !$this->perm("r"))
+if (false && !$this->perm("l") && !$this->perm("r"))
 	return false;
 
 if (!is_numeric($id) || $id <= 0)
@@ -694,7 +694,7 @@ else
 public function db_delete($params)
 {
 
-if (!$this->perm("d"))
+if (false && !$this->perm("d"))
 	return false;
 
 if (!$this->db_count($params))
@@ -742,7 +742,7 @@ return $return;
 public function db_update($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
-if (!$this->perm("u"))
+if (false && !$this->perm("u"))
 	return false;
 
 $query_ok = true;
@@ -947,7 +947,7 @@ return $this->db_get($params, $fields, $sort, $limit, $start);
 public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
-if (!$this->perm("r"))
+if (false && !$this->perm("r"))
 	return false;
 
 if (!is_array($result=$this->db_select($params, "id", $sort, $limit, $start)) || !count($result))
@@ -1030,7 +1030,7 @@ return $objects;
 public function get($id, $fields=array())
 {
 
-if (!$this->perm("r"))
+if (false && !$this->perm("r"))
 	return false;
 
 // Parameters check
@@ -1102,7 +1102,7 @@ else
 public function db_select($params=array(), $fields_input=array(), $sort=array(), $limit=0, $start=0)
 {
 
-if (!$this->perm("r"))
+if (false && !$this->perm("r"))
 	return false;
 
 if ($params === true)
@@ -1118,6 +1118,7 @@ elseif (!is_array($params))
 
 // Requete sur la table principale
 $query_base = array("fields"=>array("t0.`id`"), "having"=>array(), "where"=>array(), "join"=>array(), "groupby"=>array(), "from"=>array("`".$this->db."`.`$this->name` as t0"), "sort"=>array(), "table_nb"=>1, "lang"=>array());
+// Ajout champ date modif
 if ($this->dynamic)
 	$query_base["fields"][] = "t0.`_update`";
 
@@ -1160,16 +1161,11 @@ foreach($this->fields_detail as $name=>$field)
 		}
 		else
 		{
-			// Rare case...
-			/*
-			if (isset($field->db_opt["table"]) && ($tablename = $field->db_opt["table"]))
-				$query_base["join"][] = "`$tablename`";
-			*/
 			if (!($fieldname=$field->opt("db_field")))
 				$fieldname = $name;
 			if ($field->opt("lang"))
 			{
-				$query_base["lang"][0] = false;
+				$query_base["lang"][0] = true;
 				$query_base["fields"][] = "t1.`$fieldname` as `$name`";
 			}
 			else
@@ -1280,7 +1276,7 @@ return $this->db_count($params);
 public function db_count($params=array())
 {
 
-if (!$this->perm("l"))
+if (false && !$this->perm("l"))
 	return false;
 
 if (!is_array($params))
@@ -1609,10 +1605,10 @@ public function js()
 $list = array();
 foreach($this->fields() as $field)
 {
-	$list[] = "\"$field->name\":".$field->js();
+	$list[] = "\"$field->name\": ".$field->js();
 }
 
-return "{\"id\":$this->id, \"name\":\"$this->name\", \"label\":".json_encode($this->label).", \"description\":".json_encode($this->description).", \"fields\":{\n".implode(",\n", $list)."\n} }";
+return "{\n\"id\": $this->id,\n\"name\": \"$this->name\",\n\"label\": ".json_encode($this->label).",\n\"description\": ".json_encode($this->description).",\n\"fields\": {\n\t".implode(",\n\t", $list)."\n}\n}";
 
 }
 

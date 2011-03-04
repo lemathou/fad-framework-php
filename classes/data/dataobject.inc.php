@@ -193,6 +193,19 @@ else
 
 }
 
+/**
+ * Create a new object
+ */
+function create()
+{
+
+$object = datamodel($this->opt["datamodel"])->create();
+$object->db_insert();
+$this->value = $object->id;
+return $object;
+
+}
+
 }
 
 

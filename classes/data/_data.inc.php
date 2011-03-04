@@ -459,7 +459,7 @@ return $this->form_field_disp($options);
 public function js()
 {
 
-return "{\"type\":\"$this->type\", \"label\":".json_encode($this->label).", \"value\":".json_encode($this->value).", \"opt\":".json_encode($this->opt)."}";
+return "{\"type\": \"$this->type\", \"label\": ".json_encode($this->label).", \"value\": ".json_encode($this->value).", \"opt\": ".json_encode($this->opt)."}";
 
 }
 

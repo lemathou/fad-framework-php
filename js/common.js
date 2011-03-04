@@ -389,43 +389,144 @@ function object_list_hide(field)
 	setTimeout(function(){$(".q_select", field).hide();}, '250');
 }
 
-/* Gestion champs de formulaires (datamodel) avec controles */
-
-function field_verify(field, options)
+/* Spécifications des datamodels */
+var datamodel_list = new Array();
+var datamodel_list_name = new Object();
+function datamodel(ref)
 {
-	switch(type)
+	if (datamodel_list[ref] != undefined)
+		return datamodel_list[ref];
+	else if (datamodel_list_name[ref] != undefined)
+		return datamodel(datamodel_list_name[ref]);
+}
+function datamodel_load(ref)
+{
+	if (datamodel_list[ref] == undefined && datamodel_list_name[ref] == undefined)
 	{
-	case "data_email":
-		return field_email_verify(field, options);
-		break;
-	case "data_url":
-		return field_url_verify(field, options);
-		break;
-	case "data_text":
-		break;
-	case "data_richtext":
-		break;
-	case "data_measure":
-		break;
-	case "data_float":
-		return field_float_verify(field, options);
-		break;
-	case "data_number":
-		break;
-	case "data_integer":
-		return field_integer_verify(field, options);
-		break;
-	case "data_string":
-		return field_string_verify(field, options);
-		break;
-	default:
-		break;
+		$.get("/datamodel.js.php", {"ref": ref}, function(data){
+			if (data)
+			{
+				datamodel_list[data.id] = data;
+				datamodel_list_name[data.name] = data.id;
+			}
+		}, "json");
 	}
 }
 
-function field_string_verify(field, options)
+function datamodel_verify(ref, element)
 {
+	var verify_alert = "";
+	var d = datamodel(ref);
+	if (d == undefined)
+		return true;
+	$("input[name], select[name], textarea[name]", element).each(function(){
+		if (d.fields[this.name] != undefined && !field_verify(this, d.fields[this.name].opt))
+		{
+			verify_alert = verify_alert + "Le champ '"+d.fields[this.name].label+"' n'est pas convenablement rempli\n";
+		}
+	});
+	if (verify_alert)
+	{
+		alert(verify_alert);
+		return false;
+	}
+	else
+		return true;
+}
 
+/* Gestion champs de formulaires (datamodel) avec controles */
+
+function field_verify(field, opt)
+{
+	// date/time
+	if ($(field).hasClass("data_date"))
+		return field_date_verify(field, opt);
+	else if ($(field).hasClass("data_datetime"))
+		return field_datetime_verify(field, opt);
+	else if ($(field).hasClass("data_time"))
+		return field_time_verify(field, opt);
+	// number
+	else if ($(field).hasClass("data_measure"))
+		return true;
+	else if ($(field).hasClass("data_float"))
+		return field_float_verify(field, opt);
+	else if ($(field).hasClass("data_integer"))
+		return field_integer_verify(field, opt);
+	// specific text
+	else if ($(field).hasClass("data_email"))
+		return field_email_verify(field, opt);
+	else if ($(field).hasClass("data_url"))
+		return field_url_verify(field, opt);
+	// richtext/html
+	else if ($(field).hasClass("data_richtext"))
+		return true;
+	// text
+	else if ($(field).hasClass("data_text") || $(field).hasClass("data_name") || $(field).hasClass("data_string"))
+		return field_string_verify(field, opt);
+	else
+		return true;
+}
+
+function datetime_regexp(format)
+{
+	var ereg_str = format;
+	ereg_str = ereg_str.replace("Y", "([0-9]{4})")
+	ereg_str = ereg_str.replace("m", "([0-9]{2})")
+	ereg_str = ereg_str.replace("d", "([0-9]{2})")
+	ereg_str = ereg_str.replace("H", "([0-9]{2})")
+	ereg_str = ereg_str.replace("i", "([0-9]{2})")
+	ereg_str = ereg_str.replace("s", "([0-9]{2})")
+	return "^"+ereg_str+"$";
+}
+
+function field_datetime_verify(field, opt)
+{
+	if (opt != undefined && opt["form_format"] != undefined)
+		var ereg = new RegExp(datetime_regexp(opt["form_format"]));
+	else
+		var ereg = new RegExp(datetime_regexp("d/m/Y H:i:s"));
+	if (field.value.match(ereg))
+		return true;
+	else
+		return false;
+}
+function field_date_verify(field, opt)
+{
+	if (opt != undefined && opt["form_format"] != undefined)
+		var ereg = new RegExp(datetime_regexp(opt["form_format"]));
+	else
+		var ereg = new RegExp(datetime_regexp("d/m/Y"));
+	if (field.value.match(ereg))
+		return true;
+	else
+		return false;
+}
+function field_time_verify(field, opt)
+{
+	if (opt != undefined && opt["form_format"] != undefined)
+		var ereg = new RegExp(datetime_regexp(opt["form_format"]));
+	else
+		var ereg = new RegExp(datetime_regexp("H:i:s"));
+	if (field.value.match(ereg))
+		return true;
+	else
+		return false;
+}
+function field_string_verify(field, opt)
+{
+	return false;
+}
+function field_email_verify(field, opt)
+{
+	return true;
+}
+function field_url_verify(field, opt)
+{
+	return true;
+}
+function field_integer_verify(field, opt)
+{
+	return true;
 }
 
 /* Gestion formulaires avec data fields */

@@ -83,11 +83,7 @@ function __wakeup()
 {
 
 $this->info_list_update();
-
-foreach($this->list_detail as $id=>$info)
-{
-	$this->list_name[$info["name"]] = $id;
-}
+$this->list_update();
 
 }
 
@@ -104,6 +100,18 @@ foreach($this->info_detail as $name=>&$info)
 			$this->info_lang_list[] = &$info["name"];
 		else
 			$this->info_list[] = &$info["name"];
+}
+
+}
+
+protected function list_update()
+{
+
+$this->list_name = array();
+
+foreach($this->list_detail as $id=>$info)
+{
+	$this->list_name[$info["name"]] = $id;
 }
 
 }
@@ -290,10 +298,6 @@ elseif (!$this->retrieve_objects && isset($this->list_detail[$id]))
 		cache::store($this->type."_$id", $object, CACHE_GESTION_TTL);
 	return $this->list[$id] = $object;
 }
-else
-{
-	return null;
-}
 
 }
 
@@ -304,14 +308,8 @@ else
 function __get($name)
 {
 
-if (array_key_exists($name, $this->list_name))
-{
+if (is_string($name) && array_key_exists($name, $this->list_name))
 	return $this->get($this->list_name[$name]);
-}
-else
-{
-	return null;
-}
 
 }
 function get_name($name)
@@ -328,7 +326,7 @@ return $this->__get($name);
 function exists($id)
 {
 
-return array_key_exists($id, $this->list_detail);
+return (is_numeric($id) && array_key_exists($id, $this->list_detail));
 
 }
 /**
@@ -339,7 +337,7 @@ return array_key_exists($id, $this->list_detail);
 function __isset($name)
 {
 
-return array_key_exists($name, $this->list_name);
+return (is_string($name) && array_key_exists($name, $this->list_name));
 
 }
 function exists_name($name)

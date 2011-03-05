@@ -156,13 +156,20 @@ protected $type = "";
 protected $url = "";
 protected $shortlabel = "";
 
-// Template and params
-protected $template_id = 0;
+// Params
 protected $param_list = array();
 protected $params_url = array();
 // Effective parameters
 protected $param = array();
- 
+
+// Vues and templates
+protected $vue_list = array();
+// Actual vue
+protected $vue = null;
+// Actual template
+protected $template = null;
+protected $template_id = 0;  // TODO : depreacated, to be deleted
+
 // Permissions
 protected $perm_list = array();
 
@@ -175,7 +182,7 @@ protected $alias_page_id = null;
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "perm", "type", "url", "shortlabel", "template_id", "param_list", "perm_list", "redirect_url", "alias_page_id");
+return array("id", "name", "label", "description", "perm", "type", "url", "shortlabel", "template_id", "param_list", "vue_list", "perm_list", "redirect_url", "alias_page_id");
 
 }
 function __wakeup()
@@ -196,78 +203,7 @@ protected function query_info_more()
 {
 
 $this->query_params();
-
-}
-
-/**
- * Permission for this page
- * Using global page perm, specific group page, and specific user page
- */
-public function perm($type="")
-{
-
-$_type = $this->_type;
-
-if ($type)
-{
-	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type)</p>\n";
-	// Work only for cumulative permissions
-	$return = false;
-	// Default perm
-	if (is_numeric(strpos($this->perm, $type)))
-		$return = true;
-	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type) : $return</p>\n";
-	// Specific perm
-	if ($return == false)
-	{
-		$perm_list = login()->perm_list();
-		//print_r($perm_list);
-		while ($return==false && (list($nb,$perm_id)=each($perm_list)))
-		{
-			//echo "<p>$perm_id : ".permission($perm_id)->$_type($this->id)."</p>\n";
-			if (is_numeric(strpos(permission($perm_id)->$_type($this->id), $type)))
-				$return = true;
-		}
-	}
-	// Specific perm for user
-	if ($return == false)
-	{
-		if (is_numeric(strpos(login()->user_perm($_type, $this->id), $type)))
-			$return = true;
-	}
-	return $return;
-}
-else
-{
-	// Default perm (all)
-	$perm = new permission_info($this->perm);
-	// Specific perm
-	foreach(login()->perm_list() as $perm_id)
-		$perm->update(permission($perm_id)->$_type($this->id));
-	// Specific perm for user
-	if ($account_perm=login()->user_perm($_type, $this->id))
-		$perm->update($account_perm);
-	return $perm;
-}
-
-}
-public function perm_login()
-{
-
-// Default Access Permission
-if ($this->perm)
-	return true;
-
-$return = false;
-
-reset($this->perm_list);
-while(!$return && (list($nb, $perm_id)=each($this->perm_list)))
-{
-	if (login()->perm($perm_id))
-		$return = true;
-}
-
-return $return;
+$this->query_vue();
 
 }
 
@@ -301,6 +237,56 @@ while ($opt = $query_opt->fetch_row())
 }
 
 }
+
+/**
+ * Retrieve the template vues
+ */
+public function query_vue()
+{
+
+// Params
+$this->vue_list = array();
+$query = db()->query("SELECT `vue_name`, `template_id`, `params` FROM `_page_template` WHERE `page_id`='$this->id'");
+while ($row = $query->fetch_assoc())
+{
+	$this->vue_list[$row["vue_name"]] = array
+	(
+		"template_id"=>$row["template_id"],
+		"params"=>json_decode($row["params"], true)
+	);
+}
+/*
+$query_opt = db()->query("SELECT `vue_name`, `param_name`, `param_value`, `param_map` FROM `_page_template_params` WHERE `page_id`='".$this->id."'");
+while ($row = $query_opt->fetch_assoc())
+{
+	$this->vue_list[$row["vue_name"]]["params"][$row["param_name"]] = array(json_decode($row["param_value"], true), $row["param_map"]);
+}
+*/
+
+}
+
+public function vue_exists($name)
+{
+
+return array_key_exists($name, $this->vue_list);
+
+}
+
+public function vue_list()
+{
+
+return $this->vue_list;
+
+}
+
+public function vue($name)
+{
+
+if ($this->vue_exists($name))
+	return $this->vue_list[$name];
+
+}
+
 /**
  * Constructs the parameters list
  */
@@ -521,6 +507,78 @@ if (file_exists("page/$this->name.inc.php"))
 
 if (DEBUG_GENTIME == true)
 	gentime("page::action() [end]");
+
+}
+
+/**
+ * Permission for this page
+ * Using global page perm, specific group page, and specific user page
+ */
+public function perm($type="")
+{
+
+$_type = $this->_type;
+
+if ($type)
+{
+	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type)</p>\n";
+	// Work only for cumulative permissions
+	$return = false;
+	// Default perm
+	if (is_numeric(strpos($this->perm, $type)))
+		$return = true;
+	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type) : $return</p>\n";
+	// Specific perm
+	if ($return == false)
+	{
+		$perm_list = login()->perm_list();
+		//print_r($perm_list);
+		while ($return==false && (list($nb,$perm_id)=each($perm_list)))
+		{
+			//echo "<p>$perm_id : ".permission($perm_id)->$_type($this->id)."</p>\n";
+			if (is_numeric(strpos(permission($perm_id)->$_type($this->id), $type)))
+				$return = true;
+		}
+	}
+	// Specific perm for user
+	if ($return == false)
+	{
+		if (is_numeric(strpos(login()->user_perm($_type, $this->id), $type)))
+			$return = true;
+	}
+	return $return;
+}
+else
+{
+	// Default perm (all)
+	$perm = new permission_info($this->perm);
+	// Specific perm
+	foreach(login()->perm_list() as $perm_id)
+		$perm->update(permission($perm_id)->$_type($this->id));
+	// Specific perm for user
+	if ($account_perm=login()->user_perm($_type, $this->id))
+		$perm->update($account_perm);
+	return $perm;
+}
+
+}
+public function perm_login()
+{
+
+// Default Access Permission
+if ($this->perm)
+	return true;
+
+$return = false;
+
+reset($this->perm_list);
+while(!$return && (list($nb, $perm_id)=each($this->perm_list)))
+{
+	if (login()->perm($perm_id))
+		$return = true;
+}
+
+return $return;
 
 }
 

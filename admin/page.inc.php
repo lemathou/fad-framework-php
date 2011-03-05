@@ -53,7 +53,7 @@ foreach ($_type()->list_get() as $id=>$object)
 <a href="?add">Ajouter</a>
 </form>
 
-<?
+<?php
 
 //var_dump(data()->list_name_get());
 
@@ -69,20 +69,93 @@ if (isset($_GET["id"]) && $_type()->exists($id=$_GET["id"]))
 
 $page = $_type($id);
 
+$submenu_list = array
+(
+	"update_form"=>"Formulaire",
+	"param_list"=>"Paramètres",
+	"vue_list"=>"Templates associés",
+	"action_list"=>"Actions",
+);
+
+$submenu = "update_form";
+
+if (isset($_GET["vue_name"]))
+	$submenu = "vue_list";
+
 ?>
 <div class="admin_menu admin_submenu">
-	<a href="javascript:;" name="update_form" onclick="admin_submenu(this.name)" class="selected">Formulaire</a>
-	<a href="javascript:;" name="param_list" onclick="admin_submenu(this.name)">Paramètres</a>
-	<a href="javascript:;" name="action_list" onclick="admin_submenu(this.name)">Actions</a>
+<?php
+foreach($submenu_list as $i=>$j)
+	if ($submenu == $i)
+		echo "<a href=\"javascript:;\" name=\"$i\" onclick=\"admin_submenu(this.name)\" class=\"selected\">$j</a>\n";
+	else
+		echo "<a href=\"javascript:;\" name=\"$i\" onclick=\"admin_submenu(this.name)\">$j</a>\n";
+?>
 </div>
 
-<div id="update_form" class="subcontents">
-<?
+<div id="update_form" class="subcontents"<?php if ($submenu != "update_form") echo " style=\"display:none;\""; ?>>
+<?php
 $page->update_form();
 ?>
 </div>
 
-<div id="param_list" class="subcontents" style="display:none;">
+<div id="vue_list" class="subcontents"<?php if ($submenu != "vue_list") echo " style=\"display:none;\""; ?>>
+<h3>Liste des templates associés :</h3>
+<form method="get">
+<input type="hidden" name="id" value="<?php echo $id; ?>" />
+<p>Choisir une vue : <select name="vue_name" onchange="this.form.submit()"><option></option><?php
+if (!isset($_GET["vue_name"]) || !is_string($_GET["vue_name"]) || !$page->vue_exists($_GET["vue_name"]))
+	$_GET["vue_name"] = "";
+foreach($page->vue_list() as $vue_name=>$vue)
+{
+	if ($_GET["vue_name"] == $vue_name)
+		echo "<option selected>$vue_name</option>";
+	else
+		echo "<option>$vue_name</option>";
+}
+?></select></p>
+</form>
+
+<?php
+if ($vue_name=$_GET["vue_name"])
+{
+	if (count($_POST))
+		$page->vue_update($vue_name, $_POST);
+	$vue = $page->vue($vue_name);
+	?>
+	<div>
+	<form method="post">
+	<p>Template : <select name="template_id"><option></option>
+	<?php
+	foreach (template()->list_get() as $tpl_name=>$tpl)
+	{
+		if ($vue["template_id"] == $tpl->id())
+			echo "<option value=\"$tpl_name\" selected>[".$tpl->id()."] ".$tpl->info("type")." : ".$tpl->label()."</option>";
+		else
+			echo "<option value=\"$tpl_name\">[".$tpl->id()."] ".$tpl->info("type")." : ".$tpl->label()."</option>";
+	}
+	?>
+	</select></p>
+	<div>
+	<p>Paramètres :</p>
+	<input type="hidden" name="params" value="" />
+	<?php
+	if (is_array($vue["params"])) foreach($vue["params"] as $param_name=>$param)
+	{
+		echo "<p>$param_name : <input name=\"params[$param_name][0]\" value=\"$param[0]\"</p>";
+	}
+	?>
+	</div>
+	<p><input type="submit" value="Mettre à jour" /></p>
+	</form>
+	</div>
+	<?php
+}
+?>
+
+</div>
+
+<div id="param_list" class="subcontents"<?php if ($submenu != "param_list") echo " style=\"display:none;\""; ?>>
 <?php
 
 // Update/add a param
@@ -120,7 +193,7 @@ if ($template=$page->template())
 	<form method="post">
 	<table cellspacing="0" cellpadding="0" border="0" class="tpl_params">
 	<?php
-	$tpl_filename = PATH_TEMPLATE."/".$template->name().".tpl.php";
+	$tpl_filename = PATH_TEMPLATE."/".$template->info("type")."/".$template->name().".tpl.php";
 	$subtemplates[] = array("id"=>$template->id(), "params"=>true, "type"=>"main");
 	foreach(_template::subtemplates($tpl_file=fread(fopen($tpl_filename, "r"), filesize($tpl_filename))) as $tpl)
 		$subtemplates[] = array("id"=>$tpl["id"], "params"=>(isset($tpl["params"])?$tpl["params"]:null), "type"=>"sub");
@@ -307,7 +380,7 @@ if ($template=$page->template())
 ?>
 </div>
 
-<div id="action_list" class="subcontents">
+<div id="action_list" class="subcontents"<?php if ($submenu != "action_list") echo " style=\"display:none;\""; ?>>
 <h1>Actions du controlleur</h1>
 </div>
 <?php

@@ -514,7 +514,7 @@ function field_time_verify(field, opt)
 }
 function field_string_verify(field, opt)
 {
-	return false;
+	return true;
 }
 function field_email_verify(field, opt)
 {

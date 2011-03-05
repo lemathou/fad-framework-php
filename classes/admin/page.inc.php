@@ -131,6 +131,50 @@ return true;
 
 }
 
+public function vue_add($name, $infos)
+{
+
+
+if (!is_string($name) || isset($this->vue_list[$name]))
+	return false;
+
+if (!is_array($infos))
+	$infos = array();
+elseif (!isset($infos["template_id"]) || !is_numeric($infos["template_id"]))
+	$infos["template_id"] = null;
+elseif (!isset($infos["params"]) || !is_string($infos["params"]))
+	$infos["params"] = null;
+
+db()->query("INSERT INTO `_page_template` (`page_id`, `vue_name`, `template_id`, `params`) VALUES ('$this->id', '$name', '".db()->string_escape($infos["template_id"])."', '".db()->string_escape(json_encode(json_decode($infos["params"])))."')");
+
+$this->query_vue();
+
+return true;
+
+}
+
+public function vue_update($name, $infos)
+{
+
+
+if (!is_string($name) || !isset($this->vue_list[$name]))
+	return false;
+
+if (!is_array($infos))
+	$infos = array();
+elseif (!isset($infos["template_id"]) || !is_numeric($infos["template_id"]))
+	$infos["template_id"] = null;
+elseif (!isset($infos["params"]) || !is_array($infos["params"]))
+	$infos["params"] = null;
+
+db()->query("UPDATE `_page_template` SET `template_id`='".db()->string_escape($infos["template_id"])."', `params`='".db()->string_escape(json_encode($infos["params"]))."' WHERE `page_id`='$this->id' AND `vue_name`='$name'");
+
+$this->query_vue();
+
+return true;
+
+}
+
 }
 
 

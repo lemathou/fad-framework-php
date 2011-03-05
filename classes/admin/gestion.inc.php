@@ -330,7 +330,7 @@ $query_info_lang = array();
 $query_objects = array();
 
 // unique name
-if (isset($infos["name"]) && (!is_string($infos["name"]) || !preg_match("/^([a-zA-Z0-9_\/-]+)$/",$infos["name"]) || $type()->exists($infos["name"])))
+if (isset($infos["name"]) && (!is_string($infos["name"]) || !preg_match("/^([a-z0-9_]+)$/i",$infos["name"]) || $type()->exists_name($infos["name"])))
 	unset($infos["name"]);
 
 foreach ($info_detail as $name=>$field_info)
@@ -347,7 +347,15 @@ foreach ($info_detail as $name=>$field_info)
 	}
 	elseif ($field_info["type"] == "script")
 	{
-		$filename = $field_info["folder"]."/".str_replace("{name}", $this->name, $field_info["filename"]);
+		$script_name_update = false;
+		$filename =  $field_info["folder"]."/".$field_info["filename"];
+		preg_match_all("/\{([^\}]+)\}/", $field_info["filename"], $matches, PREG_SET_ORDER);
+		foreach ($matches as $i=>$j)
+		{
+			$filename = str_replace("{".$j[1]."}", $this->{$j[1]}, $filename);
+			if (isset($infos[$j[1]]))
+				$script_name_update = true;
+		}
 		if (isset($infos[$name]))
 		{
 			if (is_string($infos[$name]) && strlen($infos[$name])>0)
@@ -355,9 +363,15 @@ foreach ($info_detail as $name=>$field_info)
 			elseif (file_exists($filename))
 				unlink($filename);
 		}
-		if (isset($infos["name"]) && $this->name != $infos["name"] && file_exists($filename))
+		if ($script_name_update && file_exists($filename))
 		{
-			$filename_new = $field_info["folder"]."/".str_replace("{name}", $infos["name"], $field_info["filename"]);
+			$filename_new =  $field_info["folder"]."/".$field_info["filename"];
+			foreach ($matches as $i=>$j)
+			{
+				if (!isset($infos[$j[1]]))
+					$infos[$j[1]] = $this->{$j[1]};
+				$filename_new = str_replace("{".$j[1]."}", $infos[$j[1]], $filename);
+			}
 			rename($filename, $filename_new);
 		}
 	}
@@ -464,7 +478,13 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 	?></select></td>
 <?php } elseif ($info["type"] == "script") { ?>
 	<td><textarea id="<?php echo $name; ?>" name="<?php echo $name; ?>" class="data_script"><?php
-	$filename =  $info["folder"]."/".str_replace("{name}", $this->name, $info["filename"]);
+	$filename =  $info["folder"]."/".$info["filename"];
+	preg_match_all("/\{([^\}]+)\}/", $info["filename"], $matches, PREG_SET_ORDER);
+	foreach ($matches as $i=>$j)
+	{
+		$filename = str_replace("{".$j[1]."}", $this->{$j[1]}, $filename);
+	}
+	//echo $filename;
 	if (file_exists($filename) && ($filesize=filesize($filename)))
 		echo $content = htmlspecialchars(fread(fopen($filename,"r"),$filesize));
 	?></textarea></td>

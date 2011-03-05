@@ -23,7 +23,7 @@ protected $type = "template";
 protected $info_detail = array
 (
 	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"page", "select_list"=> array('container'=>"Conteneur principal",'inc'=>"Inclusion fréquente",'page'=>"Contenu de page",'datamodel'=>"Vue de datamodel")),
-	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"name"=>array("label"=>"Nom (unique par type)", "type"=>"string", "size"=>32, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
 	"mime"=>array("label"=>"Type de contenu (MIME)", "type"=>"string", "size"=>128, "lang"=>false, "default"=>"text/html"),
@@ -31,13 +31,28 @@ protected $info_detail = array
 	"cache_maxtime"=>array("label"=>"Durée maximum du cache", "type"=>"integer", "lang"=>false, "default"=>TEMPLATE_CACHE_MAX_TIME),
 	"login_dependant"=>array("label"=>"Dépendant du login", "type"=>"boolean", "lang"=>false, "default"=>"0"),
 	"library_list"=>array("label"=>"Librairies", "type"=>"object_list", "object_type"=>"library", "db_table"=>"_template_library_ref", "db_id"=>"template_id", "db_field"=>"library_id"),
-	"tplfile"=>array("label"=>"Template", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.tpl.php"),
-	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{name}.inc.php")
+	"tplfile"=>array("label"=>"Template", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{type}/{name}.tpl.php"),
+	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{type}/{name}.inc.php")
 );
 
 protected $info_required = array("name", "type");
 
 protected $retrieve_details = false;
+
+protected function list_update()
+{
+
+$this->list_name = array();
+
+foreach($this->list_detail as $id=>$info)
+{
+	if ($info["type"])
+		$this->list_name[$info["type"]."/".$info["name"]] = $id;
+	else
+		$this->list_name[$info["name"]] = $id;
+}
+
+}
 
 protected function construct_object($id)
 {
@@ -98,6 +113,7 @@ class __template extends _object_gestion
 protected $_type = "template";
 
 protected $type = "";
+protected $name = "";
 
 protected $mime = "";
 
@@ -121,9 +137,10 @@ protected $param_list = array();
 protected $param = array();
 
 /*
- * Filename of the PHP source template file
+ * Filename of the PHP source template file, and PHP script
  */
 protected $tpl_filename = "";
+protected $script_filename = "";
 
 /*
  * Unique cache ID to store and retrieve each filled template
@@ -144,18 +161,32 @@ return array("id", "name", "label", "mime", "description", "type", "cache_mintim
 function __wakeup()
 {
 
-$this->tpl_filename = "template/".$this->name.".tpl.php";
+$this->tpl_filename_update();
 $this->construct_params();
-//echo "<p>template(ID#$this->id)::__wakeup()</p>\n";
 
 }
 
 protected function construct_more($infos)
 {
 
-$this->tpl_filename = "template/".$this->name.".tpl.php";
-
+$this->tpl_filename_update();
 $this->construct_params();
+
+}
+
+protected function tpl_filename_update()
+{
+
+if ($this->type)
+{
+	$this->tpl_filename = PATH_TEMPLATE."/".$this->type."/".$this->name.".tpl.php";
+	$this->script_filename = PATH_TEMPLATE."/".$this->type."/".$this->name.".inc.php";
+}
+else
+{
+	$this->tpl_filename = PATH_TEMPLATE."/".$this->name.".tpl.php";
+	$this->script_filename = PATH_TEMPLATE."/".$this->name.".inc.php";
+}
 
 }
 
@@ -175,8 +206,6 @@ foreach ($this->param_list as $name=>$param)
 
 protected function query_info_more()
 {
-
-$this->tpl_filename = "template/".$this->name.".tpl.php";
 
 $this->query_params();
 
@@ -350,12 +379,12 @@ foreach ($this->param_list as $name=>$param)
 protected function params_check()
 {
 
-if (file_exists($filename=PATH_TEMPLATE."/$this->name.inc.php"))
+if (file_exists($this->script_filename))
 {
 	// Including references !
 	extract($this->param);
 	//echo "<!-- Template Script : template/$this->name.inc.php -->\n";
-	include $filename;
+	include $this->script_filename;
 }
 
 }
@@ -463,7 +492,7 @@ protected function execute()
 //echo "<p>template(#ID$this->id:$this->name)::execute()</p>\n";
 extract($this->param);
 ob_start();
-include PATH_TEMPLATE."/$this->name.tpl.php";
+include $this->tpl_filename;
 $return = $this->subtemplates_apply(ob_get_contents());
 ob_end_clean();
 return $return;
@@ -507,10 +536,10 @@ public function cache_generate()
 
 $_time = time();
 
-//echo "<p>template(ID#$this->id)::cache_generate() ".PATH_TEMPLATE."/$this->name.tpl.php : $this->cache_id</p>\n";
+//echo "<p>template(ID#$this->id)::cache_generate() $this->tpl_filename : $this->cache_id</p>\n";
 extract($this->param);
 ob_start();
-include PATH_TEMPLATE."/$this->name.tpl.php";
+include $this->tpl_filename;
 if (TEMPLATE_CACHE_TYPE == "apc")
 	apc_store("tpl_$this->cache_id", $this->tpl="<!-- $_time -->".ob_get_contents(), TEMPLATE_CACHE_MAX_TIME);
 else

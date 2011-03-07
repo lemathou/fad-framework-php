@@ -16,7 +16,7 @@ if (DEBUG_GENTIME == true)
 	include PATH_INCLUDE."/gentime.inc.php";
 
 // Common classes inclusion
-include PATH_INCLUDE."/classes.inc.php";
+include PATH_INCLUDE."/class_autoload.inc.php";
 
 // Database
 include PATH_INCLUDE."/db.inc.php";

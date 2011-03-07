@@ -22,11 +22,12 @@ session_start();
 
 $php = array();
 // Cache
-$php["APC"] = function_exists("apc_fetch") ? true : false;
-$php["MEMCACHED"] = class_exists("Memcached") ? true : false;
+$php["cache"]["file"] = true;
+$php["cache"]["apc"] = function_exists("apc_fetch") ? true : false;
+$php["cache"]["memcached"] = class_exists("Memcached") ? true : false;
 // Database
-$php["MySQL"] = function_exists("mysql_connect") ? true : false;
-$php["MySQLi"] = function_exists("mysqli_connect") ? true : false;
-$php["postgreSQL"] = function_exists("pg_connect") ? true : false;
+$php["db"]["mysql"] = function_exists("mysql_connect") ? true : false;
+$php["db"]["mysqli"] = function_exists("mysqli_connect") ? true : false;
+$php["db"]["postgresql"] = function_exists("pg_connect") ? true : false;
 
 ?>

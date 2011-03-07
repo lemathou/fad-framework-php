@@ -1,0 +1,222 @@
+/**
+  * $Id$
+  * 
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
+  * 
+  * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
+  * 
+  */
+
+@CHARSET "UTF-8";
+
+body
+{
+	margin: 0;
+	border: 0;
+	padding: 0;
+	font-size: 11pt;
+	background: transparent;
+}
+
+/* General font-family */
+body, h1, h2, h3, h4, p, li, td, label, input, textarea, option
+{
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+/* Forms */
+form
+{
+	margin: 0;
+}
+input, select, textarea
+{
+	font-size: 0.9em;
+}
+
+/* Frames */
+iframe
+{
+	border: 0;
+	padding: 0;
+	margin: 0;
+}
+
+/* Links */
+a
+{
+	font-weight: bold;
+	font-style: normal;
+	text-decoration: none;
+	color: #47a5ff;
+}
+a:hover, a.selected
+{
+	color: orange;
+}
+a img
+{
+	border: 0;
+}
+
+/* Cleaner */
+p.cleaner
+{
+	clear: both;
+	margin: 0;
+	height: 0;
+	line-height: 0;
+}
+
+/* Tables */
+td.label
+{
+	vertical-align: top;
+}
+
+/* AutoGrow */
+.autogrow
+{
+	width: 100%;
+	overflow: hidden;
+	height: auto;
+}
+
+/* Ajax queries */
+.q_select
+{
+	display: none;
+	position: absolute;
+	border: 1px gray solid;
+	background-color: #ffd;
+	padding: 4px;
+	z-index: 100;
+}
+.q_select p
+{
+	font-size: 0.8em;
+	margin: 0;
+}
+.q_select p:hover
+{
+	background-color: black;
+	color: orange;
+	cursor: pointer;
+}
+
+/* Menus */
+.menu
+{
+	background-color: #d00128;
+	height: 14px;
+	padding: 0;
+	margin: 0;
+	text-align: center;
+}
+.menu a
+{
+	padding: 0 10px;
+}
+.menu a:hover, .menu .selected a
+{
+	color: orange;
+}
+
+.admin_link
+{
+	position: fixed;
+	margin-top: 25px;
+	width: 0px;
+}
+.admin_link a
+{
+	padding: 20px 0;
+	color: white;
+	background-color: white;
+}
+.admin_link a:hover
+{
+	color: white;
+}
+
+/* Page */
+.page
+{
+	width: 990px;
+	text-align: left;
+	height: 100%;
+}
+
+/* OBJECTS */
+.object_list
+{
+	margin-top: 5px;
+}
+.object_form
+{
+	margin-top: 5px;
+	width: 100%;
+}
+.object_form table
+{
+	width: 100%;
+}
+
+.object_form .label
+{
+	width: 250px;
+}
+
+/* DATAOBJECTS */
+.datamodel_form
+{
+	width: 100%;
+}
+.datamodel_form fieldset > table, .datamodel_form > table
+{
+	width: 100%;
+}
+.datamodel_form fieldset > table td.label, .datamodel_form > table td.label
+{
+	width: 200px;
+}
+
+/* DATATYPES */
+.data_text, .data_richtext, .data_script
+{
+	width: 100%;
+}
+.data_string, .data_name
+{
+}
+.data_script
+{
+	position: relative;
+	height: 100%;
+}
+input.autosize
+{
+	font-size: 1em;
+	border: 1px gray solid;
+	font-family: monospace;
+}
+
+/* PAGE_LISTING */
+.page_listing_submit
+{
+	visibility: hidden;
+	position: absolute;
+	display: inline;
+	border: 1px gray solid;
+	background-color: white;
+	padding: 1px;
+	color: #47a5ff;
+	font-weight: bold;
+}
+.page_listing_submit:hover
+{
+	cursor: pointer;
+}
+

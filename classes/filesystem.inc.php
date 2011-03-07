@@ -18,14 +18,17 @@ class filesystem
  * Display a file using its mime type
  * @param string $file
  */
-static function display($file)
+static function display($file, $opt=array())
 {
 
 if (!@file_exists($file))
 	return;
 
+session_cache_limiter("no-cache");
+header("Content-Length: ".filesize($file));
 $finfo = new finfo(FILEINFO_MIME_TYPE);
 header("Content-type: ".$finfo->file($file));
+header("Content-Disposition: inline; filename=\"".addslashes(array_pop(explode("/", $file))))."\"";
 readfile($file);
 
 }
@@ -121,18 +124,31 @@ static function copydir($source, $dest)
 if (!is_string($source) || !is_string($dest) || !@is_dir($source) || !(@is_dir($dest) || self::mkdir($dest)))
 	return false;
 
-$fp = opendir($source);
-while($file = readdir($fp)) if ($file != "." && $file != "..")
+$command1 = "cp -a ".str_replace(" ", "\\ ", $source)."/* ".str_replace(" ", "\\ ", $dest)."/";
+$command1 = "cp -a ".str_replace(" ", "\\ ", $source)."/.??* ".str_replace(" ", "\\ ", $dest)."/";
+//echo "<p>$command1</p>";
+//echo "<p>$command2</p>";
+
+$ok = true;
+@system($command1, $ok);
+if ($ok)
+	@system($command2, $ok);
+
+if (!function_exists("system") || !$ok)
 {
-	if (@is_dir("$source/$file"))
+	$fp = opendir($source);
+	while($file = readdir($fp)) if ($file != "." && $file != "..")
 	{
-		if (!self::copydir("$source/$file", "$dest/$file"))
-			return false;
-	}
-	elseif (@is_file("$source/$file"))
-	{
-		if (!@copy("$source/$file", "$dest/$file"))
-			return false;
+		if (@is_dir("$source/$file"))
+		{
+			if (!self::copydir("$source/$file", "$dest/$file"))
+				return false;
+		}
+		elseif (@is_file("$source/$file"))
+		{
+			if (!@copy("$source/$file", "$dest/$file"))
+				return false;
+		}
 	}
 }
 
@@ -153,7 +169,18 @@ if (!is_array($opt))
 	$opt = array();
 if (!isset($opt["hidden"]))
 	$opt["hidden"] = "0";
+if (!isset($opt["file_choose_name"]))
+	$opt["file_choose_name"] = "";
 
+// verify cols
+if (!isset($opt["cols"]) || !is_array($opt["cols"]))
+	$opt["cols"] = array("type", "size");
+else foreach($opt["cols"] as $i=>$j)
+{
+	if (!in_array($j, array("type", "size", "created", "updated", "perm", "thumb")))
+		unset($opt["cols"][$i]);
+}
+$colnum = count($opt["cols"])+4;
 // Verify $origin exists
 if (!isset($opt["origin"]) || !is_string($origin=$opt["origin"]) || !file_exists($origin) || !is_dir($origin))
 {
@@ -209,23 +236,25 @@ else
 }
 ?>
 <form method="post">
-<h3><?php echo $fullpath; ?> <input type="button" value="Choose" onclick="path_choose('install_folder', '<?php echo $fullpath; ?>')" /></h3>
-<p><a href="<?php echo "?path=$path&hidden="; echo (!$opt["hidden"]) ? 1 : 0; ?>">Hidden files</a></p>
+<h3><?php echo $fullpath; ?> <input name="file_choose" type="button" value="Choose" onclick="path_choose('<?php echo $opt["file_choose_name"]; ?>', '<?php echo $fullpath; ?>')" /></h3>
+<p><a href="<?php echo "?path=$path&file_choose_name=$opt[file_choose_name]&hidden=".((!$opt["hidden"]) ? "1" : "0"); ?>">Hidden files</a></p>
 <input type="hidden" name="action" />
 <table cellspacing="2" cellpadding="0" width="100%">
 <tr>
-	<td colspan="9"><hr /></td>
+	<td colspan="<?php echo $colnum; ?>"><hr /></td>
 </tr>
 <tr style="font-weight: bold;">
 	<td width="20">&nbsp;</td>
 	<td width="20">&nbsp;</td>
 	<td width="20">&nbsp;</td>
 	<td>Name</td>
-	<td width="150">Type</td>
-	<td width="50">Size</td>
-	<td width="100">Created</td>
-	<td width="100">Updated</td>
-	<td width="50">Perm</td>
+	<?
+	if (in_array("type", $opt["cols"])) echo "<td width=\"150\">Type</td>\n";
+	if (in_array("size", $opt["cols"])) echo "<td width=\"50\">Size</td>\n";
+	if (in_array("created", $opt["cols"])) echo "<td width=\"100\">Created</td>\n";
+	if (in_array("updated", $opt["cols"])) echo "<td width=\"100\">Updated</td>\n";
+	if (in_array("perm", $opt["cols"])) echo "<td width=\"50\">Perm</td>\n";
+	?>
 	<!-- <td width="50">Propriétaire</td> -->
 </tr>
 <?php
@@ -235,16 +264,16 @@ if (@is_dir("$origin/$path_parent"))
 {
 ?>
 <tr>
-	<td colspan="9"><hr /></td>
+	<td colspan="<?php echo $colnum; ?>"><hr /></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>
 	<td>&nbsp;</td>
-	<td><a href="?path=<?php echo $path_parent; ?>&hidden=<?php echo $opt["hidden"]; ?>" style="text-decoration: none;">&lt;=</a></td>
+	<td><a href="?path=<?php echo $path_parent; ?>&file_choose_name=<?php echo $opt["file_choose_name"]; ?>&hidden=<?php echo $opt["hidden"]; ?>" style="text-decoration: none;">&lt;=</a></td>
 	<td>..</td>
 </tr>
 <tr>
-	<td colspan="9"><hr /></td>
+	<td colspan="<?php echo $colnum; ?>"><hr /></td>
 </tr>
 <?php
 }
@@ -262,6 +291,18 @@ while($file = readdir($fp)) if ($file != "." && $file != "..")
 		$folder_list[] = $file;
 	elseif (@is_file("$origin/$path/$file"))
 		$file_list[] = $file;
+}
+
+if (!count($folder_list) && !count($file_list))
+{
+?>
+<tr>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	<td>&nbsp;</td>
+	<td>No files found</td>
+</tr>
+<?
 }
 
 // Display folders
@@ -304,13 +345,13 @@ foreach($folder_list as $file)
 		$filesize .= "&nbsp;GO";
 	echo "<td><a href=\"javascript:;\" onclick=\"if (confirm('Are you sure you want to delete this folder ?')) file_delete('$file');\" style=\"color: red;text-decoration: none;\">X</a></td>\n";
 	echo "<td>&nbsp;</td>\n";
-	echo "<td><a href=\"?path=$file_path&hidden=$opt[hidden]\" style=\"text-decoration: none;\">=&gt;</a></td>\n";
+	echo "<td><a href=\"?path=$file_path&hidden=$opt[hidden]&file_choose_name=$opt[file_choose_name]\" style=\"text-decoration: none;\">=&gt;</a></td>\n";
 	echo "<td><input value=\"$file\" onchange=\"file_rename(this, '$file');\" /></td>\n";
-	echo "<td>Folder</td>\n";
-	echo "<td>$filesize</td>\n";
-	echo "<td>".date("Y-m-d", filectime("$origin/$file_path"))."</td>\n";
-	echo "<td>".date("Y-m-d", filemtime("$origin/$file_path"))."</td>\n";
-	echo "<td>".substr(decoct(fileperms("$origin/$file_path")), -3, 3)."</td>\n";
+	if (in_array("type", $opt["cols"])) echo "<td>Folder</td>\n";
+	if (in_array("size", $opt["cols"])) echo "<td align=\"right\">$filesize</td>\n";
+	if (in_array("created", $opt["cols"])) echo "<td>".date("Y-m-d", filectime("$origin/$file_path"))."</td>\n";
+	if (in_array("updated", $opt["cols"])) echo "<td>".date("Y-m-d", filemtime("$origin/$file_path"))."</td>\n";
+	if (in_array("perm", $opt["cols"])) echo "<td>".substr(decoct(fileperms("$origin/$file_path")), -3, 3)."</td>\n";
 	//echo "<td>".fileowner($file_path)."</td>\n";
 	echo "</tr>\n";
 }
@@ -341,23 +382,19 @@ foreach($file_list as $file)
 		$filesize .= "&nbsp;MO";
 	elseif ($filesize_u == 3)
 		$filesize .= "&nbsp;GO";
-	$filetype = $finfo->file("$fullpath/$file");
 	echo "<td><a href=\"javascript:;\" onclick=\"if (confirm('Are you sure you want to delete this file ?')) file_delete('$file');\" style=\"color: red;text-decoration: none;\">X</a></td>\n";
-	if (substr($filetype, 0, 5) == "image")
-		echo "<td><a href=\"javascript:;\" onclick=\"file_view('".urlencode("$fullpath/$file")."')\">V</a></td>\n";
-	elseif (substr($filetype, 0, 5) == "audio")
-		echo "<td><a href=\"javascript:;\" onclick=\"file_view('".urlencode("$fullpath/$file")."')\">V</a></td>\n";
-	elseif (substr($filetype, 0, 5) == "video")
+	$filetype = $finfo->file("$fullpath/$file");
+	if (substr($filetype, 0, 5) == "image" || substr($filetype, 0, 5) == "audio" || substr($filetype, 0, 5) == "video" || substr($filetype, 0, 4) == "text")
 		echo "<td><a href=\"javascript:;\" onclick=\"file_view('".urlencode("$fullpath/$file")."')\">V</a></td>\n";
 	else
 		echo "<td>&nbsp;</td>\n";
 	echo "<td>&nbsp;</td>\n";
 	echo "<td><input value=\"$file\" onchange=\"file_rename(this, '$file');\" /></td>\n";
-	echo "<td>$filetype</td>\n";
-	echo "<td>$filesize</td>\n";
-	echo "<td>".date("Y-m-d", filectime("$origin/$file_path"))."</td>\n";
-	echo "<td>".date("Y-m-d", filemtime("$origin/$file_path"))."</td>\n";
-	echo "<td>".substr(decoct(fileperms("$origin/$file_path")), -3, 3)."</td>\n";
+	if (in_array("type", $opt["cols"])) echo "<td>$filetype</td>\n";
+	if (in_array("size", $opt["cols"])) echo "<td align=\"right\">$filesize</td>\n";
+	if (in_array("created", $opt["cols"])) echo "<td>".date("Y-m-d", filectime("$origin/$file_path"))."</td>\n";
+	if (in_array("updated", $opt["cols"])) echo "<td>".date("Y-m-d", filemtime("$origin/$file_path"))."</td>\n";
+	if (in_array("perm", $opt["cols"])) echo "<td>".substr(decoct(fileperms("$origin/$file_path")), -3, 3)."</td>\n";
 	//echo "<td>".fileowner($file_path)."</td>\n";
 	echo "</tr>\n";
 }
@@ -365,7 +402,7 @@ foreach($file_list as $file)
 // New folder form
 ?>
 <tr>
-	<td colspan="9"><hr /></td>
+	<td colspan="<?php echo $colnum; ?>"><hr /></td>
 </tr>
 <tr>
 	<td>&nbsp;</td>

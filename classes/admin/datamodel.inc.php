@@ -48,7 +48,7 @@ public function field_add($field, $options="")
 {
 
 // TODO : security : send an email with complete info about the one who tried to do this and blacklist him if possible ?
-if (!login()->perm(2))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
 
 if (!is_array($field))
@@ -106,7 +106,7 @@ if ($db_sync)
 public function field_delete($name)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
 
 if (!array_key_exists($name, $this->fields_detail))
@@ -139,7 +139,7 @@ if (CACHE)
 function field_update($name, $field)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 if (!array_key_exists($name, $this->fields_detail))
@@ -240,7 +240,7 @@ else
 public function db_create()
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 $options = array();
@@ -323,7 +323,7 @@ if (count($this->fields_index))
 public function db_alter()
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 //return db()->table_update("$this->name","");
@@ -359,7 +359,7 @@ return db()->table_drop($this->name);
 public function db_empty()
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 return db()->table_empty($this->name);
@@ -375,7 +375,7 @@ return db()->table_empty($this->name);
 public function db_field_move($fieldname, $position)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 db()->query("ALTER TABLE `".$this->name."` MODIFY COLUMN ".db()->db_field_struct($fieldname, $this->fields[$fieldname]->db_field_create())." AFTER `$position`");

@@ -9,9 +9,9 @@
   * 
   */
 
-function folder_lookup()
+function folder_lookup(name)
 {
-	var popup = window.open("/install/folder.php", "folders", "menubar=no, status=no, scrollbars=yes, width=800, height=400");
+	var popup = window.open("/install/folder.php?file_choose_name="+name, "folders", "menubar=no, status=no, scrollbars=yes, width=800, height=400");
 	popup.focus();
 }
 
@@ -44,3 +44,4 @@ function path_choose(tag_name, name)
 	window.opener.focus();
 	window.close();
 }
+

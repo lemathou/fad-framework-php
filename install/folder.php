@@ -37,12 +37,9 @@ array_pop($origin_e);
 $origin = implode("/", $origin_e);
 
 // Context parameters
-if (!isset($_GET["path"]) || !is_string($_GET["path"]) || !@is_dir($origin."/".$_GET["path"]))
-	$path = ".";
-else
-	$path = $_GET["path"];
-
+$path =  (!isset($_GET["path"]) || !is_string($_GET["path"]) || !@is_dir($origin."/".$_GET["path"])) ? "." : $_GET["path"];
 $hidden = (empty($_GET["hidden"])) ? "0" : "1";
+$file_choose_name = (empty($_GET["file_choose_name"])) ? "" : $_GET["file_choose_name"];
 
 // Actions
 if (isset($_POST["folder_create"]) && is_string($name=$_POST["folder_create"]))
@@ -59,7 +56,7 @@ if (isset($_POST["file_rename"]) && is_string($name=$_POST["file_rename"]) && pr
 }
 
 // Display
-filesystem::folder_disp($path, array("origin"=>$origin, "hidden"=>$hidden));
+filesystem::folder_disp($path, array("origin"=>$origin, "hidden"=>$hidden, "file_choose_name"=>$file_choose_name));
 
 ?>
 </body>

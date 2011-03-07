@@ -2,6 +2,6 @@
 
 include "config/config.inc.php";
 
-include PATH_FRAMEWORK."/apc.php";
+include PATH_FRAMEWORK."/_apc.php";
 
 ?>

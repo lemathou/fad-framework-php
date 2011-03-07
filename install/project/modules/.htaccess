@@ -1,0 +1,26 @@
+RewriteEngine on
+#RewriteBase /
+
+RewriteRule ^$                                                                                           /index.php [QSA]
+
+# Page d'accueil dans chaque langue
+RewriteRule ^[A-Za-z_-]{2}/*$                                                                           /index.php [QSA]
+
+# Pages d'admin
+RewriteRule ^admin/([A-Za-z_-]*)$                                                                       /admin.php?_page=$1 [QSA]
+
+# Génération du template à partir de l'url si elle se finit en .html
+RewriteRule ^([A-Za-z0-9_\ -]*)\.html$                                                                  /index.php [QSA]
+
+# Génération du template à partir de l'url si elle se finit en .html
+# Version simple
+RewriteRule ^[A-Za-z_-]{2}/(([A-Za-z0-9_-]+)/)*([A-Za-z_\ -]*)\.html$                                   /index.php [QSA]
+# Versions avec id de page
+RewriteRule ^([A-Za-z0-9_\ -]*),([0-9]+)\.html$                                                                 /index.php [QSA]
+RewriteRule ^[A-Za-z_-]{2}/(([A-Za-z0-9_-]+)/)*([A-Za-z0-9_\ -]*),([0-9]+)\.html$                                       /index.php [QSA]
+# Versions avec id de page et paramètres
+RewriteRule ^([A-Za-z0-9_\ -]*),([0-9]+),([a-z0-9_]*,)*([a-z0-9_]*)\.html$                                              /index.php [QSA]
+RewriteRule ^[A-Za-z_-]{2}/(([A-Za-z0-9_-]+)/)*([A-Za-z0-9_\ -]*),([0-9]+),([a-z0-9_]*,)*([a-z0-9_]*)\.html$            /index.php [QSA]
+
+# Captcha
+RewriteRule ^(([A-Za-z_-]+)/)*captcha.jpg$                                                                      captcha.php

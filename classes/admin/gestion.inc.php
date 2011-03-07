@@ -26,7 +26,7 @@ class _gestion extends __gestion
 public function del($id)
 {
 
-if (!login()->perm(6)) // TODO : send email to admin
+if (!login()->perm(1)) // TODO : send email to admin
 	die("ONLY ADMIN CAN DELETE $this->type");
 
 if (!$this->retrieve_objects)
@@ -75,7 +75,7 @@ protected function del_more($id)
 public function add($infos)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN ADD $this->type");
 
 $query_fields = array();
@@ -148,7 +148,7 @@ protected function add_more($id, $infos)
 public function insert_form($action="", $fields=array())
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN ADD $this->type");
 
 ?>
@@ -223,7 +223,7 @@ foreach ($this->info_detail as $name=>$info)
 public function table_list($params=array(), $field_list=true, $sort=null)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN SHOW LIST OF $this->type");
 
 $this->retrieve_objects();
@@ -316,7 +316,7 @@ class _object_gestion extends __object_gestion
 public function update($infos)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE $this->_type");
 
 if (!is_array($infos))
@@ -418,7 +418,7 @@ protected function update_more($infos)
 public function update_form($action="")
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN UPDATE $this->_type");
 
 $_type = $this->_type;

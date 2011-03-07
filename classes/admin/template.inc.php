@@ -39,8 +39,9 @@ class _template extends __template
 public function param_add($name, $info)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
+
 if (!is_string($name) || !preg_match("/^([a-zA-Z_-]*)$/", $name) || isset($this->param[$name]) || !is_array($info))
 	return false;
 if (!isset($info["datatype"]) || !data()->exists_name($info["datatype"]))
@@ -68,8 +69,9 @@ return true;
 public function param_del($name)
 {
 
-if (!login()->perm(6))
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
+
 if (!is_string($name) || !array_key_exists($name, $this->param))
 	return false;
 
@@ -88,8 +90,9 @@ public function param_update($name, $info)
 
 //var_dump($info);
 
-if (!login()->perm(6))
+if (!login()->perm())
 	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
+
 if (!is_string($name) || !array_key_exists($name, $this->param) || !is_array($info))
 	return false;
 

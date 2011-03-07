@@ -64,7 +64,7 @@ global $admin_page;
 header("Content-type: text/html; charset=".SITE_CHARSET);
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="fr" lang="fr">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="<?=SITE_LANG?>" lang="<?=SITE_LANG?>">
 
 <head>
 
@@ -75,30 +75,28 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 
 <title><?php echo $admin_menu[$admin_page]; ?> - ADMINISTRATION</title>
 
-<link rel="stylesheet" type="text/css" href="/css/jquery-ui-1.8.6.custom.css" />
-<link rel="stylesheet" type="text/css" href="/css/jquery.ui.timepicker.css" />
-<link rel="stylesheet" type="text/css" href="/css/jquery.asmselect.css" />
-<link rel="stylesheet" type="text/css" href="/css/common.css" />
-<link rel="stylesheet" type="text/css" href="/css/admin.css" />
+<link rel="stylesheet" type="text/css" href="/_css/jquery-ui-1.8.6.custom.css" />
+<link rel="stylesheet" type="text/css" href="/_css/jquery.ui.timepicker.css" />
+<link rel="stylesheet" type="text/css" href="/_css/jquery.asmselect.css" />
+<link rel="stylesheet" type="text/css" href="/_css/common.css" />
+<link rel="stylesheet" type="text/css" href="/_css/admin.css" />
 
-<script type="text/javascript" language="Javascript" src="/js/jquery-1.4.2.min.js"></script>
-<script type="text/javascript" language="javascript" src="/js/jquery-ui-1.8.6.custom.min.js"></script>
-<script type="text/javascript" language="javascript" src="/js/jquery-ui-timepicker-addon.js"></script>
-<script type="text/javascript" language="javascript" src="/js/jquery.uidatepicker-fr.js"></script>
-<script type="text/javascript" language="Javascript" src="/js/jquery.asmselect.js"></script>
-<script type="text/javascript" language="javascript" src="/js/jquery.autogrowtextarea.js"></script>
+<script type="text/javascript" src="/_js/jquery-1.4.2.min.js"></script>
+<script type="text/javascript" src="/_js/jquery-ui-1.8.6.custom.min.js"></script>
+<script type="text/javascript" src="/_js/jquery-ui-timepicker-addon.js"></script>
+<script type="text/javascript" src="/_js/jquery.uidatepicker-fr.js"></script>
+<script type="text/javascript" src="/_js/jquery.asmselect.js"></script>
+<script type="text/javascript" src="/_js/jquery.autogrowtextarea.js"></script>
 
-<!--<script type="text/javascript" language="javascript" src="/js/json2.js"></script>-->
+<script type="text/javascript" src="/_js/edit_area/edit_area_full.js"></script>
+<script type="text/javascript" src="/_js/ckeditor/ckeditor.js"></script>
+<script type="text/javascript" src="/_js/ckeditor/adapters/jquery.js"></script>
 
-<script type="text/javascript" language="Javascript" src="/js/edit_area/edit_area_full.js"></script>
-<script type="text/javascript" language="javascript" src="/js/ckeditor/ckeditor.js"></script>
-<script type="text/javascript" language="javascript" src="/js/ckeditor/adapters/jquery.js"></script>
-
-<script type="text/javascript" language="javascript" src="/js/common.js"></script>
-<script type="text/javascript" language="javascript" src="/js/admin.js"></script>
+<script type="text/javascript" src="/_js/common.js"></script>
+<script type="text/javascript" src="/_js/admin.js"></script>
 
 <!--[if lt IE 7.]>
-<script defer type="text/javascript" language="javascript" src="/js/pngfix.js"></script>
+<script defer type="text/javascript" rc="/_js/pngfix.js"></script>
 <![endif]-->
 
 </head>

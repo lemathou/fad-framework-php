@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: page.inc.php 76 2009-10-15 09:24:20Z mathieu $
+  * $Id: pagemodel.inc.php 76 2009-10-15 09:24:20Z mathieu $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

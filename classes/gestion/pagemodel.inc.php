@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: page.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
+  * $Id: pagemodel.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
@@ -21,9 +21,7 @@ if (DEBUG_GENTIME == true)
 class __pagemodel_gestion extends _gestion
 {
 
-protected $type = "page";
-
-protected $page_id = 0;
+protected $type = "pagemodel";
 
 protected $retrieve_details = false;
 
@@ -31,13 +29,7 @@ protected $info_detail = array
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>32, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
-	"shortlabel"=>array("label"=>"Titre court (pour liens)", "type"=>"string", "size"=>64, "lang"=>true),
-	"url"=>array("label"=>"URL", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
-	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"template", "select_list"=>array("static_html"=>"Page HTML statique", "template"=>"Utilisation d'un template (valeur par défaut)", "redirect"=>"Redirection vers une page extérieure", "alias"=>"Alias d'une autre page du site", "static_html"=>"Page HTML statique", "php"=>"Script PHP")),
-	"template_id"=>array("label"=>"Template", "type"=>"object", "object_type"=>"template", "lang"=>false),
-	"perm"=>array("label"=>"Permission par défaut", "type"=>"boolean", "default"=>0, "value_list"=>array("Protégé", "Accès pour tous"), "lang"=>false),
-	"perm_list"=>array("label"=>"Permissions spécifiques", "type"=>"object_list", "object_type"=>"permission", "db_table"=>"_page_perm_ref", "db_id"=>"page_id", "db_field"=>"perm_id"),
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGE, "filename"=>"{name}.inc.php")
 );
 
@@ -64,85 +56,10 @@ while ($opt = $query_opt->fetch_row())
 
 }
 
-/**
- * Set the default page
- * This is like a dispatcher
- * 
- * ID#1 : home :  Homepage
- * ID#2 : notfound : Page does not exists (HTTP 404)
- * ID#3 : unavailable : Page unavailable (HTTP 401)
- * 
- * TODO : include here all retrieved infos from the request url (language and params list)
- */
-public function set()
-{
-
-if (DEBUG_GENTIME == true)
-	gentime("page_gestion::set() [begin]");
-
-$i = array_pop($GLOBALS["url_e"]);
-
-$url_params = array();
-
-// No page => Default page
-if (!$i)
-{
-	define("PAGE_ID", PAGE_DEFAULT_ID);
-}
-else
-{
-	// Premier coup : la page
-	if (($j = strpos($i,",")) != null)
-	{
-		$i = substr($i,$j+1);
-		// Second coup : les paramètres
-		if (($j = strpos($i,",")) != null)
-		{
-			$url_params = explode(",",substr($i,$j+1));
-			$i = substr($i,0,$j);
-		}
-	}
-	// Page exists
-	if (!array_key_exists($i, $this->list_detail))
-	{
-		define("PAGE_ID", PAGE_UNDEFINED_ID);
-	}
-	elseif (!$this->get($i)->perm_login()) // perm("r")
-	{
-		define("PAGE_ID", PAGE_UNAUTHORIZED_ID);
-	}
-	else
-	{
-		define("PAGE_ID", $i);
-	}
-}
-
-$this->page_id = PAGE_ID;
-$this->get(PAGE_ID)->set($url_params);
-
-if (DEBUG_GENTIME == true)
-	gentime("page_gestion::set() [end]");
-
 }
 
 /**
- * Get the current page
- * @param unknown_type $id
- */
-public function current_get()
-{
-
-if ($this->page_id)
-	return $this->get($this->page_id);
-else
-	return null;
-
-}
-
-}
-
-/**
- * Defines an element of the menu, accessible via an specific url
+ * Defines a model of page
  *
  */
 class __pagemodel extends _object_gestion
@@ -150,11 +67,7 @@ class __pagemodel extends _object_gestion
 
 protected $_type = "page";
 
-protected $perm = "";
-
 protected $type = "";
-protected $url = "";
-protected $shortlabel = "";
 
 // Params
 protected $param_list = array();
@@ -166,21 +79,11 @@ protected $param = array();
 protected $view_list = array();
 // Actual template
 protected $template = null;
-protected $template_id = 0;  // TODO : depreacated, to be deleted
-
-// Permissions
-protected $perm_list = array();
-
-// Redirect URL
-protected $redirect_url = null;
-
-// Page alias
-protected $alias_page_id = null;
 
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "perm", "type", "url", "shortlabel", "template_id", "param_list", "view_list", "perm_list", "redirect_url", "alias_page_id");
+return array("id", "name", "label", "description", "param_list", "view_list");
 
 }
 function __wakeup()
@@ -322,56 +225,6 @@ if (is_string($name) && array_key_exists($name, $this->param))
 
 }
 
-/**
- * Update params from URL, GET and POST
- * @param unknown_type $params
- */
-public function params_update_url($params=array())
-{
-
-// Retrieved from the URL
-foreach($params as $pos=>$value)
-{
-	if (array_key_exists($pos, $this->params_url) && ($name=$this->params_url[$pos]))
-	{
-		if (DEBUG_TEMPLATE)
-			echo "<p>page(ID#$this->id)::params_update_url() : URL $name => $value</p>";
-		$this->param[$name]->value_from_form($value);
-	}
-}
-
-// Retrieved from $_GET
-foreach($_GET as $name=>$value)
-{
-	if (in_array($name, $this->params_url))
-	{
-		if (DEBUG_TEMPLATE)
-			echo "<p>page(ID#$this->id)::params_update_url() : GET $name => $value</p>";
-		$this->param[$name]->value_from_form($value);
-	}
-}
-
-// TODO : I think $_POST may only be used in script, not in template... Needs some work !
-
-}
-
-/**
- * Set the page as default, so create the associated template
- *
- */
-public function set($params=array())
-{
-
-if (DEBUG_GENTIME == true)
-	gentime("page::set() [begin]");
-
-$this->params_update_url($params);
-
-if (DEBUG_GENTIME == true)
-	gentime("page::set() [end]");
-
-}
-
 function params_reset()
 {
 
@@ -429,27 +282,6 @@ if ($view = $this->view_get($name))
 	$this->params_apply($this->template, $view[1]);
 	$this->subtemplates_apply($this->template, $view[2]);
 }
-elseif ($this->template_id)
-{
-	$this->template = clone template($this->template_id);
-	$this->params_apply($this->template);
-}
-
-}
-
-/**
- * Access the associated template
- */
-function template()
-{
-
-if (false)
-	echo "<p>page(ID#$this->id) : Accessing to template ID#$this->template_id</p>\n";
-
-if (!$this->template)
-	$this->view_set();
-
-return $this->template;
 
 }
 
@@ -484,23 +316,6 @@ foreach($map as $nb=>$subtemplate)
 {
 	$template->subtemplate_set($nb, $subtemplate);
 }
-
-}
-
-/**
- * Display the associated template
- */
-function template_disp()
-{
-
-if (DEBUG_GENTIME == true)
-	gentime("page::tpl_disp() [begin]");
-
-if ($template=$this->view())
-	$template->disp();
-
-if (DEBUG_GENTIME == true)
-	gentime("page::tpl_disp() [end]");
 
 }
 
@@ -620,58 +435,6 @@ while(!$return && (list($nb, $perm_id)=each($this->perm_list)))
 }
 
 return $return;
-
-}
-
-/**
- * Returns the url to the page
- *
- * @return string
- */
-public function url($params=array(), $text="")
-{
-
-if (!$text)
-	$text = $this->url;
-
-if ($this->alias_page_id)
-{
-	if (count($params))
-		return SITE_BASEPATH.SITE_LANG."/$text,$this->alias_page_id,".implode(",",$params).".html";
-	else
-		return SITE_BASEPATH.SITE_LANG."/$text,$this->alias_page_id.html";
-}
-elseif ($this->redirect_url)
-{
-	return $this->redirect_url;
-}
-else // template
-{
-	if (count($params))
-	{
-		// TODO : se retaper le passage de paramètre ..? Gros soucis car il va falloir le préciser pour toutes les pages concernées !
-		// Une fois chose faite, suffit de tester si c'est du dataobject et balancer la sauce ;-)
-		return SITE_BASEPATH.SITE_LANG."/$text,$this->id,".implode(",",$params).".html";
-	}
-	else
-		return SITE_BASEPATH.SITE_LANG."/$text,$this->id.html";
-}
-
-}
-
-/**
- * Returns an HTML link to the page
- * @param unknown_type $params
- * @param unknown_type $text
- * @param unknown_type $text2
- */
-public function link($params=array(), $text="", $text2="")
-{
-
-if ($text2)
-	return "<a href=\"".$this->url($params, $text)."\">$text2</a>";
-else
-	return "<a href=\"".$this->url($params, $text)."\">$this->shortlabel</a>";
 
 }
 

@@ -18,7 +18,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Defines the accessible pages
  */
-class __page_gestion extends _gestion
+class __pagemodel_gestion extends _gestion
 {
 
 protected $type = "page";
@@ -145,7 +145,7 @@ else
  * Defines an element of the menu, accessible via an specific url
  *
  */
-class __page extends _object_gestion
+class __pagemodel extends _object_gestion
 {
 
 protected $_type = "page";
@@ -686,8 +686,8 @@ if (ADMIN_LOAD == true)
 }
 else
 {
-	class _page_gestion extends __page_gestion {};
-	class _page extends __page {};
+	class _pagemodel_gestion extends __pagemodel_gestion {};
+	class _pagemodel extends __pagemodel {};
 }
 
 

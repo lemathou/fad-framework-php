@@ -29,23 +29,23 @@ $s = substr($class_name, -8);
 // Framework Managing classes
 if ($class_name != "_gestion" && substr($class_name, 0, 1) == "_" && $s == "_gestion")
 {
-	if (file_exists($filename=PATH_CLASSES."/".substr($class_name, 1, -8).".inc.php"))
+	if (file_exists($filename=PATH_CLASSES."/gestion/".substr($class_name, 1, -8).".inc.php"))
 		include $filename;
 }
 elseif (substr($class_name, 0, 1) == "_")
 {
-	if (file_exists($filename=PATH_CLASSES."/".substr($class_name, 1).".inc.php"))
+	if (file_exists($filename=PATH_CLASSES."/gestion/".substr($class_name, 1).".inc.php"))
 		include $filename;
 }
 // Dataobject native class
 elseif ($class_name == "dataobject")
 {
-	include PATH_CLASSES."/dataobject.inc.php";
+	include PATH_CLASSES."/gestion/dataobject.inc.php";
 }
 // Permission native class
 elseif ($class_name == "permission_info")
 {
-	include PATH_CLASSES."/permission.inc.php";
+	include PATH_CLASSES."/gestion/permission.inc.php";
 }
 // Data fields
 elseif ($class_name == "data")

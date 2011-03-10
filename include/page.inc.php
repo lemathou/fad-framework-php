@@ -18,6 +18,40 @@ if (DEBUG_GENTIME == true)
 /**
  * Access function
  */
+function pagemodel($ref=null)
+{
+
+if (!isset($GLOBALS["_pagemodel"]))
+{
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve pagemodel() [begin]");
+	if (CACHE)
+	{
+		if (!($GLOBALS["_pagemodel"]=cache::retrieve("pagemodel")))
+			$GLOBALS["_pagemodel"] = new _pagemodel_gestion();
+	}
+	else // Session
+	{
+		if (!isset($_SESSION["_pagemodel"]))
+			$_SESSION["_pagemodel"] = new _pagemodel_gestion();
+		$GLOBALS["_pagemodel"] = $_SESSION["_pagemodel"];
+	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve pagemodel() [end]");
+}
+
+if (is_numeric($ref))
+	return $GLOBALS["_pagemodel"]->get($ref);
+elseif (is_string($ref))
+	return $GLOBALS["_pagemodel"]->get_name($ref);
+else
+	return $GLOBALS["_pagemodel"];
+
+}
+
+/**
+ * Access function
+ */
 function page($ref=null)
 {
 

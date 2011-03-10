@@ -1632,7 +1632,7 @@ else
 
 //include PATH_CLASSES."/dataobject.inc.php";
 // TODO : autoload()
-include PATH_CLASSES."/datamodel_display.inc.php";
+include PATH_CLASSES."/gestion/datamodel_display.inc.php";
 
 
 if (DEBUG_GENTIME == true)

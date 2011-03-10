@@ -73,14 +73,14 @@ $submenu_list = array
 (
 	"update_form"=>"Formulaire",
 	"param_list"=>"Paramètres",
-	"vue_list"=>"Templates associés",
+	"view_list"=>"Templates associés",
 	"action_list"=>"Actions",
 );
 
 $submenu = "update_form";
 
-if (isset($_GET["vue_name"]))
-	$submenu = "vue_list";
+if (isset($_GET["view_name"]))
+	$submenu = "view_list";
 
 ?>
 <div class="admin_menu admin_submenu">
@@ -99,29 +99,28 @@ $page->update_form();
 ?>
 </div>
 
-<div id="vue_list" class="subcontents"<?php if ($submenu != "vue_list") echo " style=\"display:none;\""; ?>>
-<h3>Liste des templates associés :</h3>
+<div id="view_list" class="subcontents"<?php if ($submenu != "view_list") echo " style=\"display:none;\""; ?>>
 <form method="get">
 <input type="hidden" name="id" value="<?php echo $id; ?>" />
-<p>Choisir une vue : <select name="vue_name" onchange="this.form.submit()"><option></option><?php
-if (!isset($_GET["vue_name"]) || !is_string($_GET["vue_name"]) || !$page->vue_exists($_GET["vue_name"]))
-	$_GET["vue_name"] = "";
-foreach($page->vue_list() as $vue_name=>$vue)
+<h3>Vue associée : <select name="view_name" onchange="this.form.submit()"><option></option><?php
+if (!isset($_GET["view_name"]) || !is_string($_GET["view_name"]) || !$page->view_exists($_GET["view_name"]))
+	$_GET["view_name"] = "";
+foreach($page->view_list() as $view_name=>$vue)
 {
-	if ($_GET["vue_name"] == $vue_name)
-		echo "<option selected>$vue_name</option>";
+	if ($_GET["view_name"] == $view_name)
+		echo "<option selected>$view_name</option>";
 	else
-		echo "<option>$vue_name</option>";
+		echo "<option>$view_name</option>";
 }
-?></select></p>
+?></select></h3>
 </form>
 
 <?php
-if ($vue_name=$_GET["vue_name"])
+if ($view_name=$_GET["view_name"])
 {
 	if (count($_POST))
-		$page->vue_update($vue_name, $_POST);
-	$vue = $page->vue($vue_name);
+		$page->view_update($view_name, $_POST);
+	$vue = $page->view_get($view_name);
 	?>
 	<div>
 	<form method="post">
@@ -137,7 +136,17 @@ if ($vue_name=$_GET["vue_name"])
 	?>
 	</select></p>
 	<div>
-	<p>Paramètres :</p>
+	<p>Sous-templates :</p>
+	<input type="hidden" name="params" value="" />
+	<?php
+	if (is_array($vue["subtemplates"])) foreach($vue["subtemplates"] as $subtemplate_name=>$param)
+	{
+		echo "<p>$subtemplate_name : <input name=\"params[$param_name][0]\" value=\"$param[0]\"</p>";
+	}
+	?>
+	</div>
+	<div>
+	<p>Paramètres passés :</p>
 	<input type="hidden" name="params" value="" />
 	<?php
 	if (is_array($vue["params"])) foreach($vue["params"] as $param_name=>$param)

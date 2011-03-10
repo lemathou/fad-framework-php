@@ -132,7 +132,7 @@ else
 		$value = (string)$object;
 	else
 		$value = "";
-	$return .= "<select class=\"q_type\"><option value=\"like\">Approx.</option><option value=\"fulltext\">Precis</option></select><input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query(".$this->opt["datamodel"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query(".$this->opt["datamodel"].", [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" />";
+	$return .= "<select class=\"q_type\"><option value=\"like\">Approx.</option><option value=\"fulltext\">Precis</option></select><input class=\"q_str\" value=\"$value\" onkeyup=\"object_list_query('".$this->opt["datamodel"]."', [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" onblur=\"object_list_hide($(this).parent().get(0))\" onfocus=\"this.select();if(this.value) object_list_query('".$this->opt["datamodel"]."', [{'type':$('.q_type', this.parentNode).val(),'value':this.value}], $(this).parent().get(0));\" />";
 	$return .= "<div class=\"q_select\"></div>";
 	$return .= "<div><input type=\"button\" value=\"ADD\" onclick=\"datamodel_insert_form('".$this->opt["datamodel"]."', null, this.parentNode, '$this->name')\" /></div>\n";
  	$return .= "</div>";

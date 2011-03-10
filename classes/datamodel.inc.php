@@ -35,6 +35,8 @@ protected $info_detail = array
 	"script"=>array("label"=>"Class", "type"=>"script", "folder"=>PATH_DATAMODEL, "filename"=>"{name}.inc.php")
 );
 
+protected $info_required = array("name", "db");
+
 protected $retrieve_details = false;
 
 function __wakeup()
@@ -1529,7 +1531,7 @@ else
 public function json_query($params=array(), $fields=true, $order=array(), $limit=0)
 {
 
-if (!$this->perm("r"))
+if (false && !$this->perm("r"))
 	return false;
 
 $query = $this->query($params, $fields, $order, $limit);

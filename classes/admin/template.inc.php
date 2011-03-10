@@ -90,7 +90,7 @@ public function param_update($name, $info)
 
 //var_dump($info);
 
-if (!login()->perm())
+if (!login()->perm(1))
 	die("ONLY ADMIN CAN ADD TEMPLATE PARAMS");
 
 if (!is_string($name) || !array_key_exists($name, $this->param) || !is_array($info))

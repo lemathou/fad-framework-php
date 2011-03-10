@@ -45,7 +45,7 @@ page()->set();
 // Actions sur la page
 page_current()->action();
 // Affichage du template
-page_current()->template_disp();
+page_current()->view_disp();
 
 // Gestion message login
 login()->message_show();

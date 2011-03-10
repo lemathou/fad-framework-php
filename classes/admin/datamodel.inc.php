@@ -41,6 +41,8 @@ _gestion::insert_form(null, array("script"=>$script));
 class _datamodel extends __datamodel
 {
 
+const UPDATE_ACCESS_REQUIRED = "ONLY ADMIN CAN UPDATE A DATAMODEL";
+
 /*
  * Add a data field
  */
@@ -49,7 +51,7 @@ public function field_add($field, $options="")
 
 // TODO : security : send an email with complete info about the one who tried to do this and blacklist him if possible ?
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 if (!is_array($field))
 	die("datamodel(ID#$this->id)::field_add() : Invalid parameters");
@@ -381,8 +383,12 @@ if (!login()->perm(1))
 db()->query("ALTER TABLE `".$this->name."` MODIFY COLUMN ".db()->db_field_struct($fieldname, $this->fields[$fieldname]->db_field_create())." AFTER `$position`");
 
 }
+
 function table_list($params=array(), $fields=array(), $sort=array(), $page=1, $page_nb=10)
 {
+
+if (!login()->perm(1))
+	die("ONLY ADMIN CAN UPDATE DATAMODEL");
 
 ?>
 <form name="zeform" action="" method="get">

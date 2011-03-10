@@ -118,13 +118,6 @@ protected $name = "";
 protected $mime = "";
 
 /*
- * Cache related infos
- */
-protected $cache_mintime = 0;
-protected $cache_maxtime = 0;
-protected $login_dependant = 0;
-
-/*
  * Surely depreacated, except if I implement function libraries
  */
 protected $library_list = array();
@@ -141,7 +134,17 @@ protected $param = array();
  */
 protected $tpl_filename = "";
 protected $script_filename = "";
+/*
+ * Subtemplate list
+ */
+protected $subtemplate = array();
 
+/*
+ * Cache related infos
+ */
+protected $cache_mintime = 0;
+protected $cache_maxtime = 0;
+protected $login_dependant = 0;
 /*
  * Unique cache ID to store and retrieve each filled template
  */
@@ -299,13 +302,14 @@ public function disp()
 /*
  * TODO : Faire le cumul des last-modified sur l'ensemble des templates marqués comme intervenant dans ce calcul.
  * Nécessite une refonte de la génération des templates
+ * TODO : Utiliser une fonction de génération de header à partir du type mime, du last-modified, etc.
+ * Utiliser une liste d'options possibles et générer un header consistant
  */
 //header('Status: 304 Not Modified', false, 304);
 header("Content-type: $this->mime; charset=".SITE_CHARSET);
 //header('Last-Modified: '.gmdate('D, d M Y H:i:s',$tpl["regentime"]).' GMT');
 //header('Expires: '.gmdate('D, d M Y H:i:s',$tpl["regentime"]+TEMPLATE_CACHE_MINTIME).' GMT');
 //header('Content-Length: '.strlen($tpl["html"]));
-
 
 echo $this->__tostring();
 
@@ -418,6 +422,33 @@ if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]*)(,(.*))*--\>/", $tpl, $matches, 
 }
 
 return $return;
+
+}
+
+/**
+ * Set parameters for a subtemplate
+ */
+public function subtemplate_set($nb, $info)
+{
+
+// TODO : protection so that we cannot set random templates...
+// Better to lookup in the page object ..?
+
+$this->subtemplate[$nb] = $info;
+
+}
+
+/**
+ * Retrieve parameters of a subtemplate
+ */
+protected function subtemplate($nb)
+{
+
+if (array_key_exists($nb, $this->subtemplate))
+{
+	$subtemplate = &$this->subtemplate[$nb];
+	return $subtemplate[0].",".json_encode($subtemplate[1]).",".json_encode($subtemplate[2]);
+}
 
 }
 

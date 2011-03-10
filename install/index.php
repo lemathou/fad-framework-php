@@ -16,28 +16,6 @@ include "include/lang.inc.php";
 include "include/functions.inc.php";
 include "../classes/filesystem.inc.php";
 
-// Config params
-$config_list = array
-(
-	"PATH_FRAMEWORK"=>array("label"=>"Framework root folder", "type"=>"text", "value"=>PATH_FRAMEWORK, "onclick"=>"folder_lookup('PATH_FRAMEWORK')", "width"=>"100%"),
-	"PATH_ROOT"=>array("label"=>"Project install folder", "info"=>"Default to Framework folder", "type"=>"text", "value"=>PATH_FRAMEWORK, "onclick"=>"folder_lookup('PATH_ROOT')", "width"=>"100%"),
-	"SECURITY_EMAIL"=>array("label"=>"Security admin email", "type"=>"text", "value"=>"", "width"=>"100%"),
-	"SITE_COPYRIGHT"=>array("label"=>"Copyright", "type"=>"text", "value"=>"", "width"=>"100%", "ok"=>true),
-	"SITE_ORGANISATION"=>array("label"=>"Organisation", "type"=>"text", "value"=>"My company", "width"=>"100%", "ok"=>true),
-	"SITE_DOMAIN"=>array("label"=>"Domain name", "type"=>"text", "value"=>$_SERVER["SERVER_NAME"], "width"=>"100%"),
-	"SITE_BASEPATH"=>array("label"=>"Domain location", "type"=>"text", "value"=>"/", "width"=>"100%"),
-	"SITE_SSL_ENABLE"=>array("label"=>"SSL enabled", "type"=>"boolean", "value"=>"0", "ok"=>true),
-	"SITE_SSL_REDIRECT"=>array("label"=>"SSL force redirect", "type"=>"boolean", "value"=>"0", "ok"=>true),
-	"DB_TYPE"=>array("label"=>"Database engine", "type"=>"select", "value"=>"MySQL", "select_list"=>array("mysql", "mysqli", "postgresql"), "select_control"=>&$php["db"]),
-	//"DB_PERSISTANT"=>array("label"=>"Database engine", "type"=>"select", "select_list"=>array("MySQL", "MySQLi", "postgreSQL"), "select_control"=>&$php),
-	"DB_HOST"=>array("label"=>"Database hostname", "type"=>"text", "value"=>"", "width"=>"100%"),
-	"DB_USERNAME"=>array("label"=>"Database username", "type"=>"text", "value"=>"", "width"=>"100%"),
-	"DB_PASSWORD"=>array("label"=>"Database password", "type"=>"password", "value"=>"", "width"=>"100%"),
-	"DB_BASE"=>array("label"=>"Database name", "type"=>"text", "value"=>"", "width"=>"100%"),
-	"SITE_MULTILANG"=>array("label"=>"Multi lang", "type"=>"boolean", "value"=>"0", "ok"=>true),
-	"CACHE_TYPE"=>array("label"=>"Object cache type", "info"=>"highly recommended if available", "type"=>"select", "value"=>"", "select_list"=>array("apc", "memcached"), "select_control"=>&$php["cache"], "ok"=>true),
-	"TEMPLATE_CACHE_TYPE"=>array("label"=>"Template cache", "info"=>"highly recommended", "type"=>"select", "value"=>"", "select_list"=>array("file", "apc", "memcached"), "select_control"=>&$php["cache"], "value"=>"file", "ok"=>true),
-);
 // Update config params
 foreach($_POST as $name=>$value) if (isset($config_list[$name]))
 {

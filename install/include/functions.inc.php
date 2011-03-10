@@ -40,9 +40,14 @@ if ($config["TEMPLATE_CACHE_TYPE"]["value"])
 	$replace_to[] = "true";
 else
 	$replace_to[] = "false";
-	
+
 $config_file = str_replace($replace_from, $replace_to, file_get_contents(PATH_FRAMEWORK."/install/project/config/config.inc.php"));
 fwrite(fopen($config_filename, "w"), $config_file);
+if ($config["PATH_ROOT"]["value"] != $config["PATH_FRAMEWORK"]["value"])
+{
+	symlink($config["PATH_FRAMEWORK"]["value"]."/_css", $config["PATH_ROOT"]["value"]."/_css");
+	symlink($config["PATH_FRAMEWORK"]["value"]."/_js", $config["PATH_ROOT"]["value"]."/_js");
+}
 
 return true;
 

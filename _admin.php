@@ -15,12 +15,12 @@
 include PATH_INCLUDE."/header.inc.php";
 
 // Logged as super-admin
-if (login()->perm(2))
+if (login()->perm(1))
 {
 
 define("ADMIN_OK",true);
 // Display admin panel
-include PATH_ADMIN."/index.inc.php";
+include PATH_FRAMEWORK."/template/admin.tpl.php";
 
 }
 
@@ -30,7 +30,7 @@ else
 
 header("HTTP/1.0 401 Unavailable");
 // Display admin login
-include PATH_ADMIN."/index_login.inc.php";
+include PATH_FRAMEWORK."/template/admin_login.tpl.php";
 
 }
 

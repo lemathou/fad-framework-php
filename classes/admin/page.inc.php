@@ -74,20 +74,32 @@ public function param_update($name, $infos)
 
 //var_dump($infos);
 
-if (!is_string($name) || !isset($this->param_list[$name]))
+if (!is_string($name) || !array_key_exists($name, $this->param_list))
 	return false;
+if (!is_array($infos))
+	$infos = array();
 
-if (!is_array($infos) || !isset($infos["value"]) || !is_string($infos["value"]) || !isset($infos["update_pos"]) || !isset($infos["datatype"]))
-	return false;
+$l = array("value", "update_pos", "datatype");
+$update_list = array();
+foreach($infos as $i=>$j) if(in_array($i, $l) && is_string($j))
+{
+	if ($i == "update_pos")
+		$update_list[] = "`$i`=NULL";
+	else
+		$update_list[] = "`$i`='".db()->string_escape($j)."'";
+}
 
-$query_string = "UPDATE `_page_params` SET `datatype`='".db()->string_escape($infos["datatype"])."', `value`='".db()->string_escape($infos["value"])."', `update_pos`= NULL WHERE `page_id`='$this->id' AND `name`='$name'";
-db()->query($query_string);
-//echo "<p>$query_string : ".mysql_error()."</p>\n";
+if (count($update_list))
+{
+	$query_string = "UPDATE `_page_params` SET ".implode(", ", $update_list)." WHERE `page_id`='$this->id' AND `name`='$name'";
+	db()->query($query_string);
+	//echo "<p>$query_string : ".mysql_error()."</p>\n";
+}
 if ($n=array_search($name, $this->params_url))
 {
 	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`-1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
 }
-if (is_numeric($n=$infos["update_pos"]))
+if (isset($infos["update_pos"]) && is_numeric($n=$infos["update_pos"]))
 {
 	db()->query("UPDATE `_page_params` SET `update_pos`=`update_pos`+1 WHERE `page_id`='$this->id' AND `update_pos` >= $n");
 	db()->query("UPDATE `_page_params` SET `update_pos`='$n' WHERE `page_id`='$this->id' AND `name`='$name'");
@@ -131,11 +143,11 @@ return true;
 
 }
 
-public function vue_add($name, $infos)
+public function view_add($name, $infos)
 {
 
 
-if (!is_string($name) || isset($this->vue_list[$name]))
+if (!is_string($name) || isset($this->view_list[$name]))
 	return false;
 
 if (!is_array($infos))
@@ -145,19 +157,19 @@ elseif (!isset($infos["template_id"]) || !is_numeric($infos["template_id"]))
 elseif (!isset($infos["params"]) || !is_string($infos["params"]))
 	$infos["params"] = null;
 
-db()->query("INSERT INTO `_page_template` (`page_id`, `vue_name`, `template_id`, `params`) VALUES ('$this->id', '$name', '".db()->string_escape($infos["template_id"])."', '".db()->string_escape(json_encode(json_decode($infos["params"])))."')");
+db()->query("INSERT INTO `_page_view` (`page_id`, `name`, `template_id`, `params_map`) VALUES ('$this->id', '$name', '".db()->string_escape($infos["template_id"])."', '".db()->string_escape(json_encode(json_decode($infos["params"])))."')");
 
-$this->query_vue();
+$this->query_view();
 
 return true;
 
 }
 
-public function vue_update($name, $infos)
+public function view_update($name, $infos)
 {
 
 
-if (!is_string($name) || !isset($this->vue_list[$name]))
+if (!is_string($name) || !isset($this->view_list[$name]))
 	return false;
 
 if (!is_array($infos))
@@ -167,9 +179,9 @@ elseif (!isset($infos["template_id"]) || !is_numeric($infos["template_id"]))
 elseif (!isset($infos["params"]) || !is_array($infos["params"]))
 	$infos["params"] = null;
 
-db()->query("UPDATE `_page_template` SET `template_id`='".db()->string_escape($infos["template_id"])."', `params`='".db()->string_escape(json_encode($infos["params"]))."' WHERE `page_id`='$this->id' AND `vue_name`='$name'");
+db()->query("UPDATE `_page_view` SET `template_id`='".db()->string_escape($infos["template_id"])."', `params_map`='".db()->string_escape(json_encode($infos["params"]))."' WHERE `page_id`='$this->id' AND `name`='$name'");
 
-$this->query_vue();
+$this->query_view();
 
 return true;
 

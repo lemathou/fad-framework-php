@@ -18,12 +18,12 @@ function getID(element_id)
 // Lookup in arrays
 function in_array(a, val)
 {
-    for(var i = 0, l = a.length; i < l; i++) {
-        if(a[i] == val) {
-            return true;
-        }
-    }
-    return false;
+	if (a && a.length) for(var i = 0, l = a.length; i < l; i++) {
+		if(a[i] == val) {
+			return true;
+		}
+	}
+	return false;
 }
 
 // Addslashes and Stripslashes

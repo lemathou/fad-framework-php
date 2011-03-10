@@ -29,7 +29,7 @@ protected $retrieve_details = false;
 
 protected $info_detail = array
 (
-	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>32, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"shortlabel"=>array("label"=>"Titre court (pour liens)", "type"=>"string", "size"=>64, "lang"=>true),
 	"url"=>array("label"=>"URL", "type"=>"string", "size"=>128, "lang"=>true),
@@ -162,10 +162,8 @@ protected $params_url = array();
 // Effective parameters
 protected $param = array();
 
-// Vues and templates
-protected $vue_list = array();
-// Actual vue
-protected $vue = null;
+// Views and templates
+protected $view_list = array();
 // Actual template
 protected $template = null;
 protected $template_id = 0;  // TODO : depreacated, to be deleted
@@ -182,7 +180,7 @@ protected $alias_page_id = null;
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "perm", "type", "url", "shortlabel", "template_id", "param_list", "vue_list", "perm_list", "redirect_url", "alias_page_id");
+return array("id", "name", "label", "description", "perm", "type", "url", "shortlabel", "template_id", "param_list", "view_list", "perm_list", "redirect_url", "alias_page_id");
 
 }
 function __wakeup()
@@ -203,7 +201,7 @@ protected function query_info_more()
 {
 
 $this->query_params();
-$this->query_vue();
+$this->query_view();
 
 }
 
@@ -235,55 +233,6 @@ while ($opt = $query_opt->fetch_row())
 {
 	$this->param_list[$opt[0]]["opt"][$opt[1]] = json_decode($opt[2], true);
 }
-
-}
-
-/**
- * Retrieve the template vues
- */
-public function query_vue()
-{
-
-// Params
-$this->vue_list = array();
-$query = db()->query("SELECT `vue_name`, `template_id`, `params` FROM `_page_template` WHERE `page_id`='$this->id'");
-while ($row = $query->fetch_assoc())
-{
-	$this->vue_list[$row["vue_name"]] = array
-	(
-		"template_id"=>$row["template_id"],
-		"params"=>json_decode($row["params"], true)
-	);
-}
-/*
-$query_opt = db()->query("SELECT `vue_name`, `param_name`, `param_value`, `param_map` FROM `_page_template_params` WHERE `page_id`='".$this->id."'");
-while ($row = $query_opt->fetch_assoc())
-{
-	$this->vue_list[$row["vue_name"]]["params"][$row["param_name"]] = array(json_decode($row["param_value"], true), $row["param_map"]);
-}
-*/
-
-}
-
-public function vue_exists($name)
-{
-
-return array_key_exists($name, $this->vue_list);
-
-}
-
-public function vue_list()
-{
-
-return $this->vue_list;
-
-}
-
-public function vue($name)
-{
-
-if ($this->vue_exists($name))
-	return $this->vue_list[$name];
 
 }
 
@@ -410,7 +359,7 @@ foreach($_GET as $name=>$value)
  * Set the page as default, so create the associated template
  *
  */
-public function set($params)
+public function set($params=array())
 {
 
 if (DEBUG_GENTIME == true)
@@ -434,18 +383,56 @@ foreach ($this->param_list as $name=>$param)
 }
 
 /**
- * Apply page parameters to the associated template
+ * Retrieve the associated views
  */
-protected function params_apply()
+public function query_view()
 {
 
-// Sends params to the template
-if ($template=$this->template()) foreach ($this->param as $name=>$param)
+// Views
+$this->view_list = array();
+$query = db()->query("SELECT `name`, `template_id`, `subtemplates_map`, `params_map` FROM `_page_view` WHERE `page_id`='$this->id'");
+while ($row = $query->fetch_assoc())
 {
-	if (DEBUG_TEMPLATE)
-		echo "<p>page(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $param->value</p>\n";
-	//var_dump($template);
-	$template->__set($name, $param->value);
+	$this->view_list[$row["name"]] = array($row["template_id"], json_decode($row["subtemplates_map"], true), json_decode($row["params_map"], true));
+}
+
+}
+
+public function view_exists($name)
+{
+
+return array_key_exists($name, $this->view_list);
+
+}
+
+public function view_list()
+{
+
+return $this->view_list;
+
+}
+
+public function view_get($name)
+{
+
+if ($this->view_exists($name))
+	return $this->view_list[$name];
+
+}
+
+public function view_set($name="")
+{
+
+if ($view = $this->view_get($name))
+{
+	$this->template = clone template($view[0]);
+	$this->params_apply($this->template, $view[1]);
+	$this->subtemplates_apply($this->template, $view[2]);
+}
+elseif ($this->template_id)
+{
+	$this->template = clone template($this->template_id);
+	$this->params_apply($this->template);
 }
 
 }
@@ -459,11 +446,46 @@ function template()
 if (false)
 	echo "<p>page(ID#$this->id) : Accessing to template ID#$this->template_id</p>\n";
 
-if ($this->template_id && ($template=template($this->template_id)))
-	return $template;
+if (!$this->template)
+	$this->view_set();
+
+return $this->template;
 
 }
 
+/**
+ * Apply page parameters to the associated template
+ */
+protected function params_apply(_template $template, $map=true)
+{
+
+// Sends params to the template
+$template->params_reset();
+foreach ($this->param as $name=>$param)
+{
+	if ($map === true || (is_array($map) && in_array($name, $map)))
+	{
+		if (DEBUG_TEMPLATE)
+			echo "<p>page(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $param->value</p>\n";
+		$template->__set($name, $param->value);
+	}
+}
+
+}
+
+/**
+ * Apply page parameters to the associated template
+ */
+protected function subtemplates_apply(_template $template, array $map)
+{
+
+// Define subtemplates
+foreach($map as $nb=>$subtemplate)
+{
+	$template->subtemplate_set($nb, $subtemplate);
+}
+
+}
 
 /**
  * Display the associated template
@@ -474,18 +496,37 @@ function template_disp()
 if (DEBUG_GENTIME == true)
 	gentime("page::tpl_disp() [begin]");
 
-if ($template=$this->template())
-{
-	$template->params_reset();
-	foreach ($this->param as $name=>$param)
-	{
-		$template->__set($name, $param->value);
-	}
+if ($template=$this->view())
 	$template->disp();
-}
 
 if (DEBUG_GENTIME == true)
 	gentime("page::tpl_disp() [end]");
+
+}
+
+function view($name="")
+{
+
+if (!$name)
+	$name = "default";
+if (!$this->template)
+	$this->view_set($name);
+
+return $this->template;
+
+}
+
+function view_disp($name="")
+{
+
+if (DEBUG_GENTIME == true)
+	gentime("page::view_disp() [begin]");
+
+if ($template=$this->view($name))
+	$template->disp();
+
+if (DEBUG_GENTIME == true)
+	gentime("page::view() [end]");
 
 }
 

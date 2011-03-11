@@ -206,16 +206,16 @@ if ($pagemodel = pagemodel()->get($this->pagemodel_id))
  *
  * @return string
  */
-public function url($params=array(), $text="")
+public function url($params=array(), $text=null)
 {
 
-if (!$text)
+if (!is_string($text))
 	$text = $this->url;
 
 if ($this->alias_page_id)
 {
 	if (count($params))
-		return SITE_BASEPATH.SITE_LANG."/$text,$this->alias_page_id,".implode(",",$params).".html";
+		return SITE_BASEPATH.SITE_LANG."/$text,$this->alias_page_id,".implode(",", $params).".html";
 	else
 		return SITE_BASEPATH.SITE_LANG."/$text,$this->alias_page_id.html";
 }
@@ -243,10 +243,10 @@ else // template
  * @param unknown_type $text
  * @param unknown_type $text2
  */
-public function link($params=array(), $text="", $text2="")
+public function link($params=array(), $text=null, $text2=null)
 {
 
-if ($text2)
+if (is_string($text2))
 	return "<a href=\"".$this->url($params, $text)."\">$text2</a>";
 else
 	return "<a href=\"".$this->url($params, $text)."\">$this->shortlabel</a>";

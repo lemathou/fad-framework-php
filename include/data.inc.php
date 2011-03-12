@@ -53,13 +53,13 @@ if (!isset($GLOBALS["_data"]))
 	if (CACHE)
 	{
 		if (!($GLOBALS["_data"]=cache::retrieve("data")))
-			$GLOBALS["_data"] = new _data_gestion();
+			$GLOBALS["_data"] = new _data_manager();
 	}
 	// Session
 	else
 	{
 		if (!isset($_SESSION["_data"]))
-			$_SESSION["_data"] = new _data_gestion();
+			$_SESSION["_data"] = new _data_manager();
 		$GLOBALS["_data"] = $_SESSION["_data"];
 	}
 	if (DEBUG_GENTIME == true)

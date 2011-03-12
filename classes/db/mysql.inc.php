@@ -330,13 +330,13 @@ class _db_query implements _db_query_i
 
 // server connection ID
 
-protected $db_id; 
+protected $db_id = null; 
 // server request ID
-protected $id;
+protected $id = null;
 // query_string
-protected $query_string="";
+protected $query_string = "";
 // num_rows
-protected $num_rows=null;
+protected $num_rows = null;
 
 protected function log_error($error="")
 {
@@ -361,6 +361,8 @@ function __construct($query_string, $db_id)
 $this->db_id = $db_id;
 $this->query_string = $query_string;
 
+//var_dump($this);
+
 if (!$this->id)
 	$this->execute();
 
@@ -375,15 +377,17 @@ $time2 = microtime(true);
 db()->time += ($time2 - $time1);
 
 if (($error=mysql_error()) && LOG_DB_ERROR)
+{
+	//echo "<p>$error</p>\n";
 	$this->log_error($error);
+}
+
+//var_dump($this);
 
 }
 
 public function num_rows()
 {
-
-if (!$this->id)
-	$this->execute();
 
 if (!is_numeric($this->num_rows))
 {
@@ -426,9 +430,6 @@ switch($type)
 public function fetch_all($type="row", $return="list")
 {
 
-if (!$this->id)
-	$this->execute();
-
 switch($return)
 {
 	case "list":
@@ -461,9 +462,6 @@ return $return;
 public function fetch_row()
 {
 
-if (!$this->id)
-	$this->execute();
-
 $time1 = microtime(true);
 if ($return = mysql_fetch_row($this->id))
 	db()->fetch_results++;
@@ -479,9 +477,6 @@ return $return;
 
 public function fetch_array()
 {
-
-if (!$this->id)
-	$this->execute();
 
 $time1 = microtime(true);
 if ($return = mysql_fetch_assoc($this->id))
@@ -499,9 +494,6 @@ return $return;
 public function fetch_assoc()
 {
 
-if (!$this->id)
-	$this->execute();
-
 $time1 = microtime(true);
 if ($return = mysql_fetch_assoc($this->id))
 	db()->fetch_results++;
@@ -517,9 +509,6 @@ return $return;
 
 public function affected_rows()
 {
-
-if (!$this->id)
-	$this->execute();
 
 return mysql_affected_rows($this->db_id);
 

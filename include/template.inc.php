@@ -31,12 +31,12 @@ if (!isset($GLOBALS["_template"]))
 	if (CACHE)
 	{
 		if (!($GLOBALS["_template"]=cache::retrieve("template")))
-			$GLOBALS["_template"] = new _template_gestion();
+			$GLOBALS["_template"] = new _template_manager();
 	}
 	else // Session
 	{
 		if (!isset($_SESSION["_template"]))
-			$_SESSION["_template"] = new _template_gestion();
+			$_SESSION["_template"] = new _template_manager();
 		$GLOBALS["_template"] = $_SESSION["_template"];
 	}
 	if (DEBUG_GENTIME == true)

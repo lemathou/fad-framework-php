@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class __template_gestion extends _gestion
+class __template_manager extends _manager
 {
 
 protected $type = "template";
@@ -107,7 +107,7 @@ while ($opt = $query_opt->fetch_assoc())
  * Defines the display of the page, based on database infos and a template file
  * 
  */
-class __template extends _object_gestion
+class __template extends _object
 {
 
 protected $_type = "template";
@@ -728,11 +728,11 @@ else
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_CLASSES."/admin/template.inc.php";
+	include PATH_CLASSES."/manager/admin/template.inc.php";
 }
 else
 {
-	class _template_gestion extends __template_gestion {};
+	class _template_manager extends __template_manager {};
 	class _template extends __template {};
 }
 

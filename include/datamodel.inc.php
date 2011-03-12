@@ -43,12 +43,12 @@ if (!isset($GLOBALS["_datamodel"]))
 	if (CACHE)
 	{
 		if (!($GLOBALS["_datamodel"]=cache::retrieve("datamodel")))
-			$GLOBALS["_datamodel"] = new _datamodel_gestion();
+			$GLOBALS["_datamodel"] = new _datamodel_manager();
 	}
 	else // Session
 	{
 		if (!isset($_SESSION["_datamodel"]))
-			$_SESSION["_datamodel"] = new _datamodel_gestion();
+			$_SESSION["_datamodel"] = new _datamodel_manager();
 		$GLOBALS["_datamodel"] = $_SESSION["_datamodel"];
 	}
 	if (DEBUG_GENTIME == true)

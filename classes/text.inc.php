@@ -41,6 +41,11 @@ return str_replace($a, $b, $str);
 static function rewrite_ref($string)
 {
 
+//echo $string;
+
+if (!is_string($string))
+	return null;
+
 $reecriture=strtr(trim(utf8_decode($string)), utf8_decode(self::ACCENT), self::NOACCENT);
 $url=preg_replace('/[^0-9a-zA-Z]/', ' ', $reecriture);
 $url=preg_replace('/ +/', '-', trim($url));

@@ -19,7 +19,7 @@ if (DEBUG_GENTIME == true)
  * Datamodel global managing class
  * 
  */
-class __datamodel_gestion extends _gestion
+class __datamodel_manager extends _manager
 {
 
 protected $type = "datamodel";
@@ -42,7 +42,7 @@ protected $retrieve_details = false;
 function __wakeup()
 {
 
-_gestion::__wakeup();
+_manager::__wakeup();
 $this->access_function_create();
 
 }
@@ -76,7 +76,7 @@ foreach($this->list_name as $name=>$id)
  * Modèle de données pour remplir une maquette
  *
  */
-class __datamodel extends _object_gestion
+class __datamodel extends _object
 {
 
 protected $_type = "datamodel";
@@ -1622,17 +1622,17 @@ return "{\n\"id\": $this->id,\n\"name\": \"$this->name\",\n\"label\": ".json_enc
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_CLASSES."/admin/datamodel.inc.php";
+	include PATH_CLASSES."/manager/admin/datamodel.inc.php";
 }
 else
 {
-	class _datamodel_gestion extends __datamodel_gestion {};
+	class _datamodel_manager extends __datamodel_manager {};
 	class _datamodel extends __datamodel {};
 }
 
 //include PATH_CLASSES."/dataobject.inc.php";
 // TODO : autoload()
-include PATH_CLASSES."/gestion/datamodel_display.inc.php";
+include PATH_CLASSES."/datamodel_display.inc.php";
 
 
 if (DEBUG_GENTIME == true)

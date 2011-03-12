@@ -19,7 +19,7 @@ if (DEBUG_GENTIME == true)
  * Library gestion
  *
  */
-class __library_gestion extends _gestion
+class __library_manager extends _manager
 {
 
 protected $type = "library";
@@ -73,7 +73,7 @@ return $return;
  * @author mathieu
  *
  */
-class __library extends _object_gestion
+class __library extends _object
 {
 
 protected $_type = "library";
@@ -129,11 +129,11 @@ return $this->loaded;
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_FRAMEWORK."/classes/admin/library.inc.php";
+	include PATH_CLASSES."/manager/admin/library.inc.php";
 }
 else
 {
-	class _library_gestion extends __library_gestion {};
+	class _library_manager extends __library_manager {};
 	class _library extends __library {};
 }
 

@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class _template_gestion extends __template_gestion
+class _template_manager extends __template_manager
 {
 
 protected function del_more($id)

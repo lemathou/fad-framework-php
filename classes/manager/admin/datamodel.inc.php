@@ -13,7 +13,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class _datamodel_gestion extends __datamodel_gestion
+class _datamodel_manager extends __datamodel_manager
 {
 
 protected function del_more($id)

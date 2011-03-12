@@ -15,14 +15,14 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class _pagemodel_gestion extends __page_gestion
+class _pagemodel_manager extends __pagemodel_manager
 {
 
 
 
 }
 
-class _pagemodel extends __page
+class _pagemodel extends __pagemodel
 {
 
 /**

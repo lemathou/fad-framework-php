@@ -18,7 +18,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Defines the accessible pages
  */
-class __pagemodel_gestion extends _gestion
+class __pagemodel_manager extends _manager
 {
 
 protected $type = "pagemodel";
@@ -30,6 +30,9 @@ protected $info_detail = array
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>32, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
+	"shortlabel"=>array("label"=>"Titre court (pour liens)", "type"=>"string", "size"=>64, "lang"=>true),
+	"url"=>array("label"=>"URL", "type"=>"string", "size"=>128, "lang"=>true),
+	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"template", "select_list"=>array("static_html"=>"Page HTML statique", "php"=>"Utilisation d'un script PHP", "template"=>"Utilisation d'un template")),
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGE, "filename"=>"{name}.inc.php")
 );
 
@@ -37,21 +40,28 @@ protected function query_info_more()
 {
 
 // Params
-$query = db()->query("SELECT `page_id`, `name`, `datatype`, `value`, `update_pos` FROM `_page_params`");
+$query = db()->query("SELECT `pagemodel_id`, `name`, `datatype`, `value` FROM `_pagemodel_params`");
 while ($param = $query->fetch_assoc())
 {
-	$this->list_detail[$param["page_id"]]["param_list"][$param["name"]] = array
+	$this->list_detail[$param["pagemodel_id"]]["param_list"][$param["name"]] = array
 	(
 		"value"=>json_decode($param["value"], true),
 		"datatype"=>$param["datatype"],
-		"update_pos"=>$param["update_pos"],
 		"opt"=>array()
 	);
 }
-$query_opt = db()->query("SELECT `page_id`, `name`, `optname`, `optvalue` FROM `_page_params_opt`");
+$query_opt = db()->query("SELECT `pagemodel_id`, `name`, `optname`, `optvalue` FROM `_pagemodel_params_opt`");
 while ($opt = $query_opt->fetch_row())
 {
 	$this->list_detail[$opt[0]]["param_list"][$opt[1]]["opt"][$opt[2]] = json_decode($opt[3], true);
+}
+
+// Views
+$this->view_list = array();
+$query = db()->query("SELECT `pagemodel_id`, `name`, `template_id`, `subtemplates_map`, `params_map` FROM `_pagemodel_view`");
+while ($row = $query->fetch_assoc())
+{
+	$this->list_detail[$row["pagemodel_id"]]["view_list"][$row["name"]] = array($row["template_id"], json_decode($row["params_map"], true), json_decode($row["subtemplates_map"], true));
 }
 
 }
@@ -62,16 +72,15 @@ while ($opt = $query_opt->fetch_row())
  * Defines a model of page
  *
  */
-class __pagemodel extends _object_gestion
+class __pagemodel extends _object
 {
 
-protected $_type = "page";
+protected $_type = "pagemodel";
 
 protected $type = "";
 
 // Params
 protected $param_list = array();
-protected $params_url = array();
 // Effective parameters
 protected $param = array();
 
@@ -83,7 +92,7 @@ protected $template = null;
 function __sleep()
 {
 
-return array("id", "name", "label", "description", "param_list", "view_list");
+return array("id", "type", "name", "label", "description", "param_list", "view_list");
 
 }
 function __wakeup()
@@ -118,7 +127,7 @@ public function query_params()
 $this->param_list = array();
 $this->param = array();
 $this->params_url = array();
-$query = db()->query("SELECT `name`, `datatype`, `value`, `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
+$query = db()->query("SELECT `name`, `datatype`, `value` FROM `_page_params` WHERE `pagemodel_id`='$this->id'");
 while ($param = $query->fetch_assoc())
 {
 	// Update position may be null !
@@ -127,11 +136,10 @@ while ($param = $query->fetch_assoc())
 	(
 		"value"=>json_decode($param["value"], true),
 		"datatype"=>$param["datatype"],
-		"update_pos"=>$param["update_pos"],
 		"opt"=>array()
 	);
 }
-$query_opt = db()->query("SELECT `name`, `optname`, `optvalue` FROM `_page_params_opt` WHERE `page_id`='".$this->id."'");
+$query_opt = db()->query("SELECT `name`, `optname`, `optvalue` FROM `_page_params_opt` WHERE `pagemodel_id`='".$this->id."'");
 while ($opt = $query_opt->fetch_row())
 {
 	$this->param_list[$opt[0]]["opt"][$opt[1]] = json_decode($opt[2], true);
@@ -157,8 +165,15 @@ foreach($this->param_list as $name=>$param)
 	$this->param[$name] = new $datatype($name, $param["value"], $name);
 	if (isset($param["opt"]) && is_array($param["opt"])) foreach ($param["opt"] as $i=>$j)
 		$this->param[$name]->opt_set($i, $j);
-	if (is_numeric($param["update_pos"]))
-		$this->params_url[$param["update_pos"]] = $name;
+}
+
+}
+function params_reset()
+{
+
+foreach ($this->param_list as $name=>$param)
+{
+	$this->param[$name]->value = $param["value"];
 }
 
 }
@@ -182,7 +197,7 @@ return $this->param_list;
 }
 /**
  * Returns if a param exists
- * @param $name
+ * @param string $name
  */
 public function param_exists($name)
 {
@@ -192,7 +207,7 @@ return (is_string($name) && array_key_exists($name, $this->param_list));
 }
 /**
  * Param exists ?
- * @param unknown_type $name
+ * @param string $name
  */
 public function __isset($name)
 {
@@ -204,7 +219,7 @@ return $this->param_exists($name);
  * Get a param value
  *
  * @param string $name
- * @return unknown
+ * @return data
  */
 public function __get($name)
 {
@@ -215,23 +230,14 @@ if (is_string($name) && array_key_exists($name, $this->param))
 }
 /**
  * Set a param value
- * @param unknown_type $name
+ * @param string $name
+ * @param mixed $value
  */
 public function __set($name, $value)
 {
 
 if (is_string($name) && array_key_exists($name, $this->param))
 	$this->param[$name]->value = $value;
-
-}
-
-function params_reset()
-{
-
-foreach ($this->param_list as $name=>$param)
-{
-	$this->param[$name]->value = $param["value"];
-}
 
 }
 
@@ -243,10 +249,10 @@ public function query_view()
 
 // Views
 $this->view_list = array();
-$query = db()->query("SELECT `name`, `template_id`, `subtemplates_map`, `params_map` FROM `_page_view` WHERE `page_id`='$this->id'");
+$query = db()->query("SELECT `name`, `template_id`, `subtemplates_map`, `params_map` FROM `_pagemodel_view` WHERE `pagemodel_id`='$this->id'");
 while ($row = $query->fetch_assoc())
 {
-	$this->view_list[$row["name"]] = array($row["template_id"], json_decode($row["subtemplates_map"], true), json_decode($row["params_map"], true));
+	$this->view_list[$row["name"]] = array($row["template_id"], json_decode($row["params_map"], true), json_decode($row["subtemplates_map"], true));
 }
 
 }
@@ -308,11 +314,11 @@ foreach ($this->param as $name=>$param)
 /**
  * Apply page parameters to the associated template
  */
-protected function subtemplates_apply(_template $template, array $map)
+protected function subtemplates_apply(_template $template, $map=null)
 {
 
 // Define subtemplates
-foreach($map as $nb=>$subtemplate)
+if (is_array($map)) foreach($map as $nb=>$subtemplate)
 {
 	$template->subtemplate_set($nb, $subtemplate);
 }
@@ -366,78 +372,6 @@ if (DEBUG_GENTIME == true)
 
 }
 
-/**
- * Permission for this page
- * Using global page perm, specific group page, and specific user page
- */
-public function perm($type="")
-{
-
-$_type = $this->_type;
-
-if ($type)
-{
-	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type)</p>\n";
-	// Work only for cumulative permissions
-	$return = false;
-	// Default perm
-	if (is_numeric(strpos($this->perm, $type)))
-		$return = true;
-	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type) : $return</p>\n";
-	// Specific perm
-	if ($return == false)
-	{
-		$perm_list = login()->perm_list();
-		//print_r($perm_list);
-		while ($return==false && (list($nb,$perm_id)=each($perm_list)))
-		{
-			//echo "<p>$perm_id : ".permission($perm_id)->$_type($this->id)."</p>\n";
-			if (is_numeric(strpos(permission($perm_id)->$_type($this->id), $type)))
-				$return = true;
-		}
-	}
-	// Specific perm for user
-	if ($return == false)
-	{
-		if (is_numeric(strpos(login()->user_perm($_type, $this->id), $type)))
-			$return = true;
-	}
-	return $return;
-}
-else
-{
-	// Default perm (all)
-	$perm = new permission_info($this->perm);
-	// Specific perm
-	foreach(login()->perm_list() as $perm_id)
-		$perm->update(permission($perm_id)->$_type($this->id));
-	// Specific perm for user
-	if ($account_perm=login()->user_perm($_type, $this->id))
-		$perm->update($account_perm);
-	return $perm;
-}
-
-}
-public function perm_login()
-{
-
-// Default Access Permission
-if ($this->perm)
-	return true;
-
-$return = false;
-
-reset($this->perm_list);
-while(!$return && (list($nb, $perm_id)=each($this->perm_list)))
-{
-	if (login()->perm($perm_id))
-		$return = true;
-}
-
-return $return;
-
-}
-
 }
 
 /*
@@ -445,11 +379,11 @@ return $return;
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_CLASSES."/admin/page.inc.php";
+	include PATH_CLASSES."/manager/admin/page.inc.php";
 }
 else
 {
-	class _pagemodel_gestion extends __pagemodel_gestion {};
+	class _pagemodel_manager extends __pagemodel_manager {};
 	class _pagemodel extends __pagemodel {};
 }
 

@@ -17,7 +17,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Defines the accessible pages
  */
-class __page_gestion extends _gestion
+class __page_manager extends _manager
 {
 
 protected $type = "page";
@@ -34,8 +34,26 @@ protected $info_detail = array
 	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"pagemodel", "select_list"=>array("static_html"=>"Page HTML statique", "pagemodel"=>"Utilisation d'un modèle de page (valeur par défaut)", "redirect"=>"Redirection vers une page extérieure", "alias"=>"Alias d'une autre page du site", "static_html"=>"Page HTML statique", "php"=>"Script PHP")),
 	"perm"=>array("label"=>"Permission par défaut", "type"=>"boolean", "default"=>0, "value_list"=>array("Protégé", "Accès pour tous"), "lang"=>false),
 	"perm_list"=>array("label"=>"Permissions spécifiques", "type"=>"object_list", "object_type"=>"permission", "db_table"=>"_page_perm_ref", "db_id"=>"page_id", "db_field"=>"perm_id"),
-	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGE, "filename"=>"{name}.inc.php")
 );
+
+/**
+ * Retrieve the parameters list from database
+ */
+public function query_info_more()
+{
+
+// Params
+$query = db()->query("SELECT `page_id`, `name`, `value`, `update_pos` FROM `_page_params`");
+while ($param = $query->fetch_assoc())
+{
+	$this->list_detail[$param["page_id"]]["param_list"][$param["name"]] = array
+	(
+		"value"=>json_decode($param["value"], true),
+		"update_pos"=>$param["update_pos"]
+	);
+}
+
+}
 
 /**
  * Set the default page
@@ -90,7 +108,9 @@ else
 	}
 }
 
-$this->get(PAGE_ID)->set($url_params);
+//var_dump(page_current());
+
+page_current()->set($url_params);
 
 if (DEBUG_GENTIME == true)
 	gentime("page_gestion::set() [end]");
@@ -104,7 +124,7 @@ if (DEBUG_GENTIME == true)
  * Defines a model of page
  *
  */
-class __page extends _object_gestion
+class __page extends _object
 {
 
 protected $_type = "page";
@@ -135,7 +155,128 @@ protected $alias_page_id = null;
 function __sleep()
 {
 
-return array("id", "pagemodel_id", "name", "label", "perm", "type", "url", "shortlabel", "param_list", "perm_list", "redirect_url");
+return array("id", "type", "pagemodel_id", "name", "label", "url", "shortlabel", "param_list", "perm", "perm_list", "redirect_url", "alias_page_id");
+
+}
+function __wakeup()
+{
+
+$this->construct_params();
+
+}
+
+protected function construct_more($infos)
+{
+
+$this->construct_params();
+
+}
+
+protected function query_info_more()
+{
+
+$this->query_params();
+
+}
+
+/**
+ * Retrieve the parameters list from database
+ */
+public function query_params()
+{
+
+// Params
+$this->param_list = array();
+$this->param = array();
+$this->params_url = array();
+$query = db()->query("SELECT `name`, `value`, `update_pos` FROM `_page_params` WHERE `page_id`='$this->id'");
+while ($param = $query->fetch_assoc())
+{
+	$this->param_list[$param["name"]] = array
+	(
+		"value"=>json_decode($param["value"], true),
+		"update_pos"=>$param["update_pos"]
+	);
+}
+
+}
+
+/**
+ * Constructs the parameters list
+ */
+public function construct_params()
+{
+
+$this->param = array();
+$this->params_url = array();
+foreach($this->param_list as $name=>$param)
+{
+	$this->param[$name] = $param["value"];
+	if (is_numeric($param["update_pos"]))
+		$this->params_url[$param["update_pos"]] = $name;
+}
+
+}
+/**
+ * Returns list of actual params
+ */
+public function param_list()
+{
+
+return $this->param;
+
+}
+/**
+ * Returns list of actual params
+ */
+public function param_list_detail()
+{
+
+return $this->param_list;
+
+}
+/**
+ * Returns if a param exists
+ * @param $name
+ */
+public function param_exists($name)
+{
+
+return (is_string($name) && array_key_exists($name, $this->param_list));
+
+}
+/**
+ * Param exists ?
+ * @param unknown_type $name
+ */
+public function __isset($name)
+{
+
+return $this->param_exists($name);
+
+}
+/**
+ * Get a param value
+ *
+ * @param string $name
+ * @return unknown
+ */
+public function __get($name)
+{
+
+if (is_string($name) && array_key_exists($name, $this->param))
+	return $this->param[$name];
+
+}
+/**
+ * Set a param value
+ * @param unknown_type $name
+ */
+public function __set($name, $value)
+{
+
+if (is_string($name) && array_key_exists($name, $this->param))
+	$this->param[$name] = $value;
 
 }
 
@@ -143,11 +284,11 @@ return array("id", "pagemodel_id", "name", "label", "perm", "type", "url", "shor
  * Update params from URL, GET and POST
  * @param unknown_type $params
  */
-public function params_update_url($params=array())
+public function params_update_url($url_params=array())
 {
 
 // Retrieved from the URL
-foreach($params as $pos=>$value)
+foreach($url_params as $pos=>$value)
 {
 	if (array_key_exists($pos, $this->params_url) && ($name=$this->params_url[$pos]))
 	{
@@ -183,21 +324,110 @@ if (DEBUG_GENTIME == true)
 
 }
 
+public function pagemodel()
+{
+
+return ($pagemodel = pagemodel()->get($this->pagemodel_id)) ? $pagemodel : null;
+
+}
+
 /**
  * Execute the asociated page model
  */
 public function execute()
 {
 
-if ($pagemodel = pagemodel()->get($this->pagemodel_id))
-{
-	foreach($this->param as $name->$value)
-	{
-		$pagemodel->__set($name, $value); // TODO : verify if needed to use value_from_form();
-	}
-	$pagemodel->action();
-	$pagemodel->view_disp();
+if ($this->type == "pagemodel")
+	$this->execute_pagemodel();
+
 }
+
+protected function execute_pagemodel()
+{
+
+if (!($pagemodel = $this->pagemodel()))
+	return;
+
+//var_dump($pagemodel);
+
+foreach($this->param as $name=>$value)
+{
+	$pagemodel->__set($name, $value); // TODO : verify if needed to use value_from_form();
+}
+$pagemodel->action();
+$pagemodel->view_disp();
+
+}
+
+/**
+ * Permission for this page
+ * Using global page perm, specific group page, and specific user page
+ */
+public function perm($type="")
+{
+
+$_type = $this->_type;
+
+if ($type)
+{
+	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type)</p>\n";
+	// Work only for cumulative permissions
+	$return = false;
+	// Default perm
+	if (is_numeric(strpos($this->perm, $type)))
+		$return = true;
+	//echo "<p>[DEBUG] page(ID#$this->id)::perm($type) : $return</p>\n";
+	// Specific perm
+	if ($return == false)
+	{
+		$perm_list = login()->perm_list();
+		//print_r($perm_list);
+		while ($return==false && (list($nb,$perm_id)=each($perm_list)))
+		{
+			//echo "<p>$perm_id : ".permission($perm_id)->$_type($this->id)."</p>\n";
+			if (is_numeric(strpos(permission($perm_id)->$_type($this->id), $type)))
+				$return = true;
+		}
+	}
+	// Specific perm for user
+	if ($return == false)
+	{
+		if (is_numeric(strpos(login()->user_perm($_type, $this->id), $type)))
+			$return = true;
+	}
+	return $return;
+}
+else
+{
+	// Default perm (all)
+	$perm = new permission_info($this->perm);
+	// Specific perm
+	foreach(login()->perm_list() as $perm_id)
+		$perm->update(permission($perm_id)->$_type($this->id));
+	// Specific perm for user
+	if ($account_perm=login()->user_perm($_type, $this->id))
+		$perm->update($account_perm);
+	return $perm;
+}
+
+}
+public function perm_login()
+{
+
+// Default Access Permission
+if ($this->perm)
+	return true;
+
+$return = false;
+
+reset($this->perm_list);
+while(!$return && (list($nb, $perm_id)=each($this->perm_list)))
+{
+	if (login()->perm($perm_id))
+		$return = true;
+}
+
+return $return;
 
 }
 
@@ -257,8 +487,8 @@ else
 
 
 {
-	class _pagemodel_gestion extends __pagemodel_gestion {};
-	class _pagemodel extends __pagemodel {};
+	class _page_manager extends __page_manager {};
+	class _page extends __page {};
 }
 
 

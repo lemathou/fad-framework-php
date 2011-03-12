@@ -43,9 +43,8 @@ if (REDIRECT_LANG)
 // Choix de la page à partir de l'url
 page()->set();
 // Actions sur la page
-page_current()->action();
 // Affichage du template
-page_current()->view_disp();
+page_current()->execute();
 
 // Gestion message login
 login()->message_show();

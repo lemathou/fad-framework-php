@@ -28,12 +28,12 @@ if (!isset($GLOBALS["_pagemodel"]))
 	if (CACHE)
 	{
 		if (!($GLOBALS["_pagemodel"]=cache::retrieve("pagemodel")))
-			$GLOBALS["_pagemodel"] = new _pagemodel_gestion();
+			$GLOBALS["_pagemodel"] = new _pagemodel_manager();
 	}
 	else // Session
 	{
 		if (!isset($_SESSION["_pagemodel"]))
-			$_SESSION["_pagemodel"] = new _pagemodel_gestion();
+			$_SESSION["_pagemodel"] = new _pagemodel_manager();
 		$GLOBALS["_pagemodel"] = $_SESSION["_pagemodel"];
 	}
 	if (DEBUG_GENTIME == true)
@@ -62,12 +62,12 @@ if (!isset($GLOBALS["_page"]))
 	if (CACHE)
 	{
 		if (!($GLOBALS["_page"]=cache::retrieve("page")))
-			$GLOBALS["_page"] = new _page_gestion();
+			$GLOBALS["_page"] = new _page_manager();
 	}
 	else // Session
 	{
 		if (!isset($_SESSION["_page"]))
-			$_SESSION["_page"] = new _page_gestion();
+			$_SESSION["_page"] = new _page_manager();
 		$GLOBALS["_page"] = $_SESSION["_page"];
 	}
 	if (DEBUG_GENTIME == true)

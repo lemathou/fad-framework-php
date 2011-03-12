@@ -18,7 +18,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Gestion des menus
  */
-class __menu_gestion extends _gestion
+class __menu_manager extends _manager
 {
 
 protected $type = "menu";
@@ -39,7 +39,7 @@ while (list($menu_id, $pos, $page_id)=$query->fetch_row())
 /**
  * Menu
  */
-class __menu extends _object_gestion
+class __menu extends _object
 {
 
 protected $_type = "menu";
@@ -112,12 +112,12 @@ else // $method == "span"
  */
 if (defined("ADMIN_LOAD"))
 {
-	include PATH_FRAMEWORK."/classes/admin/menu.inc.php";
+	include PATH_CLASSES."/manager/admin/menu.inc.php";
 }
 else
 {
-	class menu_gestion extends _menu_gestion {};
-	class menu extends _menu {};
+	class _menu_manager extends __menu_manager {};
+	class _menu extends __menu {};
 }
 
 

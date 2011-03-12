@@ -28,12 +28,12 @@ if (!isset($GLOBALS["_permission"]))
 	if (CACHE)
 	{
 		if (!($GLOBALS["_permission"]=cache::retrieve("permission")))
-			$GLOBALS["_permission"] = new _permission_gestion();
+			$GLOBALS["_permission"] = new _permission_manager();
 	}
 	else // Session
 	{
 		if (!isset($_SESSION["_permission"]))
-			$_SESSION["_permission"] = new _permission_gestion();
+			$_SESSION["_permission"] = new _permission_manager();
 		$GLOBALS["_permission"] = $_SESSION["_permission"];
 	}
 	if (DEBUG_GENTIME == true)

@@ -13,7 +13,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class _menu_gestion extends __menu_gestion
+class _menu_manager extends __menu_manager
 {
 
 

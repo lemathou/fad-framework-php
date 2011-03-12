@@ -15,7 +15,7 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
-class _permission_gestion extends __permission_gestion
+class _permission_manager extends __permission_manager
 {
 
 

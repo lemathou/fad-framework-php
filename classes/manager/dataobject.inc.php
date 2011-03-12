@@ -765,13 +765,30 @@ public function ref_change($datamodel_name, $blahblah)
 }
 
 /**
+ * Returns the default string for url rewriting
+ */
+function url_str()
+{
+
+if (($field=$this->__get("url")) !== null)
+	return $field;
+elseif (($field=$this->__get("label")) !== null)
+	return text::rewrite_ref((string)$field);
+elseif (($field=$this->__get("name")) !== null)
+	return text::rewrite_ref((string)$field);
+else
+	return null;
+
+}
+
+/**
  * Returns default URL to the view page
  */
 public function url()
 {
 
 if ($page=page(get_class($this)))
-	return $page->url(array($this->id));
+	return $page->url(array($this->id), $this->url_str());
 else
 	return "#";
 

@@ -21,7 +21,7 @@ if (DEBUG_GENTIME == true)
  * @author mathieu
  * 
  */
-class __permission_gestion extends _gestion
+class __permission_manager extends _manager
 {
 
 protected $type = "permission";
@@ -72,7 +72,7 @@ while (list($perm_id, $menu_id, $perm) = $query->fetch_row())
 /**
  * Permissions
  */
-class __permission extends _object_gestion
+class __permission extends _object
 {
 
 protected $_type = "permission";
@@ -306,11 +306,11 @@ return $this->list;
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_CLASSES."/admin/permission.inc.php";
+	include PATH_CLASSES."/manager/admin/permission.inc.php";
 }
 else
 {
-	class _permission_gestion extends __permission_gestion {};
+	class _permission_manager extends __permission_manager {};
 	class _permission extends __permission {};
 }
 

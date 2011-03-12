@@ -28,12 +28,12 @@ if (!isset($GLOBALS["_library"]))
 	if (CACHE)
 	{
 		if (!($GLOBALS["_library"]=cache::retrieve("library")))
-			$GLOBALS["_library"] = new _library_gestion();
+			$GLOBALS["_library"] = new _library_manager();
 	}
 	else // Session
 	{
 		if (!isset($_SESSION["_library"]))
-			$_SESSION["_library"] = new _library_gestion();
+			$_SESSION["_library"] = new _library_manager();
 		$GLOBALS["_library"] = $_SESSION["_library"];
 	}
 	if (DEBUG_GENTIME == true)

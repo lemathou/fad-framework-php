@@ -26,26 +26,30 @@ function __autoload($class_name)
 
 $s = substr($class_name, -8);
 
-// Framework Managing classes
-if ($class_name != "_gestion" && substr($class_name, 0, 1) == "_" && $s == "_gestion")
+if ($class_name == "_db")
 {
-	if (file_exists($filename=PATH_CLASSES."/gestion/".substr($class_name, 1, -8).".inc.php"))
+	include PATH_CLASSES."/db.inc.php";
+}
+// Framework Managing classes
+elseif ($class_name != "_manager" && substr($class_name, 0, 1) == "_" && $s == "_manager")
+{
+	if (file_exists($filename=PATH_CLASSES."/manager/".substr($class_name, 1, -8).".inc.php"))
 		include $filename;
 }
 elseif (substr($class_name, 0, 1) == "_")
 {
-	if (file_exists($filename=PATH_CLASSES."/gestion/".substr($class_name, 1).".inc.php"))
+	if (file_exists($filename=PATH_CLASSES."/manager/".substr($class_name, 1).".inc.php"))
 		include $filename;
 }
 // Dataobject native class
 elseif ($class_name == "dataobject")
 {
-	include PATH_CLASSES."/gestion/dataobject.inc.php";
+	include PATH_CLASSES."/manager/dataobject.inc.php";
 }
 // Permission native class
 elseif ($class_name == "permission_info")
 {
-	include PATH_CLASSES."/gestion/permission.inc.php";
+	include PATH_CLASSES."/manager/permission.inc.php";
 }
 // Data fields
 elseif ($class_name == "data")

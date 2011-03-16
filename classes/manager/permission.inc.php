@@ -53,9 +53,11 @@ $query = db()->query("SELECT `perm_id`, `library_id` FROM `_library_perm_ref`");
 while (list($perm_id, $library_id, $perm) = $query->fetch_row())
 	$this->list_detail[$perm_id]["library_perm"][$library_id] = array();
 
+/*
 $query = db()->query("SELECT `perm_id`, `template_id` FROM `_template_perm_ref`");
 while (list($perm_id, $template_id, $perm) = $query->fetch_row())
 	$this->list_detail[$perm_id]["template_perm"][$template_id] = array();
+*/
 
 $query = db()->query("SELECT `perm_id`, `page_id` FROM `_page_perm_ref`");
 while (list($perm_id, $page_id) = $query->fetch_row())
@@ -116,10 +118,12 @@ $query = db()->query("SELECT `library_id` from `_library_perm_ref` WHERE `perm_i
 while (list($library_id, $perm) = $query->fetch_row())
 	$this->library_perm[$library_id] = array();
 
+/*
 $this->template_perm = array();
 $query = db()->query("SELECT `template_id` from `_template_perm_ref` WHERE `perm_id` = '$this->id'");
 while (list($template_id, $perm) = $query->fetch_row())
 	$this->template_perm[$template_id] = array();
+*/
 
 $this->page_perm = array();
 $query = db()->query("SELECT `page_id` from `_page_perm_ref` WHERE `perm_id` = '$this->id'");

@@ -23,8 +23,9 @@ $admin_menu = array
 	"data" => "Données",
 	//"databank" => "Databank",
 	"template" => "Templates",
+	"pagemodel" => "Modèles de pages",
 	"page" => "Pages",
-	"menu" => "Menus",
+	//"menu" => "Menus",
 	//"widget" => "Widgets",
 );
 
@@ -81,6 +82,10 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 <link rel="stylesheet" type="text/css" href="/_css/common.css" />
 <link rel="stylesheet" type="text/css" href="/_css/admin.css" />
 
+<!--[if lt IE 7.]>
+<script defer type="text/javascript" rc="/_js/pngfix.js"></script>
+<![endif]-->
+
 <script type="text/javascript" src="/_js/jquery-1.4.2.min.js"></script>
 <script type="text/javascript" src="/_js/jquery-ui-1.8.6.custom.min.js"></script>
 <script type="text/javascript" src="/_js/jquery-ui-timepicker-addon.js"></script>
@@ -94,10 +99,6 @@ header("Content-type: text/html; charset=".SITE_CHARSET);
 
 <script type="text/javascript" src="/_js/common.js"></script>
 <script type="text/javascript" src="/_js/admin.js"></script>
-
-<!--[if lt IE 7.]>
-<script defer type="text/javascript" rc="/_js/pngfix.js"></script>
-<![endif]-->
 
 </head>
 

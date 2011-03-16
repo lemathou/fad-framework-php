@@ -455,7 +455,7 @@ foreach ($_type()->info_detail_list() as $name=>$info)
 <?php } elseif ($info["type"] == "fromlist") { ?>
 	<td><input name="<?php echo $name; ?>" type="hidden" /><select name="<?php echo $name; ?>[]" class="data_fromlist" multiple><?
 	foreach($info["select_list"] as $i=>$j)
-		if (in_array($i, $this->{$name}))
+		if (is_array($this->{$name}) && in_array($i, $this->{$name}))
 			echo "<option value=\"$i\" selected>$j</option>";
 		else
 			echo "<option value=\"$i\">$j</option>";

@@ -42,7 +42,7 @@ protected $retrieve_details = false;
 function __wakeup()
 {
 
-_manager::__wakeup();
+parent::__wakeup();
 $this->access_function_create();
 
 }
@@ -335,16 +335,13 @@ else
 public function library()
 {
 
-return library()->get($this->library_id);
+return;
 
 }
 function library_load()
 {
 
-if ($library=$this->library())
-{
-	$library->load();
-}
+return;
 
 }
 

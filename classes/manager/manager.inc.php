@@ -383,12 +383,12 @@ else
 abstract class __object
 {
 
-protected $_type = "";
+protected $_type = ""; // To be overloaded !!
 
-protected $id=0;
-protected $name="";
-protected $label="";
-protected $description="";
+protected $id = null;
+protected $name = "";
+protected $label = "";
+protected $description = "";
 
 public function __construct($id, $query=true, $infos=array())
 {
@@ -459,6 +459,7 @@ while($infos = $query->fetch_assoc())
 
 foreach ($query_objects as $name)
 {
+	$this->{$name} = array();
 	$field = $info_detail[$name];
 	$query = db()->query("SELECT `$field[db_field]` FROM `$field[db_table]` WHERE `$field[db_id]`='$this->id'");
 	while (list($object_id)=$query->fetch_row())
@@ -484,7 +485,7 @@ protected function query_info_more()
 function __tostring()
 {
 
-return "[$this->type][ID#$this->id] $this->name : $this->label";
+return "[$this->_type][ID#$this->id] $this->name : $this->label";
 
 }
 public function id()
@@ -508,6 +509,7 @@ return $this->label;
 public function info($name)
 {
 
+// OUlala attention... même si on est jamais à l'abri d'un var_dump !
 if (property_exists($this, $name))
 	return $this->{$name};
 

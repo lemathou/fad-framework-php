@@ -14,6 +14,8 @@
 
 include PATH_INCLUDE."/header.inc.php";
 
+//var_dump(login());
+
 // Logged as super-admin
 if (login()->perm(1))
 {

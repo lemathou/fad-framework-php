@@ -30,7 +30,7 @@ protected $info_detail = array
 	"cache_mintime"=>array("label"=>"Durée minimum du cache", "type"=>"integer", "lang"=>false, "default"=>TEMPLATE_CACHE_MIN_TIME),
 	"cache_maxtime"=>array("label"=>"Durée maximum du cache", "type"=>"integer", "lang"=>false, "default"=>TEMPLATE_CACHE_MAX_TIME),
 	"login_dependant"=>array("label"=>"Dépendant du login", "type"=>"boolean", "lang"=>false, "default"=>"0"),
-	"library_list"=>array("label"=>"Librairies", "type"=>"object_list", "object_type"=>"library", "db_table"=>"_template_library_ref", "db_id"=>"template_id", "db_field"=>"library_id"),
+	//"library_list"=>array("label"=>"Librairies", "type"=>"object_list", "object_type"=>"library", "db_table"=>"_template_library_ref", "db_id"=>"template_id", "db_field"=>"library_id"),
 	"tplfile"=>array("label"=>"Template", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{type}/{name}.tpl.php"),
 	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_TEMPLATE, "filename"=>"{type}/{name}.inc.php")
 );
@@ -120,7 +120,7 @@ protected $mime = "";
 /*
  * Surely depreacated, except if I implement function libraries
  */
-protected $library_list = array();
+//protected $library_list = array();
 
 /*
  * Complete list of params
@@ -158,7 +158,8 @@ protected $cache_filename = "";
 function __sleep()
 {
 
-return array("id", "name", "label", "mime", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "library_list", "param_list");
+//"library_list",
+return array("id", "name", "label", "mime", "description", "type", "cache_mintime", "cache_maxtime", "login_dependant", "param_list");
 
 }
 function __wakeup()
@@ -269,6 +270,9 @@ if (array_key_exists($name, $this->param))
 public function __set($name, $value)
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::__set() : $name [begin]");
+
 if (array_key_exists($name, $this->param))
 {
 	if (DEBUG_TEMPLATE)
@@ -276,11 +280,15 @@ if (array_key_exists($name, $this->param))
 	$this->param[$name]->value_set($value);
 }
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::__set() : $name [end]");
+
 }
 
 /**
  * Load the libraries associated to the template
  */
+/*
 protected function library_load()
 {
 
@@ -292,6 +300,7 @@ foreach ($this->library_list as $library_id)
 }
 
 }
+*/
 
 /**
  * Display template with headers
@@ -322,11 +331,10 @@ public function __tostring()
 {
 
 if (DEBUG_GENTIME == true)
-	gentime("template($this->id) [begin]");
+	gentime("template(ID#$this->id)::__tostring() [begin]");
+//echo "<p>template($this->id)::__tostring()</p>\n";
 
 $this->params_check();
-
-//echo "<p>template($this->id)::__tostring()</p>\n";
 
 /*
  * Verify if :
@@ -341,15 +349,15 @@ if (TEMPLATE_CACHE && ($this->cache_maxtime > 0) && !($this->login_dependant && 
 	{
 		$this->cache_generate();
 	}
-	$return =  $this->cache_return();
+	$return = $this->cache_return();
 }
 else
 {
-	$return =  $this->execute();
+	$return = $this->execute();
 }
 
 if (DEBUG_GENTIME == true)
-	gentime("template($this->id) [end]");
+	gentime("template(ID#$this->id)::__tostring() [end]");
 
 return $return;
 
@@ -383,6 +391,9 @@ foreach ($this->param_list as $name=>$param)
 protected function params_check()
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::params_check() [begin]");
+
 if (file_exists($this->script_filename))
 {
 	// Including references !
@@ -390,6 +401,9 @@ if (file_exists($this->script_filename))
 	//echo "<!-- Template Script : template/$this->name.inc.php -->\n";
 	include $this->script_filename;
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::params_check() [end]");
 
 }
 
@@ -434,6 +448,8 @@ public function subtemplate_set($nb, $info)
 // TODO : protection so that we cannot set random templates...
 // Better to lookup in the page object ..?
 
+//echo "<p>template(ID#$this->id)::subtemplate_set() : $nb</p>\n";
+//var_dump($info);
 $this->subtemplate[$nb] = $info;
 
 }
@@ -444,9 +460,10 @@ $this->subtemplate[$nb] = $info;
 protected function subtemplate($nb)
 {
 
-if (array_key_exists($nb, $this->subtemplate))
+//var_dump($this->subtemplate);
+
+if (array_key_exists((int)$nb, $this->subtemplate) && is_array($subtemplate=$this->subtemplate[(int)$nb]))
 {
-	$subtemplate = &$this->subtemplate[$nb];
 	return $subtemplate[0].",".json_encode($subtemplate[1]).",".json_encode($subtemplate[2]);
 }
 
@@ -458,15 +475,18 @@ if (array_key_exists($nb, $this->subtemplate))
 protected function subtemplates_apply($tpl)
 {
 
-if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(.*))*--\>/", $tpl, $matches, PREG_SET_ORDER))
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::subtemplates_apply() [begin]");
+
+if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(true|null|(\{.+\}))){0,1}(,(true|null|(.+))){0,1}--\>/", $tpl, $matches, PREG_SET_ORDER))
 {
 	$replace_from = $replace_to = array();
 	foreach($matches as $match) if ($template=template($match[1]))
 	{
+		//var_dump($match);
 		if (DEBUG_TEMPLATE)
-			echo "<p>DEBUG : TEMPLATE(ID#$this->id)->cache_return() sending params to (sub)template ID#".$template->id()." ".$match[1]."</p>\n";
-		// TODO : VOIR SI PB DE RECURSION !!!!
-		$template->reset();
+			echo "<p>DEBUG : template(ID#$this->id)->cache_return() sending params to (sub)template ID#".$template->id()." ".$match[1]."</p>\n";
+		$template = clone $template;
 		// Passage des paramètres
 		if (isset($match[3]) && ($params=json_decode($match[3], true)))
 		{
@@ -510,6 +530,9 @@ if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(.*))*--\>/", $tpl, $matches, 
 	}
 }
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::subtemplates_apply() [end]");
+
 return $tpl;
 
 }
@@ -520,12 +543,19 @@ return $tpl;
 protected function execute()
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::execute() [begin]");
+
 //echo "<p>template(#ID$this->id:$this->name)::execute()</p>\n";
 extract($this->param);
 ob_start();
 include $this->tpl_filename;
 $return = $this->subtemplates_apply(ob_get_contents());
 ob_end_clean();
+
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::execute() [end]");
+
 return $return;
 
 }
@@ -565,6 +595,9 @@ if (TEMPLATE_CACHE_TYPE == "file")
 public function cache_generate()
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::cache_generate() [begin]");
+
 $_time = time();
 
 //echo "<p>template(ID#$this->id)::cache_generate() $this->tpl_filename : $this->cache_id</p>\n";
@@ -576,6 +609,9 @@ if (TEMPLATE_CACHE_TYPE == "apc")
 else
 	fwrite(fopen($this->cache_filename,"w"), ob_get_contents());
 ob_end_clean();
+
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::cache_generate() [end]");
 
 //fwrite(fopen(PATH_ROOT."/log/cache.txt","a"), date("Y-m-d H:i:s", $_time)." : Write tpl($this->id) params $this->cache_id\n");
 
@@ -748,6 +784,9 @@ class _template_container extends _template
 public function __set($name, $value)
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::__set() : $name [begin]");
+
 if (DEBUG_TEMPLATE)
 	echo "<p>DEBUG : template_container(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
 
@@ -755,6 +794,9 @@ if (array_key_exists($name, $this->param))
 	$this->param[$name]->value = $value;
 else
 	$this->param[$name] = new data($name, $value, $name);
+
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::__set() : $name [end]");
 
 }
 
@@ -811,6 +853,9 @@ protected $object = null;
 function __set($name, $value)
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::__set() : $name [begin]");
+
 // TODO : Not clear, because we need here to configure first the datamodel...
 
 if ($name == "datamodel_id" && ($datamodel=datamodel($value)))
@@ -823,6 +868,9 @@ elseif ($name == "object_id" && ($datamodel=datamodel()->get($this->datamodel_id
 	$this->object = $object;
 	$this->object_retrieve_values();
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("template(ID#$this->id)::__set() : $name [end]");
 
 }
 

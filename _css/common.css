@@ -16,14 +16,18 @@ body
 	margin: 0;
 	border: 0;
 	padding: 0;
-	font-size: 11pt;
 	background: transparent;
+	font-size: 11pt;
 }
 
 /* General font-family */
 body, h1, h2, h3, h4, p, li, td, label, input, textarea, option
 {
 	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+p, li, td, label
+{
+	font-size: 1em;
 }
 
 /* Forms */

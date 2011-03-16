@@ -419,7 +419,7 @@ else
 
 <?
 
-page()->table_list();
+$_type()->table_list();
 
 }
 

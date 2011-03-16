@@ -40,13 +40,14 @@ protected function query_info_more()
 {
 
 // Params
-$query = db()->query("SELECT `pagemodel_id`, `name`, `datatype`, `value` FROM `_pagemodel_params`");
+$query = db()->query("SELECT t1.`pagemodel_id`, t1.`name`, t1.`datatype`, t1.`value`, t2.`label` FROM `_pagemodel_params` as t1 LEFT JOIN `_pagemodel_params_lang` as t2 ON t1.`pagemodel_id`=t2.`pagemodel_id` AND t1.`name`=t2.`name` AND t2.`lang_id`='".SITE_LANG_ID."'");
 while ($param = $query->fetch_assoc())
 {
 	$this->list_detail[$param["pagemodel_id"]]["param_list"][$param["name"]] = array
 	(
-		"value"=>json_decode($param["value"], true),
+		"label"=>$param["label"],
 		"datatype"=>$param["datatype"],
+		"value"=>json_decode($param["value"], true),
 		"opt"=>array()
 	);
 }
@@ -78,6 +79,10 @@ class __pagemodel extends _object
 protected $_type = "pagemodel";
 
 protected $type = "";
+
+protected $description = "";
+protected $shortlabel = "";
+protected $url = "";
 
 // Params
 protected $param_list = array();
@@ -127,19 +132,20 @@ public function query_params()
 $this->param_list = array();
 $this->param = array();
 $this->params_url = array();
-$query = db()->query("SELECT `name`, `datatype`, `value` FROM `_page_params` WHERE `pagemodel_id`='$this->id'");
+$query = db()->query("SELECT t1.`name`, t1.`datatype`, t1.`value`, t2.`label` FROM `_pagemodel_params` as t1 LEFT JOIN `_pagemodel_params_lang` as t2 ON t1.`pagemodel_id`=t2.`pagemodel_id` AND t1.`name`=t2.`name` AND t2.`lang_id`='".SITE_LANG_ID."' WHERE t1.`pagemodel_id`='$this->id'");
 while ($param = $query->fetch_assoc())
 {
 	// Update position may be null !
 	// Value is the default value, which is fixed if the parameter is not designed to be overloaded
 	$this->param_list[$param["name"]] = array
 	(
-		"value"=>json_decode($param["value"], true),
+		"label"=>$param["label"],
 		"datatype"=>$param["datatype"],
+		"value"=>json_decode($param["value"], true),
 		"opt"=>array()
 	);
 }
-$query_opt = db()->query("SELECT `name`, `optname`, `optvalue` FROM `_page_params_opt` WHERE `pagemodel_id`='".$this->id."'");
+$query_opt = db()->query("SELECT `name`, `optname`, `optvalue` FROM `_pagemodel_params_opt` WHERE `pagemodel_id`='".$this->id."'");
 while ($opt = $query_opt->fetch_row())
 {
 	$this->param_list[$opt[0]]["opt"][$opt[1]] = json_decode($opt[2], true);
@@ -162,7 +168,7 @@ foreach($this->param_list as $name=>$param)
 		$datatype = "data_".$param["datatype"];
 	else
 		$datatype = "data";
-	$this->param[$name] = new $datatype($name, $param["value"], $name);
+	$this->param[$name] = new $datatype($name, $param["value"], $param["label"]);
 	if (isset($param["opt"]) && is_array($param["opt"])) foreach ($param["opt"] as $i=>$j)
 		$this->param[$name]->opt_set($i, $j);
 }
@@ -249,7 +255,7 @@ public function query_view()
 
 // Views
 $this->view_list = array();
-$query = db()->query("SELECT `name`, `template_id`, `subtemplates_map`, `params_map` FROM `_pagemodel_view` WHERE `pagemodel_id`='$this->id'");
+$query = db()->query("SELECT `name`, `template_id`, `params_map`, `subtemplates_map` FROM `_pagemodel_view` WHERE `pagemodel_id`='$this->id'");
 while ($row = $query->fetch_assoc())
 {
 	$this->view_list[$row["name"]] = array($row["template_id"], json_decode($row["params_map"], true), json_decode($row["subtemplates_map"], true));
@@ -282,12 +288,22 @@ if ($this->view_exists($name))
 public function view_set($name="")
 {
 
-if ($view = $this->view_get($name))
+if (DEBUG_GENTIME == true)
+	gentime("pagemodel(#ID$this->id)::view_set() [begin]");
+//echo "<p>pagemodel(ID#$this->id)::view_set() : $name</p>\n";
+
+if (!$name)
+	$name = "default";
+
+if (($view=$this->view_get($name)) && ($template=template($view[0])))
 {
-	$this->template = clone template($view[0]);
+	$this->template = clone $template;
 	$this->params_apply($this->template, $view[1]);
 	$this->subtemplates_apply($this->template, $view[2]);
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("pagemodel(#ID$this->id)::view_set() [end]");
 
 }
 
@@ -297,17 +313,23 @@ if ($view = $this->view_get($name))
 protected function params_apply(_template $template, $map=true)
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("pagemodel(#ID$this->id)::params_apply() [begin]");
+
 // Sends params to the template
-$template->params_reset();
+//$template->params_reset();
 foreach ($this->param as $name=>$param)
 {
 	if ($map === true || (is_array($map) && in_array($name, $map)))
 	{
 		if (DEBUG_TEMPLATE)
-			echo "<p>page(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $param->value</p>\n";
+			echo "<p>pagemodel(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $param->value</p>\n";
 		$template->__set($name, $param->value);
 	}
 }
+
+if (DEBUG_GENTIME == true)
+	gentime("pagemodel(#ID$this->id)::params_apply() [end]");
 
 }
 
@@ -317,37 +339,43 @@ foreach ($this->param as $name=>$param)
 protected function subtemplates_apply(_template $template, $map=null)
 {
 
+if (DEBUG_GENTIME == true)
+	gentime("pagemodel(#ID$this->id)::subtemplates_apply() [begin]");
+//echo "<p>pagemodel(#ID$this->id)::subtemplates_apply()</p>";
+
 // Define subtemplates
 if (is_array($map)) foreach($map as $nb=>$subtemplate)
 {
+	//echo "<p>$nb : $subtemplate</p>";
 	$template->subtemplate_set($nb, $subtemplate);
 }
 
+if (DEBUG_GENTIME == true)
+	gentime("pagemodel(#ID$this->id)::subtemplates_apply() [end]");
+
 }
 
-function view($name="")
+function view()
 {
 
-if (!$name)
-	$name = "default";
 if (!$this->template)
-	$this->view_set($name);
+	$this->view_set("default");
 
 return $this->template;
 
 }
 
-function view_disp($name="")
+function view_disp()
 {
 
 if (DEBUG_GENTIME == true)
-	gentime("page::view_disp() [begin]");
+	gentime("pagemodel(#ID$this->id)::view_disp() [begin]");
 
-if ($template=$this->view($name))
+if ($template=$this->view())
 	$template->disp();
 
 if (DEBUG_GENTIME == true)
-	gentime("page::view() [end]");
+	gentime("pagemodel(#ID$this->id)::view_disp() [end]");
 
 }
 
@@ -358,17 +386,17 @@ public function action()
 {
 
 if (DEBUG_GENTIME == true)
-	gentime("page::action() [begin]");
+	gentime("pagemodel(#ID$this->id)::action() [begin]");
 
 // TODO : use attribute script
 if (file_exists("page/$this->name.inc.php"))
 {
-	extract($this->param, EXTR_REFS);
+	extract($this->param);
 	include "page/$this->name.inc.php";
 }
 
 if (DEBUG_GENTIME == true)
-	gentime("page::action() [end]");
+	gentime("pagemodel(#ID$this->id)::action() [end]");
 
 }
 
@@ -379,7 +407,7 @@ if (DEBUG_GENTIME == true)
  */
 if (ADMIN_LOAD == true)
 {
-	include PATH_CLASSES."/manager/admin/page.inc.php";
+	include PATH_CLASSES."/manager/admin/pagemodel.inc.php";
 }
 else
 {

@@ -130,6 +130,7 @@ class __page extends _object
 protected $_type = "page";
 
 protected $pagemodel_id = null;
+protected $pagemodel = null;
 
 protected $perm = "";
 
@@ -327,7 +328,20 @@ if (DEBUG_GENTIME == true)
 public function pagemodel()
 {
 
-return ($pagemodel = pagemodel()->get($this->pagemodel_id)) ? $pagemodel : null;
+if (!$this->pagemodel && $this->pagemodel_id)
+	$this->pagemodel = pagemodel()->get($this->pagemodel_id);
+
+return $this->pagemodel;
+
+}
+
+public function pagemodel_params_send(_pagemodel $pagemodel)
+{
+
+foreach($this->param as $name=>$value)
+{
+	$pagemodel->__set($name, $value); // TODO : verify if needed to use value_from_form();
+}
 
 }
 
@@ -348,14 +362,10 @@ protected function execute_pagemodel()
 if (!($pagemodel = $this->pagemodel()))
 	return;
 
-//var_dump($pagemodel);
-
-foreach($this->param as $name=>$value)
-{
-	$pagemodel->__set($name, $value); // TODO : verify if needed to use value_from_form();
-}
+$this->pagemodel_params_send($pagemodel);
 $pagemodel->action();
 $pagemodel->view_disp();
+//var_dump($pagemodel);
 
 }
 

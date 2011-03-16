@@ -777,7 +777,7 @@ elseif (($field=$this->__get("label")) !== null)
 elseif (($field=$this->__get("name")) !== null)
 	return text::rewrite_ref((string)$field);
 else
-	return null;
+	return text::rewrite_ref($this->__tostring());
 
 }
 

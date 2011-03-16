@@ -23,7 +23,7 @@ class _account
 {
 
 protected $id = 0;
-protected $email = "";
+protected $email = ""; // Account identifier, UNIQUE
 protected $password_crypt = ""; // TODO : verify and supress it if possible
 
 protected $type;
@@ -141,10 +141,10 @@ return $password;
 	
 }
 
-function exists($email)
+function exists(string $email)
 {
 
-return (db()->query("SELECT '1' FROM `_account` WHERE `email` LIKE '".db()->string_escape($email)."'")->num_rows()) ? true : false;
+return (db("SELECT '1' FROM `_account` WHERE `email` LIKE '".db()->string_escape($email)."'")->num_rows()) ? true : false;
 
 }
 
@@ -184,7 +184,6 @@ $this->sid = session_id();
 $this->client_info_query();
 
 //$this->perm_query();
-$this->perm_list = array( 1, 3 );
 
 }
 
@@ -428,24 +427,24 @@ function HttpAcceptLanguage($str=NULL)
 {
 	global $lang_list;
 	// getting http instruction if not provided
-	$str=$str?$str:$_SERVER['HTTP_ACCEPT_LANGUAGE'];
+	$str = $str?$str:$_SERVER['HTTP_ACCEPT_LANGUAGE'];
 	// exploding accepted languages 
-	$langs=explode(',',$str);
+	$langs = explode(',',$str);
 	// creating output list
-	$accepted=array();
+	$accepted = array();
 	foreach ($langs as $lang)
 	{
 		// parsing language preference instructions
 		// 2_digit_code[-longer_code][;q=coefficient]
-		ereg('([a-z]{1,2})(-([a-z0-9]+))?(;q=([0-9\.]+))?',$lang,$found);
+		ereg('([a-z]{1,2})(-([a-z0-9]+))?(;q=([0-9\.]+))?', $lang, $found);
 		// 2 digit lang code
-		$code=$found[1];
+		$code = $found[1];
 		// lang code complement
 		$morecode=$found[3];
-		if (isset($lang_list[$code]) && !in_array($code,$accepted))
-			$accepted[sprintf('%3.1f',$found[5]?$found[5]:'1')]=$code;
-		elseif (isset($lang_list[$morecode]) && !in_array($code,$accepted))
-			$accepted[sprintf('%3.1f',$found[5]?$found[5]:'1')]=$morecode;
+		if (isset($lang_list[$code]) && !in_array($code, $accepted))
+			$accepted[sprintf('%3.1f',$found[5]?$found[5]:'1')] = $code;
+		elseif (isset($lang_list[$morecode]) && !in_array($code, $accepted))
+			$accepted[sprintf('%3.1f',$found[5]?$found[5]:'1')] = $morecode;
 	}
 	// sorting the list by coefficient desc
 	ksort($accepted);
@@ -458,14 +457,12 @@ function HttpAcceptLanguage($str=NULL)
 private function perm_query()
 {
 
-// All users : TODO : le dégager en mettant une permission en lecture sur l'ensemble des pages lisibles par tout le monde.
-$this->perm_list = array( 3 );
+$this->perm_list = array();
 // Registered users
+/*
 if ($this->id)
 	$this->perm_list[] = 4;
-// Anonymous users
-else
-	$this->perm_list[] = 1;
+*/
 
 // Global perms
 $query = db()->query("SELECT `perm_id` FROM `_account_perm_ref` WHERE `account_id` = '".$this->id."'");
@@ -479,10 +476,10 @@ while(list($type, $id, $perm)=$query->fetch_row())
 	$this->perm[$type][$id] = $perm;
 
 // Régénération du menu puisque nouvelles permissions
-page()->query_info();
+//page()->query_info();
 
 // Régénération databank
-//	databank()->query();
+//datamodel()->query();
 
 }
 

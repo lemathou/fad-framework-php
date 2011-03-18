@@ -1,5 +1,8 @@
 <?php
 
+if (!defined("PATH_INCLUDE"))
+	die("Config file not loaded");
+
 define("FRAMEWORK_INCDIR", "../Framework/include/");
 
 $file_list=array

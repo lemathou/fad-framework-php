@@ -26,7 +26,7 @@ protected $type = "datamodel";
 
 protected $info_detail = array
 (
-	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
+	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>32, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
 	"dynamic"=>array("label"=>"Dynamique", "type"=>"boolean", "lang"=>false),
@@ -1627,8 +1627,8 @@ else
 	class _datamodel extends __datamodel {};
 }
 
-//include PATH_CLASSES."/dataobject.inc.php";
-// TODO : autoload()
+
+// TODO : autoload() or change method (better...)
 include PATH_CLASSES."/datamodel_display.inc.php";
 
 

@@ -33,7 +33,7 @@ if (DEBUG_GENTIME == true)
 /**
  * Access function
  */
-function datamodel($datamodel_id=null, $object_id=null)
+function datamodel($datamodel_id=null, $query=null)
 {
 
 if (!isset($GLOBALS["_datamodel"]))
@@ -59,19 +59,68 @@ if ($datamodel_id === null)
 {
 	return $GLOBALS["_datamodel"];
 }
-
-if ( !(is_numeric($datamodel_id) && ($datamodel=$GLOBALS["_datamodel"]->get($datamodel_id))) && !(is_string($datamodel_id) && ($datamodel=$GLOBALS["_datamodel"]->get_name($datamodel_id))))
+elseif (!(is_numeric($datamodel_id) && ($datamodel=$GLOBALS["_datamodel"]->get($datamodel_id))) && !(is_string($datamodel_id) && ($datamodel=$GLOBALS["_datamodel"]->get_name($datamodel_id))))
 {
 	return null;
 }
-
-if ($object_id === null)
+elseif ($query === null)
+{
 	return $datamodel;
-
-if ($object=$datamodel->get($object_id))
+}
+elseif (is_numeric($query) && ($object=$datamodel->get($query)))
+{
 	return $object;
+}
+elseif (is_string($query))
+{
+	// TODO : relevance definition test !
+	if (count($objects=$datamodel->query(array(array("type"=>"fulltext", "value"=>$query)), true, array("relevance"=>"DESC"), 1)))
+		return array_pop($objects);
+	else
+		return null;
+}
+elseif (is_array($query))
+{
+	if ($objects=$datamodel->query($query))
+		return $objects;
+	else
+		return null;
+}
 
 return null;	
+
+}
+/**
+ * Access function
+ */
+function datamodel_ref($ref=null)
+{
+
+if (!isset($GLOBALS["_datamodel_ref"]))
+{
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve datamodel_ref() [begin]");
+	if (CACHE)
+	{
+		if (!($GLOBALS["_datamodel_ref"]=cache::retrieve("datamodel_ref")))
+			$GLOBALS["_datamodel_ref"] = new _datamodel_ref_manager();
+	}
+	else // Session
+	{
+		if (!isset($_SESSION["_datamodel_ref"]))
+			$_SESSION["_datamodel_ref"] = new _datamodel_ref_manager();
+		$GLOBALS["_datamodel_ref"] = $_SESSION["_datamodel_ref"];
+	}
+	if (DEBUG_GENTIME == true)
+		gentime("retrieve datamodel_ref() [end]");
+}
+
+if (is_numeric($ref))
+	return $GLOBALS["_datamodel_ref"]->get($ref);
+elseif (is_string($ref))
+	return $GLOBALS["_datamodel_ref"]->get_name($ref);
+else
+	return $GLOBALS["_datamodel_ref"];
 
 }
 

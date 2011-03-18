@@ -74,7 +74,9 @@ protected $opt = array();
 protected static $opt_list = array
 (
 	// structure
-	"size", "ereg", "numeric_signed", "numeric_precision", "numeric_type", "value_list", "boolean", "date_format", "datetime_format", "object_type", "datamodel", "email_strict", "urltype",
+	"size", "ereg", "numeric_signed", "numeric_precision", "numeric_type", "value_list", "boolean", "date_format", "datetime_format", "object_type", "email_strict", "urltype",
+	// dataobject specific
+	"datamodel", "datamodel_ref", "datamodel_ref_field", "datamodel_ref_id",
 	// db
 	"db_table", "db_field", "db_ref_table", "db_ref_field", "db_ref_id", "db_order_field", "db_databank_field", "db_type", "select_params",
 	// disp

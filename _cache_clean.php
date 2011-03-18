@@ -11,6 +11,9 @@
   * 
   */
 
+if (!defined("PATH_INCLUDE"))
+	die("Config file not loaded");
+
 function action()
 {
 

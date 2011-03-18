@@ -1,5 +1,8 @@
 <?php
 
+if (!defined("PATH_INCLUDE"))
+	die("Config file not loaded");
+
 session_start();
 
 function captcha_aff()

@@ -12,6 +12,9 @@
   */
 
 
+if (!defined("PATH_INCLUDE"))
+	die("Config file not loaded");
+
 include PATH_INCLUDE."/header.inc.php";
 
 if (isset($_GET["datamodel"]) && ($datamodel=datamodel($_GET["datamodel"])) && isset($_GET["id"]) && ($object=$datamodel->get($_GET["id"])))

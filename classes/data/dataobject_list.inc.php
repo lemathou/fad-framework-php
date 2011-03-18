@@ -27,12 +27,15 @@ protected $value_empty = array();
 
 protected $opt = array
 (
-	"datamodel" => "databank_name",
-	"db_ref_field" => "", // id du dataobject à récupérer
-	"db_ref_table" => "", // table de liaison
-	"db_ref_id" => "", // champ de liaison
-	"db_order_field" => "", // champ qui gère ordre (optionnel)
-	"ref_field_disp" => "", // field to display if needed
+	"datamodel_ref" => null, // datamodel_ref id or name
+	"datamodel_ref_field" => null, // datamodel_ref field to retrieve
+	"datamodel_ref_id" => null, // datamodel_ref field identifying this object
+	"datamodel" => "databank_name", // datamodel name or ID
+	"db_ref_table" => "", // linking table
+	"db_ref_field" => "", // table field identifier for the object(s) to retrieve
+	"db_ref_id" => "", // table field identifier for this object
+	"db_order_field" => "", // order field (optionnel)
+	"ref_field_disp" => "", // default field to display for __tostring() (optionnal)
 );
 
 function __construct($name, $value, $label="Object list", $options=array())
@@ -55,6 +58,27 @@ if (is_array($value) && count($value))
 	return "`".$fieldname."` IN (".implode(", ",$this->value).")";
 else
 	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
+
+}
+
+public function opt_set($name, $value)
+{
+
+parent::opt_set($name, $value);
+$this->opt_update();
+
+}
+
+protected function opt_update()
+{
+
+if ($this->opt["datamodel_ref"] !== null && $this->opt["datamodel_ref_id"] !== null && $this->opt["datamodel_ref_field"] !== null)
+{
+	if ($ref = datamodel_ref($this->opt["datamodel_ref"]))
+	{
+		
+	}
+}
 
 }
 

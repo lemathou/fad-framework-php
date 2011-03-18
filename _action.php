@@ -11,6 +11,9 @@
   * 
   */
 
+if (!defined("PATH_INCLUDE"))
+	die("Config file not loaded");
+
 // Variables globales, constructeurs généraux, classes générales, fonctions diverses, etc.
 include PATH_INCLUDE."/header.inc.php";
 

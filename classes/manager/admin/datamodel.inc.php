@@ -1,11 +1,13 @@
 <?php
 
 /**
-  * $Id: datamodel.inc.php 27 2011-01-13 20:58:56Z lemathoufou $
+  * $Id: datamodel.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
+  * http://sourceforge.net/projects/phpfadframework/
+  * Licence : http://www.gnu.org/copyleft/gpl.html  GNU General Public License
   * 
   */
 
@@ -32,7 +34,7 @@ function insert_form()
 
 $script = "<?php\n\nclass $this->type extends dataobject\n{\n\nfunction __tostring()\n{\n\nreturn;\n\n}\n\n}\n\n?>";
 
-_gestion::insert_form(null, array("script"=>$script));
+_manager::insert_form(null, array("script"=>$script));
 
 }
 

@@ -11,6 +11,8 @@
   *
   */
 
+if (!defined("PATH_INCLUDE"))
+	die("Config file not loaded");
 
 include PATH_INCLUDE."/header.inc.php";
 

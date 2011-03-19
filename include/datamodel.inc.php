@@ -32,6 +32,9 @@ if (DEBUG_GENTIME == true)
 
 /**
  * Access function
+ * @return _datamodel_manager
+ * @return _datamodel
+ * @return _dataobject
  */
 function datamodel($datamodel_id=null, $query=null)
 {
@@ -92,6 +95,8 @@ return null;
 }
 /**
  * Access function
+ * @return _datamodel_ref_manager
+ * @return _datamodel_ref
  */
 function datamodel_ref($ref=null)
 {

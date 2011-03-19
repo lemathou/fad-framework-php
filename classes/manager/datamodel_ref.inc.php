@@ -85,6 +85,13 @@ $this->query_fields();
 
 }
 
+public function db_table()
+{
+
+return $this->name."_ref";
+
+}
+
 public function query_fields()
 {
 
@@ -94,7 +101,7 @@ $this->fields_key = array();
 $query = db("SELECT `name`, `type`, `value`, `key` FROM `_datamodel_ref_fields` WHERE `datamodel_ref_id`='$this->id'");
 while ($row=$query->fetch_assoc())
 {
-	$this->fields_detail[$row["name"]] = array("type"=>$row["type"], "value"=>json_decode($row["value"]), "opt"=>array());
+	$this->fields_detail[$row["name"]] = array("label"=>$row["name"], "type"=>$row["type"], "value"=>json_decode($row["value"]), "opt"=>array());
 	if ($row["key"])
 		$this->fields_key[] = $row["name"];
 }
@@ -135,7 +142,8 @@ else
 
 /**
  * Returns a data field
- * @param unknown_type $name
+ * @param string $name
+ * @return data
  */
 public function __get($name)
 {
@@ -151,7 +159,7 @@ elseif (array_key_exists($name, $this->fields_detail))
 }
 /**
  * Returns if a data field is defined
- * @param unknown_type $name
+ * @param string $name
  */
 public function __isset($name)
 {
@@ -176,6 +184,65 @@ public function fields_key()
 {
 
 return $this->fields_key;
+
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param array $params
+ * @return array
+ */
+public function get(array $params=array())
+{
+
+if (!is_array($params))
+	return null;
+
+//if (array_key_exists($id, $this->objects))
+//	return $this->objects[$id];
+
+if ($object=$this->db_get($params))
+	return $object; // $this->objects[$id] = 
+
+return null;
+
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param array $params
+ * @return array
+ */
+protected function db_get(array $params=array())
+{
+
+$query = array("from"=>array("`".$this->db_table()."`"), "fields"=>array(), "params"=>array());
+
+foreach($params as $name=>$value)
+	if (array_key_exists($name, $this->fields_detail))
+		$query["params"][] = "`".$this->__get($name)->db_fieldname()."`='".db()->string_escape($value)."'";
+
+foreach ($this->fields_detail as $name=>$field)
+{
+	$query["fields"][] = "`".$this->__get($name)->db_fieldname()."` as $name";
+}
+
+if (count($query["params"]))
+	$query_params = "WHERE ".implode(" AND ", $query["params"]);
+else
+	$query_params = "";
+
+$return = array();
+
+$query_string = "SELECT ".implode(", ", $query["fields"])." FROM ".implode(", ", $query["from"])." $query_params";
+//echo "<p>$query_string</p>";
+$query = db()->query($query_string);
+while ($fields=$query->fetch_assoc())
+	$return[] = $fields;
+
+return $return;
 
 }
 

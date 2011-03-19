@@ -75,8 +75,8 @@ $this->datamodel_find();
 
 /**
  * 
- * @param $id
- * @param $fields
+ * @param integer $id
+ * @param array $fields
  */
 function __construct($id=null, $fields=array())
 {
@@ -116,6 +116,7 @@ if ($datamodel=datamodel(get_called_class()))
 
 /**
  * Returns the datamodel
+ * @return _datamodel
  */
 public function datamodel()
 {
@@ -125,6 +126,12 @@ if ($this->datamodel_id)
 
 }
 
+/**
+ * 
+ * Enter description here ...
+ * @param string $name
+ * @return data
+ */
 protected function construct_field($name)
 {
 
@@ -136,6 +143,12 @@ if ($field=$this->datamodel()->{$name})
 
 }
 
+/**
+ * 
+ * Enter description here ...
+ * @param string $name
+ * @return boolean
+ */
 public function __isset($name)
 {
 
@@ -195,6 +208,12 @@ elseif ($field=$this->construct_field($name))
 
 }
 
+/**
+ * 
+ * Enter description here ...
+ * @param string $name
+ * @return data
+ */
 public function __get($name)
 {
 
@@ -233,6 +252,7 @@ return $this->datamodel()->label()." ID#$this->id";
 
 /**
  * Returns field list
+ * @return array[int]data Data fields complete list
  */
 public function fields()
 {

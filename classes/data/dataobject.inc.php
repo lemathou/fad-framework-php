@@ -29,7 +29,7 @@ protected $empty_value = 0;
 
 protected $opt = array
 (
-	"datamodel" => 0,
+	"datamodel" => null,
 	"ref_field_disp" => "", // field to display if needed
 );
 
@@ -40,10 +40,20 @@ data::__construct($name, $value, $label, $options);
 
 }
 
+public function db_fieldname()
+{
+
+if (isset($this->opt["db_field"]) && ($fieldname=$this->opt["db_field"]))
+	return $fieldname;
+else
+	return $this->name."_id";
+
+}
+
 public function db_field_create()
 {
 
-return array("type"=>"integer", "size"=>10, "signed"=>false);
+return array("name"=>$this->db_fieldname(), "type"=>"integer", "size"=>10, "signed"=>false);
 
 }
 

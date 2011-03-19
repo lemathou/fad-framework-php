@@ -488,7 +488,7 @@ return new datamodel_insert_form($this, $this->fields());
  * Insert an object in database
  *
  * @param array $fields
- * @return mixed integer boolean
+ * @return dataobject|boolean
  */
 public function insert_from_form($fields)
 {
@@ -509,16 +509,26 @@ foreach($fields as $name=>$value)
 return $this->insert($fields);
 
 }
+/**
+ * 
+ * Enter description here ...
+ * @param array $fields
+ * @return dataobject|boolean
+ */
 public function insert($fields)
 {
 
 // TODO : not compatible with db_insert() !!
 if ($id=$this->db_insert($fields))
 	return $this->get($id);
-else
-	return false;
 
 }
+/**
+ * 
+ * Enter description here ...
+ * @param dataobject $object
+ * @return integer|boolean
+ */
 public function db_insert($object)
 {
 
@@ -569,12 +579,12 @@ foreach ($fields as $name=>$field)
 	{
 		if (isset($this->fields_detail[$name]["opt"]["lang"]))
 		{
-			$query_fields_lang[] = "`$name`";
+			$query_fields_lang[] = "`".$field->db_fieldname()."`";
 			$query_values_lang[] = "'".db()->string_escape($field->value_to_db())."'";
 		}
 		else
 		{
-			$query_fields[] = "`$name`";
+			$query_fields[] = "`".$field->db_fieldname()."`";
 			$query_values[] = "'".db()->string_escape($field->value_to_db())."'";
 		}
 	}
@@ -791,8 +801,7 @@ foreach ($fields as $name=>$field)
 	// Primary table update
 	else
 	{
-		if (!isset($this->fields_detail[$name]["opt"]["db_field"]) || !($fieldname = $this->fields_detail[$name]["opt"]["db_field"]))
-			$fieldname = $name;
+		$fieldname = $fields[$name]->db_fieldname();
 		if (($value = $fields[$name]->value_to_db()) !== null)
 			$value = "'".db()->string_escape($value)."'";
 		else
@@ -1160,8 +1169,7 @@ foreach($this->fields_detail as $name=>$field)
 		}
 		else
 		{
-			if (!($fieldname=$field->opt("db_field")))
-				$fieldname = $name;
+			$fieldname = $field->db_fieldname();
 			if ($field->opt("lang"))
 			{
 				$query_base["lang"][0] = true;

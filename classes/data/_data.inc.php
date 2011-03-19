@@ -363,8 +363,7 @@ public function db_query_param($value, $type="=")
 if (!in_array($type=strtoupper($type), array("=", "<", ">", "<=", ">=", "<>", "LIKE", "NOT LIKE")))
 	$type = "=";
 
-if (!isset($this->opt["db_field"]) || !($fieldname=$this->opt["db_field"]))
-	$fieldname = $this->name;
+$fieldname = $this->db_fieldname();
 
 if (is_array($value))
 {
@@ -386,10 +385,19 @@ else
  * Defines the table field that would be created by a db::table_create invoqued from datamodel.
  *  
  */
+public function db_fieldname()
+{
+
+if (isset($this->opt["db_field"]) && ($fieldname=$this->opt["db_field"]))
+	return $fieldname;
+else
+	return $this->name;
+
+}
 public function db_field_create()
 {
 
-return array("type"=>"string");
+return array("name"=>$this->db_fieldname(), "type"=>"string");
 
 }
 

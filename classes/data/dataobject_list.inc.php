@@ -76,7 +76,9 @@ if ($this->opt["datamodel_ref"] !== null && $this->opt["datamodel_ref_id"] !== n
 {
 	if ($ref = datamodel_ref($this->opt["datamodel_ref"]))
 	{
-		
+		$this->opt["db_ref_table"] = $ref->name()."_ref";
+		$this->opt["db_ref_field"] = $ref->__get($this->opt["datamodel_ref_field"])->db_fieldname();
+		$this->opt["db_ref_id"] = $ref->__get($this->opt["datamodel_ref_id"])->db_fieldname();
 	}
 }
 

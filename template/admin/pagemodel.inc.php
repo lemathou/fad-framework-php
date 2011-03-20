@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: pagemodel.inc.php 55 2011-03-10 20:59:54Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: filesystem.inc.php 50 2011-03-05 18:30:47Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

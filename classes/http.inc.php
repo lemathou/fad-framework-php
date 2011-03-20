@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: http.inc.php 21 2010-12-17 15:48:39Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008 Mathieu Moulin - iProspective - lemathou@free.fr
   * 

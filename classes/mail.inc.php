@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: mail.inc.php 31 2011-01-24 05:52:20Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

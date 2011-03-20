@@ -16,12 +16,11 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Auto loading of class definitions in libraries
+ * Auto loading of classes
  */
 function __autoload($class_name)
 {
 
-// TODO : simplifier le chargemenbt dynamique de classe !!!!
 //echo "<p>__autoload('$class_name')</p>\n";
 
 $s = substr($class_name, -8);
@@ -45,6 +44,11 @@ elseif (substr($class_name, 0, 1) == "_")
 elseif ($class_name == "dataobject")
 {
 	include PATH_CLASSES."/manager/dataobject.inc.php";
+}
+// Dataobject_ref native class
+elseif ($class_name == "dataobject_ref")
+{
+	include PATH_CLASSES."/manager/dataobject_ref.inc.php";
 }
 // Permission native class
 elseif ($class_name == "permission_info")

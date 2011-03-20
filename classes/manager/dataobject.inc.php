@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: dataobject.inc.php 30 2011-01-18 23:29:06Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

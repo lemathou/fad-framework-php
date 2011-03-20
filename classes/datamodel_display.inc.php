@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: datamodel_display.inc.php 32 2011-01-24 07:13:42Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

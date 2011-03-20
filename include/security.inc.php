@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: security.inc.php 21 2010-12-17 15:48:39Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

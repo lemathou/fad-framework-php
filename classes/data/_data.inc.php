@@ -76,7 +76,7 @@ protected static $opt_list = array
 	// structure
 	"size", "ereg", "numeric_signed", "numeric_precision", "numeric_type", "value_list", "boolean", "date_format", "datetime_format", "object_type", "email_strict", "urltype",
 	// dataobject specific
-	"datamodel", "datamodel_ref", "datamodel_ref_field", "datamodel_ref_id",
+	"datamodel", "datamodel_ref", "datamodel_ref_id",
 	// db
 	"db_table", "db_field", "db_ref_table", "db_ref_field", "db_ref_id", "db_order_field", "db_databank_field", "db_type", "select_params",
 	// disp
@@ -142,6 +142,9 @@ $this->object_id = $object->id;
 $this->object = $object;
 
 }
+/**
+ * @return _datamodel
+ */
 public function datamodel()
 {
 
@@ -151,6 +154,9 @@ else
 	return null;
 
 }
+/**
+ * @return dataobject
+ */
 public function dataobject()
 {
 
@@ -171,6 +177,9 @@ if (in_array($name, self::$opt_list))
 	$this->opt[$name] = $value;
 
 }
+/**
+ * @return mixed
+ */
 public function opt($name)
 {
 
@@ -259,6 +268,7 @@ public function convert_after(&$value)
 }
 /**
  * Returns if the value is empty (or not set)
+ * @return boolean
  */
 public function null()
 {
@@ -266,6 +276,10 @@ public function null()
 return ($this->value === null);
 
 }
+/**
+ * Returns if the value is not empty, refering on the empty_value parameter
+ * @return boolean
+ */
 public function nonempty()
 {
 
@@ -288,6 +302,7 @@ return $this->value;
 }
 /**
  * Read access to data
+ * @return mixed
  */
 public function __get($name)
 {
@@ -325,7 +340,6 @@ else
  * Convert the value in database format
  * 
  * @param unknown_type $value
- * @return unknown
  */
 public function value_from_db($value)
 {
@@ -339,6 +353,9 @@ if ($value !== null)
 }
 
 }
+/**
+ * @return mixed
+ */
 public function value_to_db()
 {
 
@@ -354,8 +371,9 @@ public function convert_from_db(&$value)
 /**
  * Return the query string for the datamodel
  * 
- * @param $value
- * @return array
+ * @param mixed $value
+ * @param string $type
+ * @return string
  */
 public function db_query_param($value, $type="=")
 {
@@ -383,7 +401,7 @@ else
 }
 /**
  * Defines the table field that would be created by a db::table_create invoqued from datamodel.
- *  
+ * @return string
  */
 public function db_fieldname()
 {
@@ -430,7 +448,7 @@ public function convert_from_form(&$value)
  * Convert the value to export it in an HTML form in the appropriate format
  * 
  * @param unknown_type $value
- * @return mixed
+ * @return string
  */
 public function value_to_form()
 {
@@ -465,6 +483,7 @@ return $this->form_field_disp($options);
 
 /**
  * Returns the field details for Javascript control functions
+ * @return string
  */
 public function js()
 {

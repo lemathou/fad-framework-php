@@ -85,6 +85,9 @@ $this->query_fields();
 
 }
 
+/**
+ * @return string
+ */
 public function db_table()
 {
 
@@ -113,6 +116,9 @@ while ($row=$query->fetch_assoc())
 
 }
 
+/**
+ * @return string
+ */
 public function __tostring()
 {
 
@@ -153,7 +159,9 @@ if (!is_string($name))
 	return null;
 
 if (array_key_exists($name, $this->fields))
+{
 	return clone $this->fields[$name];
+}
 elseif (array_key_exists($name, $this->fields_detail))
 {
 	$this->construct_field($name);
@@ -164,6 +172,7 @@ elseif (array_key_exists($name, $this->fields_detail))
 /**
  * Returns if a data field is defined
  * @param string $name
+ * @return boolean
  */
 public function __isset($name)
 {
@@ -174,6 +183,7 @@ return array_key_exists($name, $this->fields_detail);
 
 /**
  * Returns the complete data field list
+ * @return array[int]data
  */
 public function fields()
 {
@@ -184,6 +194,10 @@ foreach($this->fields_detail as $name=>$field)
 return $this->fields;
 
 }
+/**
+ * Returns list of key fields
+ * @return array[int]string
+ */
 public function fields_key()
 {
 
@@ -199,8 +213,12 @@ return $this->fields_key;
 public function get($id)
 {
 
+if (!count($this->fields_key))
+	return null;
+
 if (is_array($id))
 {
+	$ref = array();
 	foreach ($this->fields_key as $nb=>$name)
 	{
 		if ((isset($id[$name]) && ($r=$id[$name])) || (isset($id[$nb]) && ($r=$id[$nb])))
@@ -240,11 +258,48 @@ else
 
 /**
  * 
- * Enter description here ...
+ * Query function
  * @param array $params
  * @return array
  */
 public function query(array $params=array())
+{
+
+if (count($this->fields_key))
+	return $this->query_key($params);
+else
+	return $this->query_nokey($params);
+
+}
+/**
+ * 
+ * Query function if we haven't keys
+ * @param array $params
+ * @return array
+ */
+protected function query_nokey(array $params=array())
+{
+
+$return = array();
+
+foreach($this->db_select($params, true) as $fields)
+{
+	$object = new dataobject_ref();
+	$object->datamodel_ref_set($this->id);
+	$object->update_from_db($fields);
+	$return[] = $object;
+}
+
+return $return;
+
+}
+/**
+ * 
+ * Query function if we have keys
+ * @param array $params
+ * @return array
+ */
+protected function query_key(array $params=array())
 {
 
 $list = $this->db_select($params, array("id"));
@@ -293,6 +348,11 @@ return $return;
 
 }
 
+/**
+ * @param array $params
+ * @param array|boolean $fields
+ * @return array
+ */
 public function db_select(array $params, $fields=true)
 {
 
@@ -300,7 +360,7 @@ $query = array("from"=>array("`".$this->db_table()."`"), "fields"=>array(), "par
 
 foreach($params as $name=>$value)
 	if (array_key_exists($name, $this->fields_detail))
-		$query["params"][] = "`".$this->__get($name)->db_fieldname()."`='".db()->string_escape($value)."'";
+		$query["params"][] = $this->__get($name)->db_query_param($value);
 
 foreach ($this->fields_key as $name)
 {
@@ -313,6 +373,9 @@ foreach ($this->fields() as $name=>$field)
 		$query["fields"][] = "`".$field->db_fieldname()."` as $name";
 	}
 }
+
+if (!count($query["fields"]))
+	return array();
 if (count($query["params"]))
 	$query_params = "WHERE ".implode(" AND ", $query["params"]);
 else

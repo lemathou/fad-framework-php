@@ -15,25 +15,39 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
+/**
+ * Default object type for datamodel_ref
+ */
 class dataobject_ref
 {
 
+/*
+ * datamodel_ref reference
+ * @var integer
+ */
 protected $datamodel_ref_id;
-
+/*
+ * Identifier
+ * @var integer
+ */
 protected $id;
+/*
+ * @var timestamp
+ */
 protected $_update;
 
 protected $field_values = array();
 protected $fields = array();
 
+/*
+ * Options
+ * @var array
+ */
+protected $opt = array();
+
 public function __sleep()
 {
 
-/*
-foreach ($this->fields as $name=>$field)
-	if ($field->value !== $this->field_values[$name])
-		$this->field_values[$name] = $field->value;
-*/
 return array("datamodel_ref_id", "id", "_update", "field_values");
 
 }
@@ -49,6 +63,21 @@ public function __wakeup()
  */
 function __construct()
 {
+
+}
+
+/**
+ * Correct the problem of fields
+ */
+function __clone()
+{
+
+$this->id = null;
+$this->_update = time();
+foreach ($this->fields as $name=>$field)
+{
+	$this->fields[$name] = clone $field;
+}
 
 }
 
@@ -183,49 +212,6 @@ elseif ($field=$this->construct_field($name))
 }
 
 /**
- * Update data fields from database
- *
- * @return unknown
- */
-public function update_from_db(array $fields)
-{
-
-foreach ($fields as $name=>$value)
-{
-	//echo "<p>$name</p>";
-	//var_dump($value);
-	if ($name == "id")
-	{
-		$this->id = $value;
-	}
-	elseif ($name == "_update")
-	{
-		$e = explode(" ", $value);
-		$d = explode("-", $e[0]);
-		$t = explode(":", $e[1]);
-		$this->_update = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
-	}
-	elseif (array_key_exists($name, $this->fields))
-	{
-		$this->fields[$name]->value_from_db($value);
-		$this->field_values[$name] = $this->fields[$name]->value;
-	}
-	elseif ($field=$this->construct_field($name))
-	{
-		$field->value_from_db($value);
-		$this->fields[$name] = $field;
-		$this->field_values[$name] = $field->value;
-	}
-}
-
-$ref = array();
-foreach($this->datamodel_ref()->fields_key() as $f)
-	$ref[] = $fields[$f];
-$this->id = json_encode($ref);
-
-}
-
-/**
  * Default disp value
  * Can (and SHOULD) be overloaded in datamodel library
  * 
@@ -257,6 +243,129 @@ foreach ($this->datamodel_ref()->fields() as $name=>$field)
 }
 
 return $this->fields;
+
+}
+
+/**
+ * Insert data into database as a new object
+ *
+ * @param unknown_type $options
+ */
+public function db_insert($options=array())
+{
+
+if ($this->datamodel_ref()->db_insert($this))
+{
+	foreach ($this->fields as $name=>$field)
+		$this->field_values[$name] = $field->value;
+	return true;
+}
+else
+	return false;
+
+}
+
+/**
+ * Update data fields from database
+ *
+ * @return unknown
+ */
+public function update_from_db(array $fields)
+{
+
+foreach ($fields as $name=>$value)
+{
+	//echo "<p>$name</p>";
+	//var_dump($value);
+	if ($name == "_update")
+	{
+		$e = explode(" ", $value);
+		$d = explode("-", $e[0]);
+		$t = explode(":", $e[1]);
+		$this->_update = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
+	}
+	elseif (array_key_exists($name, $this->fields))
+	{
+		$this->fields[$name]->value_from_db($value);
+		$this->field_values[$name] = $this->fields[$name]->value;
+	}
+	elseif ($field=$this->construct_field($name))
+	{
+		$field->value_from_db($value);
+		$this->fields[$name] = $field;
+		$this->field_values[$name] = $field->value;
+	}
+}
+
+if (count($this->datamodel_ref()->fields_key()))
+{
+	$ref = array();
+	foreach($this->datamodel_ref()->fields_key() as $f)
+		$ref[] = $fields[$f];
+	$this->id = json_encode($ref);
+}
+
+}
+/**
+ * Update data into database
+ *
+ * @param array $opt
+ */
+public function db_update($opt=array())
+{
+
+// Permission verification
+if (false)
+{
+	die("NOT ALLOWED TO UPDATE !");
+}
+
+$fields = array();
+foreach ($this->fields as $name=>$field)
+{
+	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
+	{
+		$fields[$name] = $field;
+	}
+}
+
+if (!count($fields))
+	return false;
+
+if ($this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id)), $fields))
+{
+	foreach ($fields as $name=>$field)
+	{
+		// Update linked objects
+		if (get_class($field) == "data_dataobject_list" && ($datamodel=datamodel($field->opt("datamodel"))))
+		{
+			if (is_array($field->value)) foreach($field->value as $id)
+			{
+				if (!array_key_exists($name, $this->field_values) || (is_array($this->field_values[$name]) && !in_array($id, $this->field_values[$name])))
+				{
+					if ($object=$datamodel->get($id))
+						$object->db_retrieve(true, true);
+				}
+			}
+			if (isset($this->field_values[$name]) && is_array($this->field_values[$name])) foreach($this->field_values as $id)
+			{
+				if (is_array($field->value) && !in_array($id, $field->value))
+				{
+					if ($object=$datamodel->get($id))
+						$object->db_retrieve(true, true);
+				}
+			}
+		}
+		$this->field_values[$name] = $field->value;
+	}
+	$this->_update = time();
+	//db()->query("INSERT INTO `_datamodel_update` (`datamodel_id`, `dataobject_id`, `account_id`, `action`, `datetime`) VALUES ('".$this->datamodel()->id()."', '".$this->id."', '".login()->id()."', 'u', NOW())");
+	if (CACHE)
+		cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
+	return true;
+}
+
+return false;
 
 }
 

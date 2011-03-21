@@ -25,36 +25,34 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Agrégats de données
- *
+ * Default object type for datamodel
  */
 class dataobject
 {
 
-/**
- * Datamodel specifications
- *
+/*
+ * Datamodel reference
  * @var integer
  */
-protected $datamodel_id=0;
-
-/**
- * Data fields
- * 
- * @var array
+protected $datamodel_id;
+/*
+ * Identifier
+ * @var integer
  */
-protected $id=0;
-protected $_update = null;
+protected $id;
+/*
+ * @var timestamp
+ */
+protected $_update;
 
-protected $fields = array();
 protected $field_values = array();
+protected $fields = array();
 
-/**
- * Form, display, etc. options
- * 
+/*
+ * Options
  * @var array
  */
-protected $options = array();
+protected $opt = array();
 
 public function __sleep()
 {
@@ -92,7 +90,7 @@ $this->datamodel_find();
 function __clone()
 {
 
-$this->id = 0;
+$this->id = null;
 $this->_update = time();
 foreach ($this->fields as $name=>$field)
 {
@@ -369,6 +367,7 @@ else
 /**
  * Return a view of the object, using a datamodel template
  * @param unknown_type $name
+ * @return _template
  */
 public function view($name="")
 {
@@ -569,9 +568,9 @@ if (is_array($fields) && count($fields) > 0)
 /**
  * Update data into database
  *
- * @param unknown_type $options
+ * @param array $opt
  */
-public function db_update($options=array())
+public function db_update($opt=array())
 {
 
 // Permission verification
@@ -631,6 +630,7 @@ return false;
 
 /**
  * Returns the details for Javascript control functions
+ * @return string
  */
 public function js()
 {
@@ -786,6 +786,7 @@ public function ref_change($datamodel_name, $blahblah)
 
 /**
  * Returns the default string for url rewriting
+ * @return string
  */
 function url_str()
 {
@@ -803,6 +804,7 @@ else
 
 /**
  * Returns default URL to the view page
+ * @return string
  */
 public function url()
 {
@@ -816,6 +818,7 @@ else
 
 /**
  * Returns default LINK to the view page, using default URL and default display
+ * @return string
  */
 public function link()
 {

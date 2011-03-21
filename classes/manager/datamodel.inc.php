@@ -1141,7 +1141,11 @@ foreach($this->fields_detail as $name=>$field)
 	{
 		$field = $this->__get($name);
 		$fields[] = $name;
-		if ($field->type == "dataobject_select")
+		if ($field->type == "dataobject_list_ref")
+		{
+			
+		}
+		elseif ($field->type == "dataobject_select")
 		{
 			$fieldname_1 = $field->opt["db_databank_field"];
 			$fieldname_2 = $field->opt["db_field"];

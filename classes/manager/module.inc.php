@@ -3,7 +3,7 @@
 /**
   * $Id$
   * 
-  * Copyright 2008 Mathieu Moulin - lemathou@free.fr
+  * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 
   * This file is part of PHP FAD Framework.
   * http://sourceforge.net/projects/phpfadframework/
@@ -17,7 +17,7 @@ if (DEBUG_GENTIME == true)
 
 // global module class
 
-class module_gestion
+class _module_manager
 {
 
 protected $list = array();
@@ -44,7 +44,7 @@ else
 
 // Pour chaque module charg�
 
-class module
+class _module
 {
 
 protected $name = "";

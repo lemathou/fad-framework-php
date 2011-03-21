@@ -1,32 +1,34 @@
-Dossier /include
+Folder /include
 
-Contient l'ensemble des fichiers nécessaires au bon fonctionnement de toute page.
-
---
-
-Fichiers :
-
-
-config.inc.php : paramètres de configuration globale
-
-header.inc.php : header standard qui charge les composants nécessaires pour une page.
-
-classes.inc.php : Classes de base
-db.inc.php : Chargement du moteur de base de donnée
-exceptions.inc.php : Gestion des exceptions
-library.inc.php : Gestion des bibliothèques dynamiques
-login.inc.php : Connexion utilisateur
-menu.inc.php : Gestion des pages et menus
-modules.inc.php : Gestion des modules
-rewriting.inc.php : Réécriture d'URL
-session.inc.php : Gestion des sessions
-template.inc.php : Gestion des templates et du cache.
+Contains required informations for the application
+Mosts of those files are only access functions, which load the asociated
+class definition on the first call (from cache if possible).
 
 --
 
-Dossiers :
+Files :
 
+header.inc.php : Loads the complete list of required files.
 
-db : Moteurs de base de donnée
-rewriting : Méthodes de réécriture d'url
+class_autoload.inc.php : Autoloading of most classes
 
+lang.inc.php : Languages
+security.inc.php : Security
+login.inc.php : Login and accounts
+
+db.inc.php : Database access function
+modules.inc.php : Modules access function
+permission.inc.php : Permission access function
+data.inc.php : Datatypes access function
+library.inc.php : Libraries access function
+datamodel.inc.php : Datamodel access function
+pagemodel.inc.php : Pagemodel acces function
+page.inc.php : Page acces function
+template.inc.php : Templates acces function
+menu.inc.php : Menus access function
+globals.inc.php : Global parameters acces function
+
+exceptions.inc.php : Exception acces function
+error.inc.php : Error acces function
+gentime.inc.php : Gentime access function
+data_controller.inc.php : Main controller for data

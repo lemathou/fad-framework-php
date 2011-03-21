@@ -28,21 +28,77 @@ protected $value_empty = array();
 protected $opt = array
 (
 	"datamodel_ref" => null, // datamodel_ref id or name
-	"datamodel_ref_field" => null, // datamodel_ref field to retrieve
 	"datamodel_ref_id" => null, // datamodel_ref field identifying this object
 );
+
+protected $value_retrieve = false;
+protected $value_use_ref = false;
+protected $datamodel_ref = null;
 
 function __construct($name, $value, $label="Field list", $options=array())
 {
 
-data::__construct($name, $value, $label, $options);
+parent::__construct($name, $value, $label, $options);
+//$this->value_retrieve();
 
 }
 
-function datamodel_ref()
+public function __sleep()
 {
 
-return datamodel_ref($this->opt["datamodel_ref"]);
+// We don't save the value, which is handled by datamodel_ref().
+return array("name", "label", "datamodel_id", "object_id", "empty_value", "opt");
+
+}
+
+public function __wakeup()
+{
+
+parent::__wakeup();
+//$this->value_retrieve();
+
+}
+
+/**
+ * 
+ * Retrieve associated object list
+ * @param boolean $force
+ */
+public function value_retrieve($force=false)
+{
+
+if (count($this->datamodel_ref()->fields_key()))
+	$this->value_use_ref = true;
+
+if ($this->object_id && (!$this->value_retrieve || $force))
+{
+	if ($this->value_use_ref)
+	{
+		$this->value = array();
+		$list = $this->datamodel_ref()->query(array($this->opt["datamodel_ref_id"]=>$this->object_id), array());
+		foreach($list as $o)
+			$this->value[] = $o->id;
+	}
+	else
+	{
+		$this->value = $this->datamodel_ref()->query(array($this->opt["datamodel_ref_id"]=>$this->object_id));
+	}
+}
+
+$this->value_retrieve = true;
+
+}
+
+function datamodel_ref($ref=null)
+{
+
+if ($this->datamodel_ref === null)
+	$this->datamodel_ref = datamodel_ref($this->opt["datamodel_ref"]);
+
+if ($ref === null)
+	return $this->datamodel_ref;
+else
+	return $this->datamodel_ref->get($ref);
 
 }
 
@@ -53,106 +109,40 @@ $type_list = array( "=", "LIKE", "<", ">", "<=", ">=", "NOT LIKE" );
 if (!in_array($type, $type_list))
 	$type = "=";
 
-$fieldname = $this->datamodel_ref()->__get($this->opt["datamodel_ref_id"])->db_fieldname();
-
-if (is_array($value) && count($value))
-	return "`".$fieldname."` IN (".implode(", ",$this->value).")";
-else
-	return "`".$fieldname."` $type '".db()->string_escape($value)."'";
-
-}
-
-public function opt_set($name, $value)
-{
-
-parent::opt_set($name, $value);
-
-}
-
-/**
- * Data to create the associated database 
- */
-public function db_ref_create()
-{
-
-if ($this->opt["db_ref_table"])
-{
-	$return = array
-	(
-		"name" => $this->opt["db_ref_table"],
-		"options" => array(),
-	);
-	if ($this->opt["db_order_field"])
-		$return["fields"] = array
-		(
-			$this->opt["db_ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
-			$this->opt["db_ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>false),
-			$this->opt["db_order_field"] = array("type"=>"integer", "size"=>2, "signed"=>false, "null"=>false, "key"=>true)
-		);
-	else
-		$return["fields"] = array
-		(
-			$this->opt["db_ref_id"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true),
-			$this->opt["db_ref_field"] => array("type"=>"integer", "size"=>10, "signed"=>false, "null"=>false, "key"=>true)
-		);
-	return $return;
-}
-
-}
-
-public function retrieve_all()
-{
-
-$this->value = array();
-foreach($this->datamodel_ref()->query(array()) as $object)
-{
-	$this->value[] = $object->id;
-}
+return $this->datamodel_ref()->__get($this->opt["datamodel_ref_id"])->db_query_param($value, $type);
 
 }
 
 function __tostring()
 {
 
-if ($this->opt["db_order_field"])
-	$order = array($this->opt["db_order_field"]=>"asc");
-else
-	$order = array();
-
-if (!is_array($this->value) || !count($this->value))
-{
-	return "";
-}
-elseif ($this->opt["ref_field_disp"])
-{
-	$query = datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order);
-	$return = array();
-	foreach($query as $object)
-	{
-		$return[] = $object->{$this->opt["ref_field_disp"]};
-	}
-	return implode(", ", $return);
-}
-else
-{
-	return implode(", ", datamodel($this->opt["datamodel"])->query(array(array("name"=>"id", "value"=>$this->value)), true, $order));
-}
+return "";
 
 }
 
 /**
  * Returns specific objet fields in a list (usefull to retrieve easily associated objects)
+ * @param string $name
  */
 function field_list($name)
 {
 
-if (!$this->datamodel_ref()->__exists($name))
+$this->value_retrieve();
+
+if (!$this->datamodel_ref()->__isset($name))
 	return array();
 
 $return = array();
-foreach ($this->value as $ref)
-	$return[] = $this->datamodel_ref($ref)->__get($name);
-
+if ($this->value_use_ref)
+{
+	foreach($this->value as $ref)
+		$return[] = $this->datamodel_ref($ref)->{$name};
+}
+else
+{
+	foreach($this->value as $object)
+		$return[] = $object->{$name};
+}
 return $return;
 
 }
@@ -163,11 +153,19 @@ return $return;
 function object_list()
 {
 
-$return = array();
-foreach ($this->value as $ref)
-	$return[] = $this->datamodel_ref($ref);
+$this->value_retrieve();
 
-return $return;
+if ($this->value_use_ref)
+{
+	$return = array();
+	foreach ($this->value as $ref)
+		$return[] = $this->datamodel_ref($ref);
+	return $return;
+}
+else
+{
+	return $this->value;
+}
 
 }
 

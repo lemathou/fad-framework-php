@@ -23,43 +23,81 @@ if (DEBUG_GENTIME == true)
 abstract class __manager
 {
 
+/**
+ * @var string
+ */
 protected $type = "";
-
+/**
+ * @var array
+ */
 protected $list = array();
+/**
+ * @var array
+ */
 protected $list_detail = array();
+/**
+ * @var array
+ */
 protected $list_name = array();
 
-// Detailled data (with type, etc.)
-protected $info_detail = array // Keep at least name and label !
+/**
+ * Detailled data (with type, etc.)
+ * Keep at least name and label !
+ * @var array
+ */
+protected $info_detail = array
 (
 	"name"=>array("label"=>"Nom (unique)", "type"=>"string", "size"=>64, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true)
 );
-// Required info
+/**
+ * Required info
+ * @var array
+ */
 protected $info_required = array("name");
-// Data in main database table
+/**
+ * Data in main database table
+ * @var array
+ */
 protected $info_list = array();
-// Data in lang database table
+/**
+ * Data in main lang database table
+ * @var array
+ */
 protected $info_lang_list = array();
 
-// Retrieve all objects on first load
+/**
+ * Retrieve all objects on first load
+ * @var boolean
+ */
 protected $retrieve_objects = false;
-// Keep all non required info after first load
-protected $retrieve_details = true;
+/**
+ * @var boolean
+ */
+protected $retrieve_details = false;
 
+/**
+ * @return array
+ */
 public function info_list()
 {
 
 return $this->info_list;
 
 }
+/**
+ * @return array
+ */
 public function info_lang_list()
 {
 
 return $this->info_lang_list;
 
 }
+/**
+ * @return array
+ */
 public function info_detail_list()
 {
 
@@ -69,6 +107,7 @@ return $this->info_detail;
 
 /**
  * Sauvegarde/Restauration de la session
+ * @return array
  */
 function __sleep()
 {
@@ -130,7 +169,7 @@ if ($query)
 	$this->query_info();
 	$this->construct_more();
 }
-elseif (false) // TODO : Restore $this->list_detail FROM a file. Mau be faster than object cache
+elseif (false) // TODO : Restore $this->list_detail FROM a file. Surely faster than object cache
 {
 	include PATH_ROOT."/include/$this->type.inc.php";
 	$this->__wakeup();
@@ -241,7 +280,7 @@ protected function query_info_more()
 }
 
 /**
- * Constructs an object
+ * Constructs and returns an object
  */
 protected function construct_object($id)
 {
@@ -274,6 +313,7 @@ foreach ($this->list_detail as $id=>$info)
 /**
  * Returns an object using its ID
  * @param int $id
+ * @return _object
  */
 function get($id)
 {
@@ -303,7 +343,8 @@ elseif (!$this->retrieve_objects && isset($this->list_detail[$id]))
 
 /**
  * Retrieve an object using its unique name
- * @param unknown_type $name
+ * @param string $name
+ * @return _object
  */
 function __get($name)
 {
@@ -321,7 +362,8 @@ return $this->__get($name);
 
 /**
  * Returns if an object exists
- * @param int $id
+ * @param integer $id
+ * @return boolean
  */
 function exists($id)
 {
@@ -333,6 +375,7 @@ return (is_numeric($id) && array_key_exists($id, $this->list_detail));
  * 
  * Returns if an object exists using its unique name
  * @param string $name
+ * @return boolean
  */
 function __isset($name)
 {
@@ -349,6 +392,7 @@ return $this->__isset($name);
 
 /**
  * Returns the list
+ * @return array[int]_object
  */
 public function list_get()
 {
@@ -356,6 +400,12 @@ public function list_get()
 return $this->list;
 
 }
+/**
+ * 
+ * Enter description here ...
+ * @param string $name
+ * @return array|int
+ */
 public function list_name_get($name=null)
 {
 
@@ -365,6 +415,12 @@ else
 	return $this->list_name;
 
 }
+/**
+ * 
+ * Enter description here ...
+ * @param int $id
+ * @return array
+ */
 public function list_detail_get($id=null)
 {
 
@@ -383,11 +439,27 @@ else
 abstract class __object
 {
 
-protected $_type = ""; // To be overloaded !!
+/**
+ * To be overloaded !!
+ * @var string
+ */
+protected $_type = "";
 
-protected $id = null;
+/**
+ * @var integer
+ */
+protected $id;
+/**
+ * @var string
+ */
 protected $name = "";
+/**
+ * @var string
+ */
 protected $label = "";
+/**
+ * @var string
+ */
 protected $description = "";
 
 public function __construct($id, $query=true, $infos=array())
@@ -412,10 +484,12 @@ else foreach ($infos as $name=>$value)
 $this->construct_more($infos);
 
 }
+/**
+ * To be extended if needed !
+ * @param array $infos
+ */
 protected function construct_more($infos)
 {
-
-// To be extended if needed !
 
 }
 
@@ -475,42 +549,60 @@ if (CACHE)
 	cache::store($this->_type."_$this->id", $this, CACHE_GESTION_TTL);
 
 }
+/**
+ * 
+ * To be extended if needed
+ */
 protected function query_info_more()
 {
 
-// To be extended if needed
-
 }
 
+/**
+ * @return string
+ */
 function __tostring()
 {
 
 return "[$this->_type][ID#$this->id] $this->name : $this->label";
 
 }
+/**
+ * @return integer|null
+ */
 public function id()
 {
 
 return $this->id;
 
 }
+/**
+ * @return string
+ */
 public function name()
 {
 
 return $this->name;
 
 }
+/**
+ * @return string
+ */
 public function label()
 {
 
 return $this->label;
 
 }
+/**
+ * @param string $name
+ * @return mixed
+ */
 public function info($name)
 {
 
 // OUlala attention... même si on est jamais à l'abri d'un var_dump !
-if (property_exists($this, $name))
+if (is_string($name) && property_exists($this, $name))
 	return $this->{$name};
 
 }

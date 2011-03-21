@@ -81,6 +81,21 @@ protected function query_info_more()
 {
 
 // Params
+$this->query_params();
+
+}
+
+protected function query_params($reset=false)
+{
+
+if ($reset)
+{
+	foreach($this->list_detail as $id=>&$info)
+	{
+		$info["param_list"] = null;
+	}
+}
+
 $query = db()->query("SELECT t1.`template_id`, t1.`name`, t1.`datatype`, t1.`value`, t2.`label` FROM `_template_params` as t1 LEFT JOIN `_template_params_lang` as t2 ON t1.template_id=t2.template_id AND t1.name=t2.name AND t2.lang_id='".SITE_LANG_DEFAULT_ID."' ORDER BY t1.template_id, t1.`order` ASC");
 while ($param = $query->fetch_assoc())
 {

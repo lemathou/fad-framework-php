@@ -21,25 +21,37 @@ if (DEBUG_GENTIME == true)
 class dataobject_ref
 {
 
-/*
+/**
  * datamodel_ref reference
  * @var integer
  */
 protected $datamodel_ref_id;
-/*
+/**
  * Identifier
  * @var integer
  */
 protected $id;
-/*
+/**
+ * Insert date and time
+ * @var timestamp
+ */
+protected $_insert;
+/**
+ * Last update date and time
  * @var timestamp
  */
 protected $_update;
 
+/**
+ * @var array
+ */
 protected $field_values = array();
+/**
+ * @var array
+ */
 protected $fields = array();
 
-/*
+/**
  * Options
  * @var array
  */
@@ -112,7 +124,7 @@ if ($this->datamodel_ref_id)
 protected function construct_field($name)
 {
 
-if ($field=$this->datamodel_ref()->{$name})
+if (is_string($name) && ($field=$this->datamodel_ref()->{$name}))
 {
 	//$field->object_set($this);
 	return $field;
@@ -191,6 +203,8 @@ elseif ($field=$this->construct_field($name))
 public function __get($name)
 {
 
+// TODO : ajouter $_insert
+
 if ($name == "id" || $name == "_update")
 	return $this->{$name};
 elseif (array_key_exists($name, $this->fields))
@@ -247,15 +261,82 @@ return $this->fields;
 }
 
 /**
- * Insert data into database as a new object
- *
- * @param unknown_type $options
+ * Returns if the object has changed
+ * @return boolean
  */
-public function db_insert($options=array())
+public function changed()
 {
 
-if ($this->datamodel_ref()->db_insert($this))
+foreach ($this->fields as $name=>$field)
+	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
+		return true;
+
+return false;
+
+}
+
+/**
+ * Returns the list of changed fields
+ * @return array
+ */
+public function fields_changed()
 {
+
+$list = array();
+foreach ($this->fields as $name=>$field)
+	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
+		$list[$name] = $field;
+return $list;	
+
+}
+/**
+ * Returns the original values of fields
+ * @return array
+ */
+public function fields_values()
+{
+
+return $this->field_values;	
+
+}
+
+/**
+ * Insert data into database as a new object
+ *
+ * @param array $opt
+ * @return boolean
+ */
+public function db_update($opt=array())
+{
+
+// TODO : Verify that the changed fields do not change the appartenance to an object field.
+// TODO : Do not change the Key fields or find a good way to do it !
+
+if ($this->datamodel_ref()->db_update($this))
+{
+	$this->_update = time();
+	foreach ($this->fields_changed as $name=>$field)
+			$this->field_values[$name] = $field->value;
+	return true;
+}
+else
+	return false;
+
+}
+
+/**
+ * Insert data into database as a new object
+ *
+ * @param array $opt
+ * @return boolean
+ */
+public function db_insert($opt=array())
+{
+
+if ($id=$this->datamodel_ref()->db_insert($this))
+{
+	$this->id = $id; // TODO : threat the case "true"
+	$this->_insert = $this->_update = time();
 	foreach ($this->fields as $name=>$field)
 		$this->field_values[$name] = $field->value;
 	return true;

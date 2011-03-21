@@ -27,9 +27,6 @@ protected $value_empty = array();
 
 protected $opt = array
 (
-	"datamodel_ref" => null, // datamodel_ref id or name
-	"datamodel_ref_field" => null, // datamodel_ref field to retrieve
-	"datamodel_ref_id" => null, // datamodel_ref field identifying this object
 	"datamodel" => "databank_name", // datamodel name or ID
 	"db_ref_table" => "", // linking table
 	"db_ref_field" => "", // table field identifier for the object(s) to retrieve
@@ -65,22 +62,6 @@ public function opt_set($name, $value)
 {
 
 parent::opt_set($name, $value);
-$this->opt_update();
-
-}
-
-protected function opt_update()
-{
-
-if ($this->opt["datamodel_ref"] !== null && $this->opt["datamodel_ref_id"] !== null && $this->opt["datamodel_ref_field"] !== null)
-{
-	if ($ref = datamodel_ref($this->opt["datamodel_ref"]))
-	{
-		$this->opt["db_ref_table"] = $ref->name()."_ref";
-		$this->opt["db_ref_field"] = $ref->__get($this->opt["datamodel_ref_field"])->db_fieldname();
-		$this->opt["db_ref_id"] = $ref->__get($this->opt["datamodel_ref_id"])->db_fieldname();
-	}
-}
 
 }
 

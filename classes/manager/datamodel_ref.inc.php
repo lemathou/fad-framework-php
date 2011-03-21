@@ -52,17 +52,30 @@ protected $label;
  * @var array
  */
 protected $fields_detail = array();
+/**
+ * @var array
+ */
 protected $fields = array();
 
+/**
+ * @var array
+ */
 protected $fields_calculated = array();
+/**
+ * @var array
+ */
 protected $fields_key = array();
 
 /**
  * Objects
+ * @var array
  */
 protected $objects = array();
 protected $objects_exists = array();
 
+/**
+ * @return array
+ */
 function __sleep()
 {
 
@@ -206,7 +219,80 @@ return $this->fields_key;
 }
 
 /**
+ * Insert an object
+ * Returns the Id of the inserted object, used in the object db_insert() method to update its own id param
+ * Notre that the is the only way to update an object ID, mpot secure because an object who has an id is
+ * necesserely created in database.
  * 
+ * @param _dataobject_ref $object
+ * @return int|boolean
+ */
+public function db_insert(dataobject_ref $object)
+{
+
+// TODO : Verify that the object has been first inserted and so is really from database !
+if (false)
+	return false;
+
+$query = array("from"=>array("`".$this->db_table()."`"), "field_names"=>array(), "field_values"=>array());
+
+foreach($object->fields_changed() as $name=>$field)
+{
+	$query["field_names"][] = "`".$field->db_fieldname()."`";
+	$query["field_values"][] = "'".$field->value_to_db()."'";
+}
+
+if (!count($query["field_names"]))
+	return false;
+
+$query_string = "INSERT INTO ".implode(", ", $query["from"])." (".implode(", ", $query["field_names"]).") VALUES (".implode(", ", $query["field_values"]).")";
+echo "<p>$query_string</p>";
+$query = db()->query($query_string);
+
+// Todo : threat the cas we DO NOT have an ID !!
+if ($id=$query->last_id())
+	return $id;
+else
+	return false;
+
+}
+
+/**
+ * Update an object
+ * 
+ * @param _dataobject_ref $object
+ */
+public function db_update(dataobject_ref $object)
+{
+
+// TODO : Verify that the object has been first inserted and so is really from database !
+if (false)
+	return false;
+
+$query = array("from"=>array("`".$this->db_table()."`"), "fields"=>array(), "params"=>array());
+
+foreach($object->fields_values() as $name=>$value)
+{
+	$query["params"][] = $this->__get($name)->db_query_param($value);
+}
+
+foreach($object->fields_changed() as $name=>$field)
+{
+	$query["fields"][] = "`".$field->db_fieldname()."`='".$field->value_to_db()."'";
+}
+
+if (!count($query["fields"]) || !count($query["params"]))
+	return false;
+
+$query_string = "UPDATE  ".implode(", ", $query["from"])." SET ".implode(", ", $query["fields"])." WHERE ".implode(" AND ", $query["params"]);
+echo "<p>$query_string</p>";
+//$query = db()->query($query_string);
+
+return true;
+
+}
+
+/**
  * Enter description here ...
  * @param array|string $id Identifier in json or (ordered) key params
  */
@@ -262,7 +348,7 @@ else
  * @param array $params
  * @return array
  */
-public function query(array $params=array())
+public function query($params=array())
 {
 
 if (count($this->fields_key))
@@ -277,7 +363,7 @@ else
  * @param array $params
  * @return array
  */
-protected function query_nokey(array $params=array())
+protected function query_nokey($params=array())
 {
 
 $return = array();
@@ -299,7 +385,7 @@ return $return;
  * @param array $params
  * @return array
  */
-protected function query_key(array $params=array())
+protected function query_key($params=array())
 {
 
 $list = $this->db_select($params, array("id"));
@@ -353,7 +439,7 @@ return $return;
  * @param array|boolean $fields
  * @return array
  */
-public function db_select(array $params, $fields=true)
+public function db_select($params, $fields=true)
 {
 
 $query = array("from"=>array("`".$this->db_table()."`"), "fields"=>array(), "params"=>array());

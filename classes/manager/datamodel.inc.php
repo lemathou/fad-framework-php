@@ -55,7 +55,6 @@ $this->access_function_create();
 }
 
 /**
-
  * Create databank access functions
  */
 protected function access_function_create()
@@ -82,14 +81,8 @@ class __datamodel extends _object
 protected $_type = "datamodel";
 
 /**
- * Library containing required objects infos
- *
- * @var integer
- */
-protected $library_id = 0; // TODO : depreacated
-
-/**
  * If objects are often updated, uses a specific _update field !
+ * @var boolean
  */
 protected $dynamic = 0;
 
@@ -97,8 +90,9 @@ protected $dynamic = 0;
  * Shared datamodel & library, in the shared database defined in config.inc.php
  * Be carefull that the mysql user must have select/insert/update/etc. right correctly defined !
  * TODO : Put the good rights if there is only a select permission on database
+ * @var string
  */
-protected $db = null;
+protected $db;
 
 /**
  * Account default permissions.
@@ -142,23 +136,40 @@ protected $perm = "";
  * @var array
  */
 protected $fields_detail = array();
+/**
+ * @var array
+ */
 protected $fields = array();
 
+/**
+ * @var array
+ */
 protected $fields_calculated = array();
+/**
+ * @var array
+ */
 protected $fields_index = array();
+/**
+ * @var array
+ */
 protected $fields_ref = array();
 
-/*
+/**
  * Public actions / Kind of controller part of a MVC-like design
+ * @var array
  */
 protected $action_list = array();
 
 /**
  * Objects
+ * @var array
  */
 protected $objects = array();
 protected $objects_exists = array();
 
+/**
+ * @return array
+ */
 function __sleep()
 {
 
@@ -171,8 +182,6 @@ function __wakeup()
 if (!$this->db)
 	$this->db = DB_BASE;
 
-$this->library_load();
-
 }
 
 protected function construct_more($infos)
@@ -182,14 +191,6 @@ if (!$this->db)
 	$this->db = DB_BASE;
 
 $this->query_fields();
-$this->library_load();
-
-}
-
-protected function construct_fields()
-{
-
-// TODO !
 
 }
 
@@ -295,8 +296,6 @@ while($row=$query->fetch_assoc())
 // TODO : les champs de type "dataobject" peuvent n'avoir aucune correspondance dans le datamodel lié, idem "dataobject_list" avec "db_ref_table".
 // Comment le notifier ..?
 
-$this->library_load();
-
 }
 
 public function __tostring()
@@ -306,10 +305,14 @@ return $this->label;
 
 }
 
+/**
+ * @param string
+ * @return _data|boolean
+ */
 protected function construct_field($name)
 {
 
-if (!array_key_exists($name, $this->fields_detail))
+if (!is_string($name) || !array_key_exists($name, $this->fields_detail))
 	return false;
 else
 {
@@ -330,24 +333,9 @@ else
 }
 
 /**
- * Returns the associated library
- */
-public function library()
-{
-
-return;
-
-}
-function library_load()
-{
-
-return;
-
-}
-
-/**
  * Returns database name
  * (in case of shared datamodel)
+ * @return string
  */
 public function db()
 {
@@ -358,7 +346,8 @@ return $this->db;
 
 /**
  * Returns a data field
- * @param unknown_type $name
+ * @param string $name
+ * @return data
  */
 public function __get($name)
 {
@@ -374,45 +363,63 @@ elseif (array_key_exists($name, $this->fields_detail))
 }
 /**
  * Returns if a data field is defined
- * @param unknown_type $name
+ * @param string $name
  */
 public function __isset($name)
 {
 
-return array_key_exists($name, $this->fields_detail);
+return (is_string($name) && array_key_exists($name, $this->fields_detail));
 
 }
 
 /**
  * Returns the complete data field list
+ * @param boolean $create
+ * @return array
  */
-public function fields()
+public function fields($create=true)
 {
 
-foreach($this->fields_detail as $name=>$field)
-	if (!array_key_exists($name, $this->fields))
-		$this->construct_field($name);
+if ($create)
+{
+	foreach($this->fields_detail as $name=>$field)
+		if (!array_key_exists($name, $this->fields))
+			$this->construct_field($name);
+}
+
 return $this->fields;
 
 }
+/**
+ * @return array
+ */
 public function fields_required()
 {
 
 return $this->fields_required;
 
 }
+/**
+ * @return array
+ */
 public function fields_calculated()
 {
 
 return $this->fields_calculated;
 
 }
+/**
+ * @return array
+ */
 public function fields_index()
 {
 
 return $this->fields_index;
 
 }
+/**
+ * @return array
+ */
 public function fields_ref()
 {
 
@@ -422,6 +429,7 @@ return $this->fields_ref;
 
 /**
  * Returns the list of associated actions
+ * @return array
  */
 public function action_list()
 {
@@ -433,6 +441,8 @@ return $this->action_list;
 /**
  * Permission for this page
  * Using global page perm, specific group page, and specific user page
+ * @param string $type
+ * @return mixed
  */
 public function perm($type="")
 {

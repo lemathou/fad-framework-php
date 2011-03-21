@@ -457,23 +457,17 @@ function HttpAcceptLanguage($str=NULL)
 private function perm_query()
 {
 
-$this->perm_list = array();
-// Registered users
-/*
-if ($this->id)
-	$this->perm_list[] = 4;
-*/
-
-// Global perms
-$query = db()->query("SELECT `perm_id` FROM `_account_perm_ref` WHERE `account_id` = '".$this->id."'");
-while (list($perm_id) = $query->fetch_row())
-	$this->perm_list[] = $perm_id;
-
 // Specific perms
 $this->perm = array();
 $query = db()->query("SELECT `type`, `id`, `perm` FROM `_account_perm` WHERE `account_id`='$this->id'");
 while(list($type, $id, $perm)=$query->fetch_row())
 	$this->perm[$type][$id] = $perm;
+
+// Global perms
+$this->perm_list = array();
+$query = db()->query("SELECT `perm_id` FROM `_account_perm_ref` WHERE `account_id` = '".$this->id."'");
+while (list($perm_id) = $query->fetch_row())
+	$this->perm_list[] = $perm_id;
 
 // Régénération du menu puisque nouvelles permissions
 //page()->query_info();

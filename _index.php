@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: index.php 42 2011-02-20 10:57:47Z lemathoufou $
+  * $Id$
   * 
   * « Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr »
   * 

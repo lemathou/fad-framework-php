@@ -1,7 +1,7 @@
 <?php
 
 /**
-  * $Id: _session_refresh.js.php 28 2011-01-17 07:50:38Z lemathoufou $
+  * $Id$
   * 
   * Copyright 2008-2011 Mathieu Moulin - lemathou@free.fr
   * 

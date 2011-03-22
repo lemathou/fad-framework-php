@@ -471,6 +471,57 @@ else
 }
 
 /**
+ * Returns if an object is loaded
+ * @param int $id
+ * @return boolean
+ */
+public function loaded($id)
+{
+
+return (is_numeric($id) && array_key_exists($id, $this->objects));
+
+}
+
+/**
+ * Returns if an object exists with this ID
+ * @param int $id
+ * @return boolean
+ */
+public function exists($id)
+{
+
+if (false && !$this->perm("l") && !$this->perm("r"))
+	return false;
+
+if (!is_numeric($id) || $id <= 0)
+{
+	return false;
+}
+elseif (isset($this->objects[$id]))
+{
+	return true;
+}
+elseif (array_key_exists($id, $this->objects_exists))
+{
+	return true;
+}
+elseif (CACHE && ($object=cache::retrieve("dataobject_".$this->id."_".$id)))
+{
+	//echo "dataobject_".$this->id."_".$id;
+	$this->objects[$id] = $object;
+	return true;
+}
+elseif (db()->query("SELECT 1 FROM `".$this->db."`.`".$this->name."` WHERE `id`='".db()->string_escape($id)."'")->num_rows())
+{
+	$this->objects_exists[$id] = true;
+	return true;
+}
+else
+	return false;
+
+}
+
+/**
  * returns an empty object
  * @param boolean $fields_all_init (depreacated ?)
  * @return object
@@ -495,7 +546,7 @@ return new datamodel_insert_form($this, $this->fields());
 
 }
 /**
- * Insert an object in database
+ * Insert an object in database from a form
  *
  * @param array $fields
  * @return dataobject|boolean
@@ -506,46 +557,39 @@ public function insert_from_form($fields)
 if (!is_array($fields))
 	return false;
 
-foreach($fields as $name=>$value)
-{
-	if (!($field=$this->__get($name)))
-		unset($fields[$name]);
-	else
-	{
-		$field->value_from_form($value);
-		$fields[$name] = $field;
-	}
-}
-return $this->insert($fields);
+$object = $this->create();
+$object->update_from_form($fields);
+
+return $object->db_insert();
 
 }
 /**
- * 
- * Enter description here ...
- * @param array $fields
- * @return dataobject|boolean
- */
-public function insert($fields)
-{
-
-// TODO : not compatible with db_insert() !!
-if ($id=$this->db_insert($fields))
-	return $this->get($id);
-
-}
-/**
- * 
- * Enter description here ...
+ * Insert an object in database
  * @param dataobject $object
  * @return integer|boolean
  */
-public function db_insert($object)
+public function object_insert(dataobject $object)
+{
+
+if (!($id=$this->db_insert($object)))
+	return false;
+
+$this->objects[$id] = $object;
+// TODO : what about cache ..?
+
+return $id;
+
+}
+/**
+ * Insert an object (TODO : using fields)
+ * @param dataobject $object
+ * @return integer|boolean
+ */
+public function db_insert(dataobject $object)
 {
 
 if (false && !$this->perm("i"))
 	return false;
-
-$fields = $object->fields();
 
 // Verify required fields
 //foreach ($this->fields_required as $name) if (!$fields[$name]->nonempty())
@@ -556,15 +600,17 @@ $query_fields = array("`id`");
 $query_values = array("null");
 $query_fields_lang = array();
 $query_values_lang = array();
-foreach ($fields as $name=>$field)
+foreach ($object->fields_changed() as $name=>$field)
 {
 	//var_dump($field);
-	// Unknown field name
-	if (!array_key_exists($name, $this->fields_detail))
-	{
-		unset($fields[$name]);
-	}
 	// Champs complexes
+	if ($this->fields_detail[$name]["type"] == "dataobject_list_ref")
+	{
+		if ($field->nonempty())
+		{
+			$query_list[$name] = $field->value_to_db();
+		}
+	}
 	elseif ($this->fields_detail[$name]["type"] == "dataobject_list")
 	{
 		if ($field->nonempty())
@@ -643,83 +689,68 @@ if (count($query_list)>0)
 	}
 }
 
-$object->id = $id;
-$object->_update = $datetime;
-
 return $id;
 
 }
 
 /**
- * Returns if an object exists with this ID
- * @param $id
+ * Delete an object
+ * @param dataobject $object
+ * @return boolean
  */
-public function exists($id)
+public function object_delete(dataobject $object)
 {
 
-if (false && !$this->perm("l") && !$this->perm("r"))
+if (!($id=$object->id))
 	return false;
 
-if (!is_numeric($id) || $id <= 0)
-	return false;
-elseif (isset($this->objects[$id]))
-	return true;
-elseif (array_key_exists($id, $this->objects_exists))
-	return true;
-elseif (CACHE && ($object=cache::retrieve("dataobject_".$this->id."_".$id)))
-{
-	$this->objects[$id] = $object;
-	return true;
-}
-elseif (db()->query("SELECT 1 FROM `".$this->db."`.`".$this->name."` WHERE `id`='".db()->string_escape($id)."'")->num_rows())
-{
-	$this->objects_exists[$id] = true;
-	return true;
-}
-else
-	return false;
+return $this->delete(array(array("name"=>"id", "value"=>$id)));
 
 }
-
 /**
- * Remove an object
+ * Remove objects, using query params
  *
- * @param unknown_type $params
+ * @param array $params
+ * @return boolean
  */
 public function delete($params)
 {
 
-if (is_array($list=$this->db_delete($params)))
-{
-	if (CACHE)
-		$cache_delete_list = array();
-	foreach($list as $id)
-	{
-		if (isset($this->objects[$id]))
-			unset($this->objects[$id]);
-		if (array_key_exists($id, $this->objects_exists))
-			unset($this->objects_exists[$id]);
-		if (CACHE)
-			$cache_delete_list[] = "dataobject_".$this->id."_".$id;
-	}
-	if (CACHE && count($cache_delete_list))
-		cache::delete($cache_delete_list);
-	return true;
-}
-else
+if (!is_array($list=$this->db_delete($params)))
 	return false;
 
+if (CACHE)
+	$cache_delete_list = array();
+
+foreach($list as $id)
+{
+	if (isset($this->objects[$id]))
+		unset($this->objects[$id]);
+	if (array_key_exists($id, $this->objects_exists))
+		unset($this->objects_exists[$id]);
+	if (CACHE)
+		$cache_delete_list[] = "dataobject_".$this->id."_".$id;
 }
-public function db_delete($params)
+
+if (CACHE && count($cache_delete_list))
+	cache::delete($cache_delete_list);
+
+return true;
+
+}
+/**
+ * Remove objects using query params, and returns the list of deleted objects
+ * @param string $params
+ * @return array
+ */
+protected function db_delete($params)
 {
 
 if (false && !$this->perm("d"))
 	return false;
 
-if (!$this->db_count($params))
+if (!is_array($list=$this->db_select($params, array("id"))) || !count($list))
 	return false;
-
-$list = $this->db_select($params, array("id"));
 
 // TODO : create a function db_select_id() for simple queries !
 $delete_list_id = array();
@@ -735,7 +766,9 @@ $return = $query->affected_rows();
 foreach($this->fields_detail as $name=>$field)
 {
 	if (isset($field["opt"]["lang"]) && $field["opt"]["lang"])
+	{
 		$delete_lang = true;
+	}
 	elseif (($field["type"] == "dataobject_list" || $field["type"] == "list") && isset($field["opt"]["ref_table"]))
 	{
 		db()->query("DELETE FROM `".$this->db."`.`".$field["opt"]["ref_table"]."` WHERE `".$field["opt"]["ref_id"]."` IN (".implode(", ", $delete_list_id).")");
@@ -754,14 +787,46 @@ return $return;
 }
 
 /**
- * Update an object in database
+ * Update an object
  * 
- * @param data[] $fields
+ * @param dataobject $object
+ * @return boolean
  */
-public function db_update($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
+public function object_update(dataobject $object)
+{
+
+if (!($id=$object->id))
+	return false;
+
+if (!$this->db_update(array(array("name"=>"id", "value"=>$id)), $object->fields_changed()))
+	return false;
+
+return true;
+
+}
+public function update($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
+{
+
+// TODO : retrieve liste of effectively updated objects and update them in cache and other datamodels !
+
+}
+/**
+ * Update objects in database using query params
+ * 
+ * @param array $params
+ * @param array $fields
+ * @param array $sort
+ * @param int $limit
+ * @param int $start
+ * @return boolean
+ */
+protected function db_update($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
 if (false && !$this->perm("u"))
+	return false;
+
+if (!count($fields))
 	return false;
 
 $query_ok = true;
@@ -777,6 +842,7 @@ $query_list = array();
 
 foreach ($fields as $name=>$field)
 {
+	// TODO : delete this line and verify it inf the called function
 	// Unknown field
 	if (!array_key_exists($name, $this->fields_detail))
 	{
@@ -844,7 +910,7 @@ else
 if (count($sort)>0)
 {
 	foreach($sort as $name=>$order)
-		if (array_key_exists($name, $this->fields_detail) || $name == "relevance")
+		if (array_key_exists($name, $this->fields_detail) || (count($this->fields_index) && $name == "relevance"))
 		{
 			if (strtolower($order) == "desc")
 				$query_base["sort"][] = "`$name` DESC";
@@ -945,24 +1011,17 @@ return $return;
 }
 
 /**
- * alias of db_get()
- * 
- * @param array $query
- * @return mixed
- */
-public function query($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
-{
-
-return $this->db_get($params, $fields, $sort, $limit, $start);
-
-}
-/**
  * Retrieve a list of objects by giving query params and fields to be retrieved
  * The function adds the required fields
  * 
- * @param unknown_type $query_where
+ * @param array $params
+ * @param array $fields
+ * @param array $sort
+ * @param int $limit
+ * @param int $start
+ * @return array|boolean
  */
-public function db_get($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
+public function query($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
 if (false && !$this->perm("r"))
@@ -982,7 +1041,7 @@ $cache_retrieve_list = array();
 foreach($result as $nb=>$o)
 {
 	$id = $o["id"];
-	if (isset($this->objects[$id]))
+	if (array_key_exists($id, $this->objects))
 	{
 		$objects[$nb] = $this->objects[$id];
 	}
@@ -1040,23 +1099,23 @@ return $objects;
 }
 /**
  * Retrieve an objet from the datamodel.
- * Optimized version of db_get() for only one object
+ * Optimized version of query() for only one object
  * 
  * @param integer $id
- * @return mixed 
+ * @return dataobject|boolean 
  */
-public function get($id, $fields=array())
+public function get($id)
 {
 
 if (false && !$this->perm("r"))
 	return false;
 
 // Parameters check
-if (!is_numeric($id) || $id <= 0 || !is_array($fields))
+if (!is_numeric($id) || $id <= 0)
 	return false;
 
 // OK
-if (isset($this->objects[$id]))
+if (array_key_exists($id, $this->objects))
 {
 	return $this->objects[$id];
 }
@@ -1083,7 +1142,7 @@ else
 }
 /**
  * Retrieve an array containing each the one an array of fields to be retrieved by giving query params
- * Deprecated ?
+ * TODO : Used only in dataobject::db_retrieve, so delete it !
  * 
  * @param unknown_type $query_where
  */

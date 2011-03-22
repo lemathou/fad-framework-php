@@ -60,7 +60,7 @@ protected $opt = array();
 public function __sleep()
 {
 
-return array("datamodel_ref_id", "id", "_update", "field_values");
+return array("datamodel_ref_id", "id", "_insert", "_update", "field_values");
 
 }
 public function __wakeup()
@@ -306,30 +306,6 @@ return $this->field_values;
  * @param array $opt
  * @return boolean
  */
-public function db_update($opt=array())
-{
-
-// TODO : Verify that the changed fields do not change the appartenance to an object field.
-// TODO : Do not change the Key fields or find a good way to do it !
-
-if ($this->datamodel_ref()->db_update($this))
-{
-	$this->_update = time();
-	foreach ($this->fields_changed as $name=>$field)
-			$this->field_values[$name] = $field->value;
-	return true;
-}
-else
-	return false;
-
-}
-
-/**
- * Insert data into database as a new object
- *
- * @param array $opt
- * @return boolean
- */
 public function db_insert($opt=array())
 {
 
@@ -387,71 +363,32 @@ if (count($this->datamodel_ref()->fields_key()))
 }
 
 }
+
 /**
- * Update data into database
+ * Insert data into database as a new object
  *
  * @param array $opt
+ * @return boolean
  */
 public function db_update($opt=array())
 {
 
-// Permission verification
-if (false)
-{
-	die("NOT ALLOWED TO UPDATE !");
-}
+// TODO : Verify that the changed fields do not change the appartenance to an object field.
+// TODO : Do not change the Key fields or find a good way to do it !
 
-$fields = array();
-foreach ($this->fields as $name=>$field)
+if ($this->datamodel_ref()->object_update($this))
 {
-	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
-	{
-		$fields[$name] = $field;
-	}
-}
-
-if (!count($fields))
-	return false;
-
-if ($this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id)), $fields))
-{
-	foreach ($fields as $name=>$field)
-	{
-		// Update linked objects
-		if (get_class($field) == "data_dataobject_list" && ($datamodel=datamodel($field->opt("datamodel"))))
-		{
-			if (is_array($field->value)) foreach($field->value as $id)
-			{
-				if (!array_key_exists($name, $this->field_values) || (is_array($this->field_values[$name]) && !in_array($id, $this->field_values[$name])))
-				{
-					if ($object=$datamodel->get($id))
-						$object->db_retrieve(true, true);
-				}
-			}
-			if (isset($this->field_values[$name]) && is_array($this->field_values[$name])) foreach($this->field_values as $id)
-			{
-				if (is_array($field->value) && !in_array($id, $field->value))
-				{
-					if ($object=$datamodel->get($id))
-						$object->db_retrieve(true, true);
-				}
-			}
-		}
-		$this->field_values[$name] = $field->value;
-	}
 	$this->_update = time();
-	//db()->query("INSERT INTO `_datamodel_update` (`datamodel_id`, `dataobject_id`, `account_id`, `action`, `datetime`) VALUES ('".$this->datamodel()->id()."', '".$this->id."', '".login()->id()."', 'u', NOW())");
-	if (CACHE)
-		cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
+	foreach ($this->fields_changed as $name=>$field)
+			$this->field_values[$name] = $field->value;
 	return true;
 }
-
-return false;
-
-}
+else
+	return false;
 
 }
 
+}
 
 if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [end]");

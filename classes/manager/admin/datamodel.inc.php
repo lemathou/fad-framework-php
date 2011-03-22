@@ -111,7 +111,7 @@ public function field_delete($name)
 {
 
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE A DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 if (!array_key_exists($name, $this->fields_detail))
 	die("datamodel(ID#$this->id)::field_delete() : Field $name does not exists");
@@ -144,7 +144,7 @@ function field_update($name, $field)
 {
 
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 if (!array_key_exists($name, $this->fields_detail))
 	die("datamodel(ID#$this->id)::field_update() : Field $name does not exists");
@@ -245,7 +245,7 @@ public function db_create()
 {
 
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 $options = array();
 $fields = array();
@@ -328,7 +328,7 @@ public function db_alter()
 {
 
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 //return db()->table_update("$this->name","");
 
@@ -349,7 +349,7 @@ public function db_drop()
 {
 
 if (!login()->perm(6))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 return db()->table_drop($this->name);
 
@@ -364,7 +364,7 @@ public function db_empty()
 {
 
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 return db()->table_empty($this->name);
 
@@ -380,7 +380,7 @@ public function db_field_move($fieldname, $position)
 {
 
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 db()->query("ALTER TABLE `".$this->name."` MODIFY COLUMN ".db()->db_field_struct($fieldname, $this->fields[$fieldname]->db_field_create())." AFTER `$position`");
 
@@ -390,7 +390,7 @@ function table_list($params=array(), $fields=array(), $sort=array(), $page=1, $p
 {
 
 if (!login()->perm(1))
-	die("ONLY ADMIN CAN UPDATE DATAMODEL");
+	die(self::UPDATE_ACCESS_REQUIRED);
 
 ?>
 <form name="zeform" action="" method="get">
@@ -477,7 +477,7 @@ echo implode(" ", $page_list->link_list());
 <div><table cellspacing="0" cellpadding="2" border="1" width="100%">
 <?php
 
-$list = $this->db_get($params, $fields, $sort, $page_list->page_nb, $page_list->nb_start());
+$list = $this->query($params, $fields, $sort, $page_list->page_nb, $page_list->nb_start());
 foreach($list as $nb=>$object)
 {
 	// First line

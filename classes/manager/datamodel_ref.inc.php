@@ -261,8 +261,9 @@ else
  * Update an object
  * 
  * @param _dataobject_ref $object
+ * @return boolean
  */
-public function db_update(dataobject_ref $object)
+public function object_update(dataobject_ref $object)
 {
 
 // TODO : Verify that the object has been first inserted and so is really from database !
@@ -293,7 +294,7 @@ return true;
 }
 
 /**
- * Enter description here ...
+ * Returns an object
  * @param array|string $id Identifier in json or (ordered) key params
  */
 public function get($id)

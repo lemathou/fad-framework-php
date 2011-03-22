@@ -30,25 +30,36 @@ if (DEBUG_GENTIME == true)
 class dataobject
 {
 
-/*
+/**
  * Datamodel reference
  * @var integer
  */
 protected $datamodel_id;
-/*
+/**
  * Identifier
  * @var integer
  */
 protected $id;
-/*
+/**
+ * Insert date and time
+ * @var timestamp
+ */
+protected $_insert;
+/**
  * @var timestamp
  */
 protected $_update;
 
+/**
+ * @var array
+ */
 protected $field_values = array();
+/**
+ * @var array
+ */
 protected $fields = array();
 
-/*
+/**
  * Options
  * @var array
  */
@@ -61,13 +72,13 @@ foreach ($this->fields as $name=>$field)
 	if ($field->value !== $this->field_values[$name])
 		$this->field_values[$name] = $field->value;
 
-return array("id", "_update", "field_values");
+return array("datamodel_id", "id", "_insert", "_update", "field_values");
 
 }
 public function __wakeup()
 {
 
-$this->datamodel_find();
+//$this->datamodel_find();
 
 }
 
@@ -101,6 +112,7 @@ foreach ($this->fields as $name=>$field)
 
 /**
  * Retrieve the datamodel id from the class name
+ * TODO : warning ! in the future memorise it for better performance
  */
 protected function datamodel_find()
 {
@@ -142,23 +154,26 @@ if ($field=$this->datamodel()->{$name})
 }
 
 /**
- * 
- * Enter description here ...
+ * returns if a data field exists
  * @param string $name
  * @return boolean
  */
 public function __isset($name)
 {
 
-return (array_key_exists($name, $this->fields) || array_key_exists($name, $this->field_values) || isset($this->datamodel()->{$name}));
+return (is_string($name) && (array_key_exists($name, $this->fields) || array_key_exists($name, $this->field_values) || isset($this->datamodel()->{$name})));
 
 }
 
 /**
  * Unset (to null value) a data field
+ * @param string $name
  */
 public function __unset($name)
 {
+
+if (!is_string($name))
+	return;
 
 if (array_key_exists($name, $this->fields))
 {
@@ -170,26 +185,34 @@ else
 	$this->fields[$name]->value = null;
 }
 
+}
+
+/**
+ * Reset (to default value) a data field
+ * @param string $name
+ */
+public function reset($name)
+{
+
+if (!is_string($name))
+	return;
+
+$this->fields[$name] = $this->construct_field($name);
 
 }
 
 /**
  * Update a data field
+ * @param string $name
+ * @param mixed $value
  */
 public function __set($name, $value)
 {
 
-if ($name == "id")
-{
-	if (is_numeric($value) && $value>0)
-		$this->id = (int)$value;
-}
-elseif ($name == "_update")
-{
-	if (is_numeric($value) && $value > $this->_update)
-		$this->_update = (int)$value;
-}
-elseif (array_key_exists($name, $this->fields))
+if (!is_string($name))
+	return;
+
+if (array_key_exists($name, $this->fields))
 {
 	$this->fields[$name]->value = $value;
 }
@@ -200,7 +223,7 @@ elseif (array_key_exists($name, $this->field_values))
 }
 elseif ($field=$this->construct_field($name))
 {
-	$this->field_values[$name] = $field->value = $value;
+	$this->field_values[$name] = null; // TODO : verify this is a good way
 	$this->fields[$name] = $field;
 }
 
@@ -215,8 +238,13 @@ elseif ($field=$this->construct_field($name))
 public function __get($name)
 {
 
-if ($name == "id" || $name == "_update")
+if (!is_string($name))
+	return;
+
+if ($name == "id" || $name == "_update" || $name == "_insert")
+{
 	return $this->{$name};
+}
 elseif (array_key_exists($name, $this->fields))
 {
 	return $this->fields[$name];
@@ -229,7 +257,7 @@ elseif (array_key_exists($name, $this->field_values))
 }
 elseif ($field=$this->construct_field($name))
 {
-	$this->field_values[$name] = $field->value;
+	$this->field_values[$name] = null; // TODO : verify this is a good way, as for __set()
 	return $this->fields[$name] = $field;
 }
 
@@ -271,6 +299,46 @@ return $this->fields;
 }
 
 /**
+ * Returns if the object has changed
+ * @return boolean
+ */
+public function changed()
+{
+
+foreach ($this->fields as $name=>$field)
+	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
+		return true;
+
+return false;
+
+}
+
+/**
+ * Returns the list of changed fields
+ * @return array
+ */
+public function fields_changed()
+{
+
+$list = array();
+foreach ($this->fields as $name=>$field)
+	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
+		$list[$name] = $field;
+return $list;	
+
+}
+/**
+ * Returns the original values of fields
+ * @return array
+ */
+public function fields_values()
+{
+
+return $this->field_values;	
+
+}
+
+/**
  * Set/init all fileds to default value
  * 
  */
@@ -296,7 +364,7 @@ public function db_retrieve($fields, $force=false)
 if (!$this->id)
 	return false;
 
-$params[] = array("name"=>"id", "type"=>"=", "value"=>$this->id);
+$params[] = array("name"=>"id", "value"=>$this->id);
 
 if (is_string($fields))
 	$fields = array($fields);
@@ -306,41 +374,33 @@ elseif (!is_array($fields))
 // Delete the fields we already have if we don't want all fields
 if (!$force)
 {
-	if (is_array($fields)) foreach ($fields as $name)
-		if (array_key_exists($name, $this->fields) || array_key_exists($name, $this->field_list))
-			unset($fields[$i]);
-	else foreach ($this->datamodel()->fields() as $name=>$field)
+	foreach ($fields as $i=>$name)
 		if (array_key_exists($name, $this->fields) || array_key_exists($name, $this->field_list))
 			unset($fields[$i]);
 }
 
 // Effective Query
-if (count($fields) && ($list = $this->datamodel()->db_fields($params, $fields)))
+if (count($fields) && is_array($list=$this->datamodel()->db_select($params, $fields)) && count($list) == 1)
 {
-	if (count($list) == 1)
+	foreach(array_pop($list) as $name=>$field)
 	{
-		foreach($list[0] as $name=>$field)
+		if (!array_key_exists($name, $this->fields) && !array_key_exists($name, $this->field_values))
 		{
-			if (!array_key_exists($name, $this->fields) && !array_key_exists($name, $this->field_values))
-			{
-				$this->fields[$name] = $field;
-				$this->field_values[$name] = $field->value;
-			}
+			$this->fields[$name] = $field;
+			$this->field_values[$name] = $field->value;
 		}
-		$this->_update = time();
-		if (CACHE)
-			cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
-		return true;
 	}
-	else
-	{
-		if (DEBUG_DATAMODEL)
-			trigger_error("Datamodel '".$this->datamodel()->name()."' agregat : too many objects resulting from query params");
-		return false;
-	}
+	$this->_update = time();
+	if (CACHE)
+		cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
+	return true;
 }
 else
+{
+	if (DEBUG_DATAMODEL)
+		trigger_error("dataobject('".$this->datamodel()->name()."')::db_retrieve() : 0 or too many objects resulting from query params");
 	return false;
+}
 
 }
 /**
@@ -449,13 +509,17 @@ return $view;
  *
  * @param unknown_type $options
  */
-public function db_insert($options=array())
+public function db_insert($opt=array())
 {
 
-if ($this->datamodel()->db_insert($this))
+if ($id=$this->datamodel()->object_insert($this))
 {
+	$this->id = $id;
+	$this->_update = time();
 	foreach ($this->fields as $name=>$field)
 		$this->field_values[$name] = $field->value;
+	if (CACHE)
+		cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
 	return true;
 }
 else
@@ -480,6 +544,13 @@ foreach ($fields as $name=>$value)
 		$this->id = (int)$value;
 	}
 	elseif ($name == "_update")
+	{
+		$e = explode(" ", $value);
+		$d = explode("-", $e[0]);
+		$t = explode(":", $e[1]);
+		$this->_update = mktime($t[0], $t[1], $t[2], $d[1], $d[2], $d[0]);
+	}
+	elseif ($name == "_insert")
 	{
 		$e = explode(" ", $value);
 		$d = explode("-", $e[0]);
@@ -569,6 +640,7 @@ if (is_array($fields) && count($fields) > 0)
  * Update data into database
  *
  * @param array $opt
+ * @return boolean
  */
 public function db_update($opt=array())
 {
@@ -579,21 +651,9 @@ if (false)
 	die("NOT ALLOWED TO UPDATE !");
 }
 
-$fields = array();
-foreach ($this->fields as $name=>$field)
+if ($this->datamodel()->object_update($this))
 {
-	if (!array_key_exists($name, $this->field_values) || $this->field_values[$name] !== $field->value)
-	{
-		$fields[$name] = $field;
-	}
-}
-
-if (!count($fields))
-	return false;
-
-if ($this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id)), $fields))
-{
-	foreach ($fields as $name=>$field)
+	if (false) foreach ($fields as $name=>$field)
 	{
 		// Update linked objects
 		if (get_class($field) == "data_dataobject_list" && ($datamodel=datamodel($field->opt("datamodel"))))
@@ -623,8 +683,29 @@ if ($this->datamodel()->db_update(array(array("name"=>"id", "value"=>$this->id))
 		cache::store("dataobject_".$this->datamodel_id."_".$this->id, $this, CACHE_DATAOBJECT_TTL);
 	return true;
 }
+else
+{
+	return false;
+}
 
-return false;
+}
+
+/**
+ * Delete the object
+ * @return boolean
+ */
+public function db_delete()
+{
+
+if ($this->datamodel()->object_delete($this))
+{
+	$this->id = null;
+	return true;
+}
+else
+{
+	return false;
+}
 
 }
 

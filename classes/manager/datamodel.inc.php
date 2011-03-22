@@ -1024,13 +1024,13 @@ return $return;
 public function query($params=array(), $fields=array(), $sort=array(), $limit=0, $start=0)
 {
 
+//var_dump($params);
+
 if (false && !$this->perm("r"))
 	return false;
 
 if (!is_array($result=$this->db_select($params, "id", $sort, $limit, $start)) || !count($result))
-{
 	return array();
-}
 
 $objects_order = array();
 $objects = array();

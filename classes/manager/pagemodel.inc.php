@@ -263,13 +263,21 @@ while ($row = $query->fetch_assoc())
 
 }
 
+/**
+ * Returns if a view exists
+ * @param string $name
+ * @return boolean
+ */
 public function view_exists($name)
 {
 
-return array_key_exists($name, $this->view_list);
+return (is_string($name) && array_key_exists($name, $this->view_list));
 
 }
 
+/**
+ * @return array
+ */
 public function view_list()
 {
 
@@ -277,6 +285,9 @@ return $this->view_list;
 
 }
 
+/**
+ * @return array
+ */
 public function view_get($name)
 {
 
@@ -285,6 +296,9 @@ if ($this->view_exists($name))
 
 }
 
+/**
+ * @param string $name
+ */
 public function view_set($name="")
 {
 
@@ -309,6 +323,8 @@ if (DEBUG_GENTIME == true)
 
 /**
  * Apply page parameters to the associated template
+ * @param _template $template
+ * @param boolean|array $map
  */
 protected function params_apply(_template $template, $map=true)
 {
@@ -335,6 +351,8 @@ if (DEBUG_GENTIME == true)
 
 /**
  * Apply page parameters to the associated template
+ * @param _template $template
+ * @param boolean|array $map
  */
 protected function subtemplates_apply(_template $template, $map=null)
 {
@@ -355,6 +373,10 @@ if (DEBUG_GENTIME == true)
 
 }
 
+/**
+ * Returns the active view (if exists)
+ * @return _template
+ */
 function view()
 {
 
@@ -365,6 +387,9 @@ return $this->template;
 
 }
 
+/**
+ * Display the active (or default) view (if exists)
+ */
 function view_disp()
 {
 
@@ -389,10 +414,10 @@ if (DEBUG_GENTIME == true)
 	gentime("pagemodel(#ID$this->id)::action() [begin]");
 
 // TODO : use attribute script
-if (file_exists("page/$this->name.inc.php"))
+if (file_exists(PATH_PAGEMODEL."/$this->name.inc.php"))
 {
 	extract($this->param);
-	include "page/$this->name.inc.php";
+	include PATH_PAGEMODEL."/$this->name.inc.php";
 }
 
 if (DEBUG_GENTIME == true)

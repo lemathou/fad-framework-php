@@ -34,7 +34,7 @@ if (DEBUG_GENTIME == true)
  * Access function
  * @return _datamodel_manager
  * @return _datamodel
- * @return _dataobject
+ * @return _dataobject|_dataobject
  */
 function datamodel($datamodel_id=null, $query=null)
 {
@@ -74,9 +74,8 @@ elseif (is_numeric($query) && ($object=$datamodel->get($query)))
 {
 	return $object;
 }
-elseif (is_string($query))
+elseif (is_string($query) && count($datamodel->fields_index()))
 {
-	// TODO : relevance definition test !
 	if (count($objects=$datamodel->query(array(array("type"=>"fulltext", "value"=>$query)), true, array("relevance"=>"DESC"), 1)))
 		return array_pop($objects);
 	else

@@ -435,7 +435,7 @@ public function view($name="")
 if (!$name)
 	$name = $this->datamodel()->name();
 
-if ($view=template("datamodel/$name"))
+if ($view=template("dataobject/$name"))
 {
 	$view->object_set($this);
 	return $view;

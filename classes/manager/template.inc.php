@@ -22,7 +22,7 @@ protected $type = "template";
 
 protected $info_detail = array
 (
-	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"page", "select_list"=> array('container'=>"Conteneur principal",'inc'=>"Inclusion fréquente",'page'=>"Contenu de page",'datamodel'=>"Vue de datamodel")),
+	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"page", "select_list"=> array("container"=>"Conteneur principal","inc"=>"Inclusion fréquente","page"=>"Contenu de page","datamodel"=>"Vue de requête de datamodel (liste)","dataobject"=>"Vue de dataobject")),
 	"name"=>array("label"=>"Nom (unique par type)", "type"=>"string", "size"=>32, "lang"=>false),
 	"label"=>array("label"=>"Label", "type"=>"string", "size"=>128, "lang"=>true),
 	"description"=>array("label"=>"Description", "type"=>"text", "lang"=>true),
@@ -70,7 +70,9 @@ else
 
 if ($this->list_detail[$id]["type"] == "container")
 	return new _template_container($id, $query, $info);
-elseif (substr($this->list_detail[$id]["type"], 0, 9) == "datamodel")
+elseif ($this->list_detail[$id]["type"] == "dataobject")
+	return new _template_dataobject($id, $query, $info);
+elseif ($this->list_detail[$id]["type"] == "datamodel")
 	return new _template_datamodel($id, $query, $info);
 else
 	return new _template($id, $query, $info);
@@ -505,7 +507,7 @@ if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(true|null|(\{.+\}))){0,1}(,(t
 		// Passage des paramètres
 		if (isset($match[3]) && ($params=json_decode($match[3], true)))
 		{
-			if ($template->info("type") == "datamodel")
+			if ($template->info("type") == "dataobject")
 			{
 				if (is_array($params))
 					foreach($params as $name=>$value)
@@ -858,7 +860,7 @@ foreach($this->param_list as $name=>$param)
  * @author mathieu
  * 
  */
-class _template_datamodel extends _template
+class _template_dataobject extends _template
 {
 
 protected $datamodel_id = null;

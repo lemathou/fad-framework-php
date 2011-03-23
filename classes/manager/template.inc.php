@@ -615,16 +615,22 @@ public function cache_generate()
 if (DEBUG_GENTIME == true)
 	gentime("template(ID#$this->id)::cache_generate() [begin]");
 
-$_time = time();
+if (!file_exists($this->tpl_filename))
+	return;
 
 //echo "<p>template(ID#$this->id)::cache_generate() $this->tpl_filename : $this->cache_id</p>\n";
-extract($this->param);
 ob_start();
+extract($this->param);
 include $this->tpl_filename;
 if (TEMPLATE_CACHE_TYPE == "apc")
-	apc_store("tpl_$this->cache_id", $this->tpl="<!-- $_time -->".ob_get_contents(), TEMPLATE_CACHE_MAX_TIME);
+{
+	$_time = time();
+	apc_store("tpl_$this->cache_id", "<!--GENTIME:$_time-->".ob_get_contents(), TEMPLATE_CACHE_MAX_TIME);
+}
 else
+{
 	fwrite(fopen($this->cache_filename,"w"), ob_get_contents());
+}
 ob_end_clean();
 
 if (DEBUG_GENTIME == true)

@@ -339,7 +339,7 @@ foreach ($this->param as $name=>$param)
 	if ($map === true || (is_array($map) && in_array($name, $map)))
 	{
 		if (DEBUG_TEMPLATE)
-			echo "<p>pagemodel(ID#$this->id)::params_apply() to template ID#$this->template_id : $name => $param->value</p>\n";
+			echo "<p>pagemodel(ID#$this->id)::params_apply() to template ID#$template->id : $name => $param->value</p>\n";
 		$template->__set($name, $param->value);
 	}
 }

@@ -74,8 +74,8 @@ echo "<br />queries ".db()->queries;
 echo "<br />queries_total ".db()->queries_total;
 echo "<br />fetch_results ".db()->fetch_results;
 echo "<br />fetch_results_total ".db()->fetch_results_total;
-echo "<br />time ".db()->time;
-echo "<br />time_total ".db()->time_total;
+echo "<br />time ".(db()->time*1000)." ms";
+echo "<br />time_total ".db()->time_total." s";
 foreach(db()->query_list as $query)
 	echo "<br />$query\n";
 ?>

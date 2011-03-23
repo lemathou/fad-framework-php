@@ -37,38 +37,50 @@ class data
 {
 
 /**
- * Unique name as an identifier for example in forms
- *
+ * Unique name as an identifier for a set of fields (for example in forms)
  * @var string
  */
-protected $name="";
+protected $name = "";
 
-protected $label="";
+/**
+ * @var string
+ */
+protected $label = "";
 
 /**
  * Linked datamodel (optionnal)
- * 
- * @var unknown_type
+ * TODO : Can be pagemodel, template, datamodel_ref, etc. => What the fuck !
+ * TODO : A SIMPLIFIER !!!!!
+ * @var integer
  */
-protected $datamodel_id=0;
-protected $object_id=0;
-protected $object=null;
+protected $datamodel_id;
+/**
+ * Parent object
+ * TODO : Can be pagemodel, template, datamodel_ref, etc. => What the fucking hell !
+ * @var integer
+ */
+protected $object_id;
+/**
+ * @var _datamodel|dataobject|_datamodel_ref|dataobject_ref|_pagemodel|_template
+ */
+protected $object;
 
 /**
  * Données brutes dans le format dééfini et "contraint" le plus adapté
- * 
  * @var mixed
  */
-protected $value=null;
-
-protected $empty_value=null;
+protected $value = null;
 
 /**
- * Required means Not null
- * 
- * @var bool
+ * @var mixed
  */
-protected $required=false;
+protected $empty_value = null;
+
+/**
+ * Required means Not empty value
+ * @var boolean
+ */
+protected $required = false;
 
 protected $opt = array();
 protected static $opt_list = array

@@ -155,28 +155,46 @@ return (db("SELECT '1' FROM `_account` WHERE `email` LIKE '".db()->string_escape
 class _login extends _account
 {
 
-// Statistique
-public $page_count=0;
+/*
+ * Stats  : page count
+ * @var integer
+ */
+public $page_count = 0;
 
 /*
-0 = normal
-1 = invalid username
-2 = invalid sid
-3 = retrieve account problem
-4 = invalid password
-5 = inactif
-*/
+ * Reseon if disconnected
+ * 0 = normal
+ * 1 = invalid username
+ * 2 = invalid sid
+ * 3 = retrieve account problem
+ * 4 = invalid password
+ * 5 = inactif
+ * @var integer
+ */
 protected $disconnect_reason = 0;
 
-// Message to be displayed at startup
+/*
+ * Message to be displayed at startup
+ * @var string
+ */
 protected $login_message = "";
 
-// Browsing parameters
+/*
+ * Browsing parameters
+ * @var string
+ */
 protected $sid="";
+/*
+ * Operating system
+ * @var string
+ */
 protected $os="???";
 
 // TODO : Add stats (Database, navigation, etc.) here
 
+/**
+ * Generates object
+ */
 public function __construct()
 {
 
@@ -187,6 +205,15 @@ $this->client_info_query();
 
 }
 
+/**
+ * Refresh login using $_GET or $_POST special fields
+ * @global boolean $_GET["_session_restart"]
+ * @global boolean $_GET["_session_kill"]
+ * @global string $_GET["_login_activate"]
+ * @global string $_POST["_login"]["username"]
+ * @global string $_POST["_login"]["password_crypt"]
+ * @global string $_POST["_login"]["permanent"]
+ */
 public function refresh()
 {
 
@@ -240,6 +267,13 @@ if (DEBUG_GENTIME == true)
 
 }
 
+/**
+ * Connect using email and password
+ * @param string $email
+ * @param string $password_crypt
+ * @param array $options
+ * @return boolean
+ */
 protected function connect($email, $password_crypt, $options=array())
 {
 
@@ -286,6 +320,11 @@ else
 
 }
 
+/**
+ * Connect using cookie session ID
+ * @param string $sid
+ * @return boolean
+ */
 protected function connect_sid($sid)
 {
 
@@ -313,21 +352,23 @@ else
 }
 
 /**
- * WARNING ! I HAVE TO 
+ * Activate an account
+ * @param string $hash
+ * @return boolean
  */
 public function activate($hash)
 {
 
-$query = db()->query("SELECT `id`, `actif`, `password`, `lang_id`, `email` FROM `_account` WHERE `actif_hash`='".db()->string_escape($hash)."' && `actif`='0'");
+$query = db()->query("SELECT `id`, `actif`, `password`, `lang_id`, `email` FROM `_account` WHERE `actif_hash`='".db()->string_escape($hash)."' AND `actif`='0'");
 if ($query->num_rows())
 {
 	$account = $query->fetch_assoc();
-	db()->query("UPDATE `_account` SET `actif`='1', `actif_hash`='' WHERE `id`='".$account["id"]."'");
 	$this->id = $account["id"];
 	$this->lang_id = $account["lang_id"];
 	$this->email = $account["email"];
+	db()->query("UPDATE `_account` SET `actif`='1', `actif_hash`='' WHERE `id`='$this->id'");
 	$this->perm_query();
-	$this->message = "Votre compte TOP GONES a bien été activé";
+	$this->login_message = "Votre compte TOP GONES a bien été activé";
 	return true;
 }
 else
@@ -335,6 +376,10 @@ else
 
 }
 
+/**
+ * Display login messages
+ * @return string HTML
+ */
 public function message_show()
 {
 
@@ -362,6 +407,10 @@ protected function reconnect()
 
 }
 
+/**
+ * Disconnect, specifying a reason
+ * @param string $dr reason
+ */
 protected function disconnect($dr=0)
 {
 
@@ -396,6 +445,9 @@ $this->disconnect_reason = $dr;
 
 }
 
+/**
+ * Query cilent information (OS, browser, etc.)
+ */
 private function client_info_query()
 {
 

@@ -33,7 +33,7 @@ protected $info_detail = array
 	"shortlabel"=>array("label"=>"Titre court (pour liens)", "type"=>"string", "size"=>64, "lang"=>true),
 	"url"=>array("label"=>"URL", "type"=>"string", "size"=>128, "lang"=>true),
 	"type"=>array("label"=>"Type", "type"=>"select", "lang"=>false, "default"=>"template", "select_list"=>array("static_html"=>"Page HTML statique", "php"=>"Utilisation d'un script PHP", "template"=>"Utilisation d'un template")),
-	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGE, "filename"=>"{name}.inc.php")
+	"script"=>array("label"=>"Script", "type"=>"script", "folder"=>PATH_PAGEMODEL, "filename"=>"{name}.inc.php")
 );
 
 protected function query_info_more()
@@ -100,19 +100,6 @@ function __sleep()
 return array("id", "type", "name", "label", "description", "param_list", "view_list");
 
 }
-function __wakeup()
-{
-
-$this->construct_params();
-
-}
-
-protected function construct_more($infos)
-{
-
-$this->construct_params();
-
-}
 
 protected function query_info_more()
 {
@@ -154,46 +141,63 @@ while ($opt = $query_opt->fetch_row())
 }
 
 /**
- * Constructs the parameters list
+ * Constructs the missing parameters list
  */
-public function construct_params()
+protected function params_construct()
 {
 
-$this->param = array();
-$this->params_url = array();
 foreach($this->param_list as $name=>$param)
-{
-	//echo "<p>DEBUG page::construct_param : $name</p>\n";
-	if ($param["datatype"])
-		$datatype = "data_".$param["datatype"];
-	else
-		$datatype = "data";
-	$this->param[$name] = new $datatype($name, $param["value"], $param["label"]);
-	if (isset($param["opt"]) && is_array($param["opt"])) foreach ($param["opt"] as $i=>$j)
-		$this->param[$name]->opt_set($i, $j);
-}
-
-}
-function params_reset()
-{
-
-foreach ($this->param_list as $name=>$param)
-{
-	$this->param[$name]->value = $param["value"];
-}
+	if (!array_key_exists($name, $this->param))
+		$this->param[$name] = $this->param_construct($name);
 
 }
 /**
- * Returns list of actual params
+ * Reset the parameters list to defaut value
+ */
+function params_reset()
+{
+
+$this->param = array();
+
+}
+/**
+ * Constructs a param
+ * @param string $name
+ * @return data
+ */
+protected function param_construct($name)
+{
+
+$param = $this->param_list[$name];
+
+if ($param["datatype"])
+	$datatype = "data_".$param["datatype"];
+else
+	$datatype = "data";
+
+$field = new $datatype($name, $param["value"], $param["label"]);
+if (isset($param["opt"]) && is_array($param["opt"]))
+	foreach ($param["opt"] as $i=>$j)
+		$field->opt_set($i, $j);
+
+return $field;
+
+}
+/**
+ * Returns list of actual params and constructs missing ones
+ * @return array
  */
 public function param_list()
 {
+
+$this->params_construct();
 
 return $this->param;
 
 }
 /**
  * Returns list of actual params
+ * @return array
  */
 public function param_list_detail()
 {
@@ -202,27 +206,18 @@ return $this->param_list;
 
 }
 /**
- * Returns if a param exists
+ * Returns if a param exists ?
  * @param string $name
- */
-public function param_exists($name)
-{
-
-return (is_string($name) && array_key_exists($name, $this->param_list));
-
-}
-/**
- * Param exists ?
- * @param string $name
+ * @return boolean
  */
 public function __isset($name)
 {
 
-return $this->param_exists($name);
+return (array_key_exists($name, $this->param_list) || array_key_exists($name, $this->param));
 
 }
 /**
- * Get a param value
+ * Get a parameter (as a data field)
  *
  * @param string $name
  * @return data
@@ -230,20 +225,34 @@ return $this->param_exists($name);
 public function __get($name)
 {
 
-if (is_string($name) && array_key_exists($name, $this->param))
+if (!is_string($name))
+	return;
+elseif (array_key_exists($name, $this->param))
 	return $this->param[$name];
+elseif (array_key_exists($name, $this->param_list))
+	return $this->param[$name] = $this->param_construct($name);
 
 }
 /**
- * Set a param value
+ * Set a parameter.
+ * Use model specifications if the parameter is known, otherwises creates a default data field
  * @param string $name
  * @param mixed $value
  */
 public function __set($name, $value)
 {
 
-if (is_string($name) && array_key_exists($name, $this->param))
+if (!is_string($name))
+	return;
+elseif (array_key_exists($name, $this->param))
 	$this->param[$name]->value = $value;
+elseif (array_key_exists($name, $this->param_list))
+{
+	$this->param[$name] = $this->param_construct($name, $value);
+	$this->param[$name]->value = $value;
+}
+else
+	$this->param[$name] = new data($name, $value, $name);
 
 }
 
@@ -334,12 +343,12 @@ if (DEBUG_GENTIME == true)
 
 // Sends params to the template
 //$template->params_reset();
-foreach ($this->param as $name=>$param)
+foreach ($this->param_list() as $name=>$param)
 {
 	if ($map === true || (is_array($map) && in_array($name, $map)))
 	{
 		if (DEBUG_TEMPLATE)
-			echo "<p>pagemodel(ID#$this->id)::params_apply() to template ID#$template->id : $name => $param->value</p>\n";
+			echo "<p>pagemodel(ID#$this->id)::params_apply() to template ID#$template->id : $name => ".json_encode($param->value)."</p>\n";
 		$template->__set($name, $param->value);
 	}
 }
@@ -416,7 +425,7 @@ if (DEBUG_GENTIME == true)
 // TODO : use attribute script
 if (file_exists(PATH_PAGEMODEL."/$this->name.inc.php"))
 {
-	extract($this->param);
+	extract($this->param_list());
 	include PATH_PAGEMODEL."/$this->name.inc.php";
 }
 

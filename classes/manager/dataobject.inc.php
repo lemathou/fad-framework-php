@@ -142,7 +142,7 @@ if ($this->datamodel_id)
  * @param string $name
  * @return data
  */
-protected function construct_field($name)
+protected function field_construct($name)
 {
 
 if ($field=$this->datamodel()->{$name})
@@ -181,7 +181,7 @@ if (array_key_exists($name, $this->fields))
 }
 else
 {
-	$this->fields[$name] = $this->construct_field($name);
+	$this->fields[$name] = $this->field_construct($name);
 	$this->fields[$name]->value = null;
 }
 
@@ -197,7 +197,7 @@ public function reset($name)
 if (!is_string($name))
 	return;
 
-$this->fields[$name] = $this->construct_field($name);
+$this->fields[$name] = $this->field_construct($name);
 
 }
 
@@ -218,13 +218,14 @@ if (array_key_exists($name, $this->fields))
 }
 elseif (array_key_exists($name, $this->field_values))
 {
-	$this->fields[$name] = $this->construct_field($name);
+	$this->fields[$name] = $this->field_construct($name);
 	$this->fields[$name]->value = $value;
 }
-elseif ($field=$this->construct_field($name))
+elseif ($field=$this->field_construct($name))
 {
 	$this->field_values[$name] = null; // TODO : verify this is a good way
 	$this->fields[$name] = $field;
+	$this->fields[$name]->value = $value;
 }
 
 }
@@ -251,11 +252,11 @@ elseif (array_key_exists($name, $this->fields))
 }
 elseif (array_key_exists($name, $this->field_values))
 {
-	$this->fields[$name] = $this->construct_field($name);
+	$this->fields[$name] = $this->field_construct($name);
 	$this->fields[$name]->value = $this->field_values[$name];
 	return $this->fields[$name];
 }
-elseif ($field=$this->construct_field($name))
+elseif ($field=$this->field_construct($name))
 {
 	$this->field_values[$name] = null; // TODO : verify this is a good way, as for __set()
 	return $this->fields[$name] = $field;
@@ -562,7 +563,7 @@ foreach ($fields as $name=>$value)
 		$this->fields[$name]->value_from_db($value);
 		$this->field_values[$name] = $this->fields[$name]->value;
 	}
-	elseif ($field=$this->construct_field($name))
+	elseif ($field=$this->field_construct($name))
 	{
 		$field->value_from_db($value);
 		$this->fields[$name] = $field;

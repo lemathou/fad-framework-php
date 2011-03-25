@@ -87,6 +87,10 @@ $this->query_params();
 
 }
 
+/**
+ * Retrieve parameters from database
+ * @param boolean $reset
+ */
 protected function query_params($reset=false)
 {
 
@@ -120,6 +124,7 @@ while ($opt = $query_opt->fetch_assoc())
 
 }
 
+
 /**
  * Defines the display of the page, based on database infos and a template file
  * 
@@ -141,26 +146,43 @@ protected $mime = "";
 
 /*
  * Complete list of params
+ * @var array
  */
 protected $param_list = array();
-// Effective params, using data fields
+/*
+ * Effective params, using data fields
+ * @var array
+ */
 protected $param = array();
 
 /*
- * Filename of the PHP source template file, and PHP script
+ * Filename of the PHP source template file
+ * @var string
  */
 protected $tpl_filename = "";
+/*
+ * Filename of the PHP script
+ * @var string
+ */
 protected $script_filename = "";
 /*
  * Subtemplate list
+ * @var array
  */
 protected $subtemplate = array();
 
 /*
  * Cache related infos
+ * @var integer
  */
 protected $cache_mintime = 0;
+/*
+ * @var integer
+ */
 protected $cache_maxtime = 0;
+/*
+ * @var integer
+ */
 protected $login_dependant = 0;
 /*
  * Unique cache ID to store and retrieve each filled template
@@ -168,8 +190,14 @@ protected $login_dependant = 0;
 protected $cache_id = "";
 /*
  * TODO : use distinct functions as for object cache, if possible
+ * Cache folder name
+ * @var string
  */
 protected $cache_folder = "";
+/*
+ * Cache filename
+ * @var string
+ */
 protected $cache_filename = "";
 
 function __sleep()
@@ -183,7 +211,7 @@ function __wakeup()
 {
 
 $this->tpl_filename_update();
-$this->construct_params();
+$this->params_construct();
 
 }
 
@@ -191,7 +219,7 @@ protected function construct_more($infos)
 {
 
 $this->tpl_filename_update();
-$this->construct_params();
+$this->params_construct();
 
 }
 
@@ -211,7 +239,7 @@ else
 
 }
 
-protected function construct_params()
+protected function params_construct()
 {
 
 $this->param = array();
@@ -231,6 +259,9 @@ protected function query_info_more()
 $this->query_params();
 
 }
+/**
+ * Retrieve parameter list from database
+ */
 protected function query_params()
 {
 
@@ -246,12 +277,13 @@ while ($opt = $query_opt->fetch_assoc())
 {
 	$this->param_list[$opt["name"]]["opt"][$opt["optname"]] = json_decode($opt["optvalue"], true);
 }
-$this->construct_params();
+$this->params_construct();
 
 }
 
 /**
  * Returns the list of params
+ * @return array
  */
 public function param_list()
 {
@@ -259,6 +291,10 @@ public function param_list()
 return $this->param;
 
 }
+/**
+ * Returns the list of params details
+ * @return array
+ */
 public function param_list_detail()
 {
 
@@ -268,56 +304,32 @@ return $this->param_list;
 
 /**
  * Usage of params from the page or parent template
+ * @param string $name
  */
 function __isset($name)
 {
 
-return array_key_exists($name, $this->param);
+return (is_string($name) && array_key_exists($name, $this->param));
 
 }
 function __get($name)
 {
 
-if (array_key_exists($name, $this->param))
-{
+if (is_string($name) && array_key_exists($name, $this->param))
 	return $this->param[$name];
-}
 
 }
 public function __set($name, $value)
 {
 
-if (DEBUG_GENTIME == true)
-	gentime("template(ID#$this->id)::__set() : $name [begin]");
-
-if (array_key_exists($name, $this->param))
+if (is_string($name) && array_key_exists($name, $this->param))
 {
 	if (DEBUG_TEMPLATE)
 		echo "<p>DEBUG : template(ID#$this->id)::__set() : $name : ".json_encode($value)."</p>\n";
 	$this->param[$name]->value_set($value);
 }
 
-if (DEBUG_GENTIME == true)
-	gentime("template(ID#$this->id)::__set() : $name [end]");
-
 }
-
-/**
- * Load the libraries associated to the template
- */
-/*
-protected function library_load()
-{
-
-foreach ($this->library_list as $library_id)
-{
-	if (DEBUG_LIBRARY)
-		echo "<p>template(ID#$this->id)::library_load() : ID#$library_id</p>\n";
-	library($library_id)->load();
-}
-
-}
-*/
 
 /**
  * Display template with headers
@@ -342,7 +354,7 @@ echo $this->__tostring();
 }
 
 /**
- * Returns the template to display, applying params
+ * Returns the displayed template, applying params, etc.
  */
 public function __tostring()
 {
@@ -381,7 +393,9 @@ return $return;
 }
 
 /**
- * Reset params to default value and empty the calculated template.
+ * Reset the template
+ * - Params to default value,
+ * - empty the calculated template.
  */
 function reset()
 {
@@ -392,6 +406,9 @@ $this->cache_id = "";
 $this->params_reset();
 
 }
+/**
+ * Reset params to default value
+ */
 function params_reset()
 {
 
@@ -426,6 +443,9 @@ if (DEBUG_GENTIME == true)
 
 /**
  * Returns the list of subtemplates of a given template
+ * TODO : move this function in datamodel !
+ * @tpl string
+ * @return array
  */
 public static function subtemplates($tpl)
 {
@@ -458,21 +478,24 @@ return $return;
 
 /**
  * Set parameters for a subtemplate
+ * TODO : protection so that we cannot set random templates...
+ * Better to lookup in the page object ..?
+ * @param integer $nb
+ * @param array $info
  */
 public function subtemplate_set($nb, $info)
 {
 
-// TODO : protection so that we cannot set random templates...
-// Better to lookup in the page object ..?
-
 //echo "<p>template(ID#$this->id)::subtemplate_set() : $nb</p>\n";
-//var_dump($info);
+
 $this->subtemplate[$nb] = $info;
 
 }
 
 /**
  * Retrieve parameters of a subtemplate
+ * @param int $nb
+ * @return string
  */
 protected function subtemplate($nb)
 {
@@ -488,9 +511,13 @@ if (array_key_exists((int)$nb, $this->subtemplate) && is_array($subtemplate=$thi
 
 /**
  * Apply subtemplates to a executed template.
+ * @param array $tpl
+ * @return string
  */
 protected function subtemplates_apply($tpl)
 {
+
+//var_dump($this->param);
 
 if (DEBUG_GENTIME == true)
 	gentime("template(ID#$this->id)::subtemplates_apply() [begin]");
@@ -518,9 +545,11 @@ if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(true|null|(\{.+\}))){0,1}(,(t
 				foreach($template->param_list_detail() as $name=>$param)
 				{
 					if (DEBUG_TEMPLATE)
-						echo "<p>--> Param : $name</p>\n";
+						echo "<p>--> Looking for param \"$name\" ?</p>\n";
 					if (array_key_exists($name, $this->param))
 					{
+						if (DEBUG_TEMPLATE)
+							echo "<p>--> Param : \"$name\"</p>\n";
 						$template->__set($name, $this->param[$name]->value);
 					}
 				}
@@ -530,9 +559,11 @@ if (preg_match_all("/\<!--INCLUDE:([a-zA-Z_\/]+)(,(true|null|(\{.+\}))){0,1}(,(t
 				foreach($params as $name=>$name_from)
 				{
 					if (DEBUG_TEMPLATE)
-						echo "<p>--> $name_from : $name</p>\n";
+						echo "<p>--> Looking for param \"$name\" ?</p>\n";
 					if (array_key_exists($name_from, $this->param))
 					{
+						if (DEBUG_TEMPLATE)
+							echo "<p>--> $name_from : $name</p>\n";
 						$template->__set($name, $this->param[$name_from]->value);
 					}
 				}

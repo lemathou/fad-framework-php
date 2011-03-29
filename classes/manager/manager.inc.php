@@ -168,6 +168,7 @@ if ($query)
 {
 	$this->query_info();
 	$this->construct_more();
+	$this->list_update();
 }
 elseif (false) // TODO : Restore $this->list_detail FROM a file. Surely faster than object cache
 {

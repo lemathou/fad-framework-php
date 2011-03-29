@@ -101,17 +101,18 @@ protected static $opt_list = array
  * Constructor
  *
  * @param string $name
+ * @param string $label
  * @param mixed $value
- * @param array $options
+ * @param array $opt
  */
-public function __construct($name, $value, $label, $options=array())
+public function __construct($name, $value, $label, $opt=array())
 {
 
 $this->name = $name;
 $this->label = $label;
 $this->value = $value;
 
-if (is_array($options)) foreach ($options as $i=>$j)
+if (is_array($opt)) foreach ($opt as $i=>$j)
 {
 	$this->opt_set($i, $j);
 }
@@ -178,6 +179,8 @@ return $this->object;
 
 /**
  * Options
+ * @param string $name
+ * @param mixed $value
  */
 public function opt_set($name, $value)
 {
@@ -190,6 +193,8 @@ if (in_array($name, self::$opt_list))
 
 }
 /**
+ * Returns opt value
+ * @param string $name
  * @return mixed
  */
 public function opt($name)
@@ -206,6 +211,11 @@ elseif (in_array($name, self::$opt_list))
 */
 
 }
+/**
+ * Returns opt value
+ * @param string $name
+ * @return mixed
+ */
 public function opt_get($name)
 {
 
@@ -233,8 +243,8 @@ if ($name == "value")
 /**
  * Update the value and force conversion if needed
  * 
- * @param mixed value
- * @param boolean force
+ * @param mixed $value
+ * @param boolean $force
  * @return boolean
  */
 public function value_set($value, $convert=false, $options=array())
@@ -257,7 +267,7 @@ if ($value !== null)
 /**
  * Verify the structure of the value
  * 
- * @param mixed value
+ * @param mixed $value
  * @return boolean
  */
 public function verify(&$value, $convert=false, $options=array())
@@ -266,15 +276,27 @@ public function verify(&$value, $convert=false, $options=array())
 return true;
 
 }
+/**
+ * OVERLOAD
+ * @param mixed $value
+ */
 public function convert_before(&$value)
 {
 }
+/**
+ * OVERLOAD
+ * @param mixed $value
+ */
 public function convert(&$value, $options=array())
 {
 
 $value =  $this->empty_value;
 
 }
+/**
+ * OVERLOAD
+ * @param mixed $value
+ */
 public function convert_after(&$value)
 {
 }
@@ -314,6 +336,7 @@ return $this->value;
 }
 /**
  * Read access to data
+ * @param string
  * @return mixed
  */
 public function __get($name)
@@ -351,7 +374,7 @@ else
 /**
  * Convert the value in database format
  * 
- * @param unknown_type $value
+ * @param mixed $value
  */
 public function value_from_db($value)
 {
@@ -374,11 +397,12 @@ public function value_to_db()
 return $this->value;
 
 }
+/**
+ * OVERLOAD
+ * @param mixed $value
+ */
 public function convert_from_db(&$value)
 {
-
-// OVERLOAD
-
 }
 /**
  * Return the query string for the datamodel
@@ -450,16 +474,17 @@ if ($value !== null)
 }
 
 }
+/**
+ * OVERLOAD
+ * @param mixed $value
+ */
 public function convert_from_form(&$value)
 {
-
-// OVERLOAD
 
 }
 /**
  * Convert the value to export it in an HTML form in the appropriate format
  * 
- * @param unknown_type $value
  * @return string
  */
 public function value_to_form()

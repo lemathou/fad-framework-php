@@ -81,7 +81,7 @@ elseif (file_exists($filename=PATH_CLASSES."/$class_name.inc.php"))
 // Project Datamodel
 elseif (datamodel()->exists_name($class_name))
 {
-	if (file_exists($filename=PATH_DATAMODEL."/$class_name.inc.php"))
+	if (file_exists($filename=PATH_DATAOBJECT."/$class_name.inc.php"))
 	{
 		include $filename;
 	}

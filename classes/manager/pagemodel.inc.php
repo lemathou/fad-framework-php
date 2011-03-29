@@ -405,6 +405,8 @@ function view_disp()
 if (DEBUG_GENTIME == true)
 	gentime("pagemodel(#ID$this->id)::view_disp() [begin]");
 
+//var_dump(template());
+
 if ($template=$this->view())
 	$template->disp();
 

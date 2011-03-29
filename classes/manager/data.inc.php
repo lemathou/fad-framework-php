@@ -25,14 +25,20 @@ protected $type = "datatype";
 
 protected $info_required = array("name", "label");
 
+protected function construct_object($id)
+{
+
+$datatype = "data_".$this->list_detail[$id]["name"];
+
+return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
+
+}
+
 public function get($id)
 {
 
 if (array_key_exists($id, $this->list_detail))
-{
-	$datatype = "data_".$this->list_detail[$id]["name"];
-	return new $datatype($this->list_detail[$id]["name"], null, $this->list_detail[$id]["label"]);
-}
+	return $this->construct_object($id);
 else
 	return null;
 

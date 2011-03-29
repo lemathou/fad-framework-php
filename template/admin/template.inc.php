@@ -210,6 +210,7 @@ $tpl_type_list = array
 	""=>"Tous les templates",
 	"container"=>"Principaux",
 	"datamodel"=>"Datamodels",
+	"dataobject"=>"Dataobjects",
 	"inc"=>"Include",
 	"page"=>"Pages",
 );

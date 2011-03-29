@@ -52,6 +52,8 @@ return $return;
 public function verify(&$value, $convert=false, $options=array())
 {
 
+var_dump($value);
+
 $return = true;
 
 if (!is_numeric($value) || (float)$value != $value)

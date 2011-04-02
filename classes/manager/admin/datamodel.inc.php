@@ -418,10 +418,12 @@ if (!login()->perm(1))
 <tr>
 	<td valign="top"><h3>Afficher les colonnes :</h3></td>
 	<td><select name="_fields[]" title="Champs" multiple class="data_fromlist"><?php
+	$fields_url = "";
 	foreach ($this->fields as $name=>$field) if ($name != "id")
 		if (in_array($name, $fields))
 		{
 			echo "<option value=\"$name\" selected>".$field->label."</option>";
+			$fields_url .= "&_fields[]=$name";
 		}
 		else
 		{
@@ -432,8 +434,15 @@ if (!login()->perm(1))
 <tr> <td colspan="2"><hr /></td> </tr>
 <tr>
 	<td valign="top"><h3>Trier par :</h3></td>
-	<td><select name="_sort[0]"><?php
+	<td><select name="_sort[0]"><option></option><?php
 	$sort_url = "";
+	if (isset($sort["id"]))
+	{
+		echo "<option value=\"id\" selected>ID</option>";
+		$sort_url = "&amp;_sort[0]=id";
+	}
+	else
+		echo "<option value=\"id\">ID</option>";
 	foreach ($this->fields as $name=>$field)
 	{
 		if (isset($sort[$name]))
@@ -462,14 +471,23 @@ if (!login()->perm(1))
 <tr> <td colspan="2"><hr /></td> </tr>
 <tr>
 	<td>&nbsp;</td>
-	<td><input type="submit" value="Afficher" /></td>
+	<td><input type="submit" value="Afficher" /> <select name="page_nb"><?php
+	$page_nb_list = array(10, 20, 50);
+	foreach($page_nb_list as $i)
+	{
+		if ($page_nb == $i)
+			echo "<option selected>$i</option>";
+		else
+			echo "<option>$i</option>";
+	}
+	?></select></td>
 </tr>
 </table>
 </div>
 </form>
 <div><p>Pages de résultats : <?php
 $nbmax = $this->db_count($params);
-$page_list = new page_listing($nbmax, array("10", "20", "50"), 10, 1, "?datamodel_id=$this->id$sort_url");
+$page_list = new page_listing($nbmax, array("10", "20", "50"), 10, 1, "?datamodel_id=$this->id$fields_url$sort_url");
 $page_list->page_nb_set($page_nb);
 $page_list->page_set($page);
 echo implode(" ", $page_list->link_list());

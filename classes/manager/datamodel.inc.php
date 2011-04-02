@@ -32,7 +32,8 @@ protected $info_detail = array
 	"dynamic"=>array("label"=>"Dynamique", "type"=>"boolean", "lang"=>false),
 	"db"=>array("label"=>"Database (optionnal)", "type"=>"string", "size"=>32, "lang"=>false),
 	"perm"=>array("label"=>"Permissions par défaut", "type"=>"fromlist", "select_list"=> array("l"=>"List", "r"=>"Read", "i"=>"Insert", "u"=>"Update", "d"=>"Delete"), "size"=>8, "lang"=>false),
-	"script"=>array("label"=>"Class", "type"=>"script", "folder"=>PATH_DATAMODEL, "filename"=>"{name}.inc.php")
+	"script1"=>array("label"=>"Datamodel Class", "type"=>"script", "folder"=>PATH_DATAMODEL, "filename"=>"{name}.inc.php"),
+	"script2"=>array("label"=>"Dataobject Class", "type"=>"script", "folder"=>PATH_DATAOBJECT, "filename"=>"{name}.inc.php")
 );
 
 protected $info_required = array("name", "db");

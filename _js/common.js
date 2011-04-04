@@ -558,7 +558,7 @@ function datamodel_fields_clean(element)
 			,"syntax": "php"	
 		});
 	});
-	$("textarea.data_text", element).autoGrow();
+	//$("textarea.data_text", element).autoGrow();
 	$("textarea.data_richtext", element).ckeditor();
 	$("input.data_datetime", element).datetimepicker();
 	$("input.data_time", element).timepicker();

@@ -82,6 +82,7 @@ $message .= "\r\n";
 // suppress header
 $message_text = preg_replace("/\<head\>([^%]*)\<\/head\>/", "", $message_html);
 // convert <br />
+// Warning ! No xhtml but html in emails <br /> => <br>
 $message_text = str_replace("\r\n<br />", "\r\n", $message_text);
 $message_text = str_replace("<br />\r\n", "\r\n", $message_text);
 $message_text = str_replace("<br />", "\r\n", $message_text);

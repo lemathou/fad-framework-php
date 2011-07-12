@@ -181,7 +181,7 @@ function __wakeup()
 {
 
 if (!$this->db)
-	$this->db = DB_BASE;
+	$this->db = DB_PJ_DATA_BASE;
 
 }
 
@@ -189,7 +189,7 @@ protected function construct_more($infos)
 {
 
 if (!$this->db)
-	$this->db = DB_BASE;
+	$this->db = DB_PJ_DATA_BASE;
 
 $this->query_fields();
 
@@ -208,12 +208,15 @@ $this->query_fields();
 public function query_fields()
 {
 
+$_type = $this->_type;
+$db = $_type()->db();
+
 $this->fields = array();
 $this->fields_detail = array();
 $this->fields_calculated = array();
 $this->fields_index = array();
 // Création des champs du datamodel
-$query = db("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`update` , t1.`lang` , t1.`query` , t2.`label` FROM `_datamodel_fields` as t1 LEFT JOIN `_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
+$query = db("SELECT t1.pos, t1.`name` , t1.`type` , t1.`defaultvalue` , t1.`update` , t1.`lang` , t1.`query` , t2.`label` FROM `$db`.`_datamodel_fields` as t1 LEFT JOIN `$db`.`_datamodel_fields_lang` as t2 ON t1.`datamodel_id`=t2.`datamodel_id` AND t1.`name`=t2.`fieldname` WHERE t1.`datamodel_id`='$this->id' ORDER BY t1.`pos`");
 while ($field=$query->fetch_assoc())
 {
 	$field["defaultvalue"] = json_decode($field["defaultvalue"], true);
@@ -224,7 +227,7 @@ while ($field=$query->fetch_assoc())
 	if ($field["update"]=="calculated")
 		$this->fields_calculated[] = $field["name"];
 }
-$query = db("SELECT `fieldname`, `opt_name`, `opt_value` FROM `_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
+$query = db("SELECT `fieldname`, `opt_name`, `opt_value` FROM `$db`.`_datamodel_fields_opt` WHERE `datamodel_id`='$this->id'");
 while ($opt=$query->fetch_assoc())
 {
 	//echo "<p>$this->id : $opt[fieldname] : $opt[opt_name]</p>\n";
@@ -235,7 +238,7 @@ while ($opt=$query->fetch_assoc())
 
 $this->fields_ref = array();
 // Linked fields in other datamodels
-$query_string = "SELECT t0.`id` as datamodel_id, t0.`name` as datamodel_name, t1.`name` as fieldname, t1.`type` as type, t3.`opt_value` as ref_id, t4.`opt_value` as ref_field, t5.`opt_value` as ref_table FROM `_datamodel` as t0, `_datamodel_fields` as t1, `_datamodel_fields_opt` as t2 LEFT JOIN `_datamodel_fields_opt` as t3 ON t2.datamodel_id=t3.datamodel_id AND t2.fieldname=t3.fieldname AND t3.opt_name='db_ref_id' LEFT JOIN `_datamodel_fields_opt` as t4 ON t2.datamodel_id=t4.datamodel_id AND t2.fieldname=t4.fieldname AND t4.opt_name='db_ref_field' LEFT JOIN `_datamodel_fields_opt` as t5 ON t2.datamodel_id=t5.datamodel_id AND t2.fieldname=t5.fieldname AND t5.opt_name='db_ref_table' WHERE t0.id=t1.datamodel_id AND t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname AND t2.`opt_name`='datamodel' AND t2.`opt_value` IN ('$this->id', '\"$this->name\"')";
+$query_string = "SELECT t0.`id` as datamodel_id, t0.`name` as datamodel_name, t1.`name` as fieldname, t1.`type` as type, t3.`opt_value` as ref_id, t4.`opt_value` as ref_field, t5.`opt_value` as ref_table FROM `$db`.`_datamodel` as t0, `$db`.`_datamodel_fields` as t1, `$db`.`_datamodel_fields_opt` as t2 LEFT JOIN `$db`.`_datamodel_fields_opt` as t3 ON t2.datamodel_id=t3.datamodel_id AND t2.fieldname=t3.fieldname AND t3.opt_name='db_ref_id' LEFT JOIN `$db`.`_datamodel_fields_opt` as t4 ON t2.datamodel_id=t4.datamodel_id AND t2.fieldname=t4.fieldname AND t4.opt_name='db_ref_field' LEFT JOIN `$db`.`_datamodel_fields_opt` as t5 ON t2.datamodel_id=t5.datamodel_id AND t2.fieldname=t5.fieldname AND t5.opt_name='db_ref_table' WHERE t0.id=t1.datamodel_id AND t1.datamodel_id=t2.datamodel_id AND t1.name=t2.fieldname AND t2.`opt_name`='datamodel' AND t2.`opt_value` IN ('$this->id', '\"$this->name\"')";
 $query = db($query_string);
 //echo "<p>$query_string</p>\n";
 while($row=$query->fetch_assoc())

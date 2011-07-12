@@ -16,7 +16,7 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Global class to send emails.
+ * Common class to send emails.
  * 
  * @author mathieu
  */
@@ -26,10 +26,10 @@ class mail
 /**
  * Send emails, adding usefull header infos...
  * 
- * @param unknown_type $to
- * @param unknown_type $subject
- * @param unknown_type $message
- * @param unknown_type $headers
+ * @param string $to
+ * @param string $subject
+ * @param string $message
+ * @param string $headers
  */
 static function common($to, $subject, $message, $headers="")
 {
@@ -41,10 +41,10 @@ mail($to, $subject, $message, "X-Originating-IP: ".$_SERVER["REMOTE_ADDR"]."\r\n
 /**
  * Send text/plain email
  * 
- * @param unknown_type $to
- * @param unknown_type $subject
- * @param unknown_type $message
- * @param unknown_type $headers
+ * @param string $to
+ * @param string $subject
+ * @param string $message
+ * @param string $headers
  */
 static function text($to, $subject, $message, $headers="")
 {
@@ -56,10 +56,10 @@ self::common($to, $subject, imap_8bit($message), "Content-Type: text/plain; char
 /**
  * Send text/html email
  * 
- * @param unknown_type $to
- * @param unknown_type $subject
- * @param unknown_type $message_html
- * @param unknown_type $headers
+ * @param string $to
+ * @param string $subject
+ * @param string $message_html
+ * @param string $headers
  */
 static function html($to, $subject, $message_html, $headers="")
 {

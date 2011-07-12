@@ -24,6 +24,12 @@ abstract class __manager
 {
 
 /**
+ * Database
+ * @var string
+ */
+protected $db = DB_FW_SHARED_BASE;
+
+/**
  * @var string
  */
 protected $type = "";
@@ -102,6 +108,12 @@ public function info_detail_list()
 {
 
 return $this->info_detail;
+
+}
+public function db()
+{
+
+return $this->db;
 
 }
 
@@ -211,7 +223,7 @@ foreach ($this->info_detail as $name=>$field)
 	}
 }
 
-$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_".$this->type."` as t1 LEFT JOIN `_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."'";
+$query_string = "SELECT ".implode(", ", $query_fields)." FROM `$this->db`.`_".$this->type."` as t1 LEFT JOIN FROM `$this->db`.`_".$this->type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."'";
 //echo "<p>$query_string</p>\n";
 $query = db()->query($query_string);
 while($info = $query->fetch_assoc())
@@ -502,6 +514,7 @@ function query_info()
 
 $type = $this->_type;
 $info_detail = $type()->info_detail_list();
+$db = $type()->db();
 
 $query_fields = array("`t1`.`id`");
 $query_objects = array();
@@ -520,7 +533,7 @@ foreach ($info_detail as $name=>$field)
 	}
 }
 
-$query_string = "SELECT ".implode(", ", $query_fields)." FROM `_$type` as t1 LEFT JOIN `_".$type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."' WHERE t1.id='$this->id'";
+$query_string = "SELECT ".implode(", ", $query_fields)." FROM `$db`.`_$type` as t1 LEFT JOIN `$db`.`_".$type."_lang` as t2 ON t1.`id`=t2.`id` AND t2.`lang_id`='".SITE_LANG_ID."' WHERE t1.id='$this->id'";
 //echo "<p>$query_string</p>";
 $query = db()->query($query_string);
 while($infos = $query->fetch_assoc())
@@ -536,7 +549,7 @@ foreach ($query_objects as $name)
 {
 	$this->{$name} = array();
 	$field = $info_detail[$name];
-	$query = db()->query("SELECT `$field[db_field]` FROM `$field[db_table]` WHERE `$field[db_id]`='$this->id'");
+	$query = db()->query("SELECT `$field[db_field]` FROM `$db`.`$field[db_table]` WHERE `$db`.`$field[db_id]`='$this->id'");
 	while (list($object_id)=$query->fetch_row())
 	{
 		//var_dump($object_id);

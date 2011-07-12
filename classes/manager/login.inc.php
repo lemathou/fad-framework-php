@@ -16,11 +16,13 @@ if (DEBUG_GENTIME == true)
 
 
 /**
- * Compte utilisateur
+ * Account
  * 
  */
 class _account
 {
+
+protected $_db = DB_FW_PROJECT_BASE;
 
 protected $id = 0;
 protected $email = ""; // Account identifier, UNIQUE

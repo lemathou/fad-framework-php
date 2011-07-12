@@ -15,8 +15,15 @@ if (DEBUG_GENTIME == true)
 	gentime(__FILE__." [begin]");
 
 
+/**
+ * Common necessary or useful project data
+ * @author mathieu
+ *
+ */
 class _globals
 {
+
+protected $_db = DB_FW_PROJECT_BASE;
 
 protected $list = array();
 
@@ -30,7 +37,7 @@ $this->query();
 function query()
 {
 
-$query = db()->query( "SELECT `name` , `value` FROM `_globals`" );
+$query = db()->query( "SELECT `name` , `value` FROM `$this->_db`._globals`" );
 while (list($name, $value) = $query->fetch_row())
 	$this->list[$name] = $value;
 

@@ -21,6 +21,8 @@ if (DEBUG_GENTIME == true)
 class __menu_manager extends _manager
 {
 
+protected $_db = DB_FW_PROJECT_BASE;
+
 protected $type = "menu";
 
 protected function query_info_more()

@@ -40,7 +40,13 @@ define("DB_HOST",${DB_HOST});
 define("DB_PORT","3306");
 define("DB_USERNAME",${DB_USERNAME});
 define("DB_PASSWORD",${DB_PASSWORD});
-// Default database
+// Framework shared database (datamodel, pagemodel, templates, etc.) 
+define("DB_FW_SHARED_BASE",${DB_BASE});
+// Framework project specifics database (page, menu, account, etc.)
+define("DB_FW_PROJECT_BASE",${DB_BASE});
+// Project Data database (datamodel specific tables)
+define("DB_PJ_DATA_BASE",${DB_BASE});
+// Default database (depeacated)
 define("DB_BASE",${DB_BASE});
 
 // Framework Folders

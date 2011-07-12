@@ -20,6 +20,8 @@ if (DEBUG_GENTIME == true)
 class __page_manager extends _manager
 {
 
+protected $_db = DB_FW_PROJECT_BASE;
+
 protected $type = "page";
 
 protected $retrieve_details = false;
